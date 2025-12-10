@@ -173,8 +173,10 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
 
             // Force noon time for date parsing to avoid timezone shift (e.g. 21:00 prev day)
-            // '2025-12-10' becomes '2025-12-10T12:00:00'
-            const safeDate = visit.visit_date ? new Date(visit.visit_date + 'T12:00:00') : new Date();
+            // But only if it's a simple date string (YYYY-MM-DD), not full ISO
+            const dateStr = visit.visit_date || new Date().toISOString();
+            const safeDateStr = dateStr.length === 10 ? dateStr + 'T12:00:00' : dateStr;
+            const safeDate = new Date(safeDateStr);
 
             const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
 
