@@ -65,7 +65,7 @@ export function ReportTemplate({ data, onPrint, isPdfGeneration }) {
                 </div>
                 <div className="text-right">
                     <h3 className="font-bold text-blue-800 mb-2 uppercase text-xs">Dados da Visita</h3>
-                    <p><span className="font-semibold">Data:</span> {visit?.visit_date ? format(new Date(visit.visit_date), "d 'de' MMMM, yyyy", { locale: ptBR }) : '-'}</p>
+                    <p><span className="font-semibold">Data:</span> {visit?.visit_date ? format(new Date(visit.visit_date + 'T12:00:00'), "d 'de' MMMM, yyyy", { locale: ptBR }) : '-'}</p>
                     <p><span className="font-semibold">Local:</span> {primaryLocation?.name}</p>
                     <p className="break-all"><span className="font-semibold">Técnico:</span> {techName}</p>
                     <p><span className="font-semibold">ID:</span> #{visit?.id?.slice(0, 8)}</p>
