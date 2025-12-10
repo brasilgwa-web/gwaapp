@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from "@/lib/supabase";
 import { Visit } from "@/api/entities";
 import { Core } from "@/api/integrations";
 import { useAuth } from "@/context/AuthContext";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import SignaturePad from "./SignaturePad";
-import { Bot, Send, FileText, Loader2, ExternalLink, Mail, AlertTriangle, CheckCircle, Lock } from "lucide-react";
-import { createPageUrl } from '../../utils';
+import { Bot, Send, FileText, Loader2, ExternalLink, Mail, AlertTriangle, CheckCircle, Lock, MonitorUp } from "lucide-react";
+import { useReportData } from '@/hooks/useReportData';
+import { ReportTemplate } from '@/components/visit/ReportTemplate';
+import html2pdf from 'html2pdf.js';
+import { format } from "date-fns";
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
     const queryClient = useQueryClient();
@@ -18,6 +21,10 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [showSignatureDialog, setShowSignatureDialog] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState('');
+
+    // Fetch Full Report Data for PDF Generation
+    const { data: reportData, isLoading: isLoadingReport } = useReportData(visit.id);
 
     // Fetch Current User to check signature
     const { user } = useAuth();
@@ -36,8 +43,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['me'] });
-            window.location.reload(); // Simple way to force AuthContext to re-fetch profile on load. 
-            // Better: Expose a refreshUser function in AuthContext, but reload is robust for this MVP fix.
+            window.location.reload();
             setShowSignatureDialog(false);
         }
     });
@@ -49,7 +55,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const updateMutation = useMutation({
         mutationFn: (data) => {
             const payload = { ...data };
-            // Auto-advance status to in_progress if currently scheduled and not setting another status
             if (visit.status === 'scheduled' && !payload.status) {
                 payload.status = 'in_progress';
             }
@@ -70,13 +75,12 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const handleGenerateAI = async () => {
         setIsGenerating(true);
         try {
-            // Prepare data for AI
             const context = {
                 client: visit.client?.name,
                 location: visit.location?.name,
                 date: visit.visit_date,
                 results: results?.map(r => ({
-                    test: r.test_definition_id, // Ideally mapped to name
+                    test: r.test_definition_id,
                     value: r.measured_value,
                     status: r.status_light
                 }))
@@ -99,18 +103,14 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 Use texto corrido e bullets onde necessário.
             `;
 
-            const response = await Core.InvokeLLM({
-                prompt: prompt,
-                app_id: null,
-                app_owner: null
-            });
+            const response = await Core.InvokeLLM({ prompt: prompt });
 
-            // The response is a string
-            setObservations(prev => (prev ? prev + "\n\n--- Análise IA ---\n" + response : response));
-            updateMutation.mutate({ observations: (observations ? observations + "\n\n--- Análise IA ---\n" + response : response), ai_generated_analysis: true });
+            const newObs = observations ? observations + "\n\n--- Análise IA ---\n" + response.result : response.result;
+            setObservations(newObs);
+            updateMutation.mutate({ observations: newObs, ai_generated_analysis: true });
         } catch (error) {
             console.error("AI Error:", error);
-            alert("Erro ao gerar análise IA. Verifique se as integrações estão ativas.");
+            alert("Erro ao gerar análise IA.");
         } finally {
             setIsGenerating(false);
         }
@@ -130,48 +130,110 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         updateMutation.mutate({ status: 'in_progress' });
     };
 
+    // PDF & Email Logic
     const handleSendReport = async () => {
-        const confirmMsg = readOnly ? "Reenviar relatório por email?" : "Finalizar e enviar relatório por email?";
+        const confirmMsg = readOnly ? "Reenviar relatório por email e salvar no Drive?" : "Finalizar, enviar por email e salvar no Drive?";
         if (!confirm(confirmMsg)) return;
+        if (!reportData) {
+            alert("Aguarde o carregamento completo dos dados do relatório.");
+            return;
+        }
 
         setIsSending(true);
+        setUploadStatus('Gerando PDF...');
+
         try {
-            // 1. Ensure visit is completed (if not already)
+            // 1. Generate PDF (Client Side)
+            const element = document.getElementById('report-pdf-hidden');
+            if (!element) throw new Error("Template não encontrado");
+
+            const opt = {
+                margin: 0,
+                filename: `relatorio_${visit.id}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Generate Base64 PDF
+            const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
+            // Remove prefix to get clean base64 for upload
+            // const cleanBase64 = pdfBase64.split(',')[1];
+
+            const fileName = `${format(new Date(visit.visit_date), 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
+
+            // 2. Upload to Drive (if Folder ID exists)
+            const driveFolderId = visit.client?.google_drive_folder_id;
+            if (driveFolderId) {
+                setUploadStatus('Enviando para o Google Drive...');
+                const uploadRes = await fetch('/api/upload-drive', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileBase64: pdfBase64,
+                        fileName: fileName,
+                        folderId: driveFolderId
+                    })
+                });
+
+                if (!uploadRes.ok) {
+                    console.error("Drive upload failed", await uploadRes.json());
+                    // Don't throw, just warn
+                    alert("Aviso: Falha ao salvar no Google Drive. Verifique o ID da pasta.");
+                } else {
+                    console.log("Drive Upload Success");
+                }
+            } else {
+                console.warn("No Drive Folder ID configured for client");
+            }
+
+            // 3. Send Email
+            setUploadStatus('Enviando email...');
             if (!readOnly) {
                 await Visit.update(visit.id, { status: 'completed' });
             }
 
-            // 2. Send Email
-            const reportUrl = `${window.location.origin}/report/${visit.id}`;
-
             await Core.SendEmail({
                 to: visit.client?.email,
-                subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${visit.visit_date}`,
+                subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${format(new Date(visit.visit_date), 'dd/MM/yyyy')}`,
                 body: `
                     Olá,
                     
-                    Segue o link para acessar o relatório da visita técnica realizada em ${visit.visit_date} na unidade ${visit.location?.name}.
-                    
-                    Acesse o relatório aqui: ${reportUrl}
+                    Segue em anexo o relatório da visita técnica realizada em ${format(new Date(visit.visit_date), 'dd/MM/yyyy')}.
                     
                     Atenciosamente,
                     Equipe WGA Brasil
-                `
+                `,
+                attachments: [
+                    {
+                        filename: fileName,
+                        content: pdfBase64.split(',')[1] // Resend needs clean base64
+                    }
+                ]
             });
 
-            alert("Relatório finalizado e enviado com sucesso!");
+            alert("Sucesso! Relatório enviado por email e salvo no Drive (se configurado).");
             updateMutation.mutate({ status: 'synced' });
 
         } catch (error) {
-            console.error("Send Error:", error);
-            alert("Erro ao enviar relatório. Tente novamente.");
+            console.error("Process Error:", error);
+            alert("Erro no processo: " + error.message);
         } finally {
             setIsSending(false);
+            setUploadStatus('');
         }
     };
 
     return (
-        <div className="space-y-6 pb-20">
+        <div className="space-y-6 pb-20 relative">
+
+            {/* Hidden Report Container for PDF Generation */}
+            <div className="absolute top-0 left-0 w-[210mm] opacity-0 pointer-events-none z-[-1] overflow-hidden">
+                <div id="report-pdf-hidden">
+                    {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
+                </div>
+            </div>
+
             {/* Technician Signature Dialog */}
             <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
                 <DialogContent>
@@ -269,7 +331,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     className="w-full md:flex-1"
                 >
                     <Button variant="outline" className="w-full">
-                        <FileText className="w-4 h-4 mr-2" /> Visualizar PDF
+                        <FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web
                     </Button>
                 </a>
 
@@ -279,19 +341,20 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         onClick={handleFinalize}
                     >
                         <CheckCircle className="w-4 h-4 mr-2" />
-                        Finalizar
+                        Finalizar Localmente
                     </Button>
                 )}
 
                 <Button
                     className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700"
                     onClick={handleSendReport}
-                    disabled={isSending}
+                    disabled={isSending || isLoadingReport}
                 >
-                    {isSending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (readOnly ? <Mail className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />)}
-                    {readOnly ? "Reenviar por Email" : "Finalizar e Enviar"}
+                    {isSending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (readOnly ? <MonitorUp className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />)}
+                    {isSending ? uploadStatus : (readOnly ? "Reenviar e Salvar no Drive" : "Finalizar, Enviar e Salvar")}
                 </Button>
             </div>
+            {isLoadingReport && <div className="text-center text-xs text-slate-400">Carregando dados para geração de PDF...</div>}
         </div>
     );
 }

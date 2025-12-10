@@ -50,7 +50,10 @@ export default function ClientLocationManager() {
             contact_name: formData.get('contact_name'),
             address: formData.get('address'),
             cnpj: formData.get('cnpj'),
-            city_state: formData.get('city_state')
+            address: formData.get('address'),
+            cnpj: formData.get('cnpj'),
+            city_state: formData.get('city_state'),
+            google_drive_folder_id: formData.get('google_drive_folder_id')
         };
 
         if (editingClient) {
@@ -88,6 +91,7 @@ export default function ClientLocationManager() {
                         <form onSubmit={handleClientSubmit} className="space-y-4">
                             <div className="grid gap-2"><Label>Empresa</Label><Input name="name" defaultValue={editingClient?.name} required /></div>
                             <div className="grid gap-2"><Label>CNPJ</Label><Input name="cnpj" defaultValue={editingClient?.cnpj} /></div>
+                            <div className="grid gap-2"><Label>ID Pasta Drive</Label><Input name="google_drive_folder_id" defaultValue={editingClient?.google_drive_folder_id} placeholder="ID da pasta do Google Drive" /></div>
                             <div className="grid gap-2"><Label>Email (Relatórios)</Label><Input name="email" type="email" defaultValue={editingClient?.email} required /></div>
                             <div className="grid gap-2"><Label>Contato</Label><Input name="contact_name" defaultValue={editingClient?.contact_name} /></div>
                             <div className="grid gap-2"><Label>Endereço</Label><Input name="address" defaultValue={editingClient?.address} /></div>
