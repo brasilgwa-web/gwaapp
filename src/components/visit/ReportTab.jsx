@@ -21,6 +21,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [observations, setObservations] = useState(visit.observations || '');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSending, setIsSending] = useState(false);
+    const [isPreviewing, setIsPreviewing] = useState(false); // New state for preview modal
     const [showSignatureDialog, setShowSignatureDialog] = useState(false);
     const [uploadStatus, setUploadStatus] = useState('');
 
@@ -133,37 +134,38 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     };
 
     // PDF & Email Logic
-    const handleSendReport = async () => {
-        const confirmMsg = readOnly ? "Reenviar relatório por email e salvar no Drive?" : "Finalizar, enviar por email e salvar no Drive?";
-        if (!confirm(confirmMsg)) return;
+    // Step 1: Open Preview
+    const handleOpenPreview = async () => {
         if (!reportData) {
             alert("Aguarde o carregamento completo dos dados do relatório.");
             return;
         }
+        setIsPreviewing(true);
+    };
 
+    // Step 2: Generate and Send from Preview
+    const handleConfirmSend = async () => {
         setIsSending(true);
         setUploadStatus('Gerando PDF...');
 
         try {
-            // 1. Generate PDF (Client Side)
-            // Wait for images to load (critical for crossOrigin)
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Target the visible template inside the preview
+            const element = document.getElementById('report-preview-content');
+            if (!element) throw new Error("Template de pré-visualização não encontrado");
 
-            const element = document.getElementById('report-pdf-hidden');
-            if (!element) throw new Error("Template não encontrado");
+            // Wait a moment ensures images in modal are rendered
+            await new Promise(resolve => setTimeout(resolve, 500));
 
             const opt = {
                 margin: 0,
                 filename: `relatorio_${visit.id}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
+                html2canvas: { scale: 2, useCORS: true, logging: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
             // Generate Base64 PDF
             const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
-            // Remove prefix to get clean base64 for upload
-            // const cleanBase64 = pdfBase64.split(',')[1];
 
             const fileName = `${format(new Date(visit.visit_date), 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
 
@@ -183,13 +185,10 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
                 if (!uploadRes.ok) {
                     console.error("Drive upload failed", await uploadRes.json());
-                    // Don't throw, just warn
                     alert("Aviso: Falha ao salvar no Google Drive. Verifique o ID da pasta.");
                 } else {
                     console.log("Drive Upload Success");
                 }
-            } else {
-                console.warn("No Drive Folder ID configured for client");
             }
 
             // 3. Send Email
@@ -212,13 +211,14 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 attachments: [
                     {
                         filename: fileName,
-                        content: pdfBase64.split(',')[1] // Resend needs clean base64
+                        content: pdfBase64.split(',')[1]
                     }
                 ]
             });
 
-            alert("Sucesso! Relatório enviado por email e salvo no Drive (se configurado).");
+            alert("Sucesso! Relatório enviado e salvo.");
             updateMutation.mutate({ status: 'synced' });
+            setIsPreviewing(false); // Close preview
 
         } catch (error) {
             console.error("Process Error:", error);
@@ -232,12 +232,32 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     return (
         <div className="space-y-6 pb-20 relative">
 
-            {/* Hidden Report Container for PDF Generation - Off-screen but visible for html2canvas */}
-            <div className="fixed top-0 left-[-10000px] w-[210mm] overflow-hidden z-[-1]">
-                <div id="report-pdf-hidden">
-                    {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
-                </div>
-            </div>
+            {/* Preview Dialog/Modal */}
+            <Dialog open={isPreviewing} onOpenChange={setIsPreviewing}>
+                <DialogContent className="max-w-[230mm] h-[90vh] overflow-y-auto bg-slate-100 p-8 flex flex-col items-center">
+                    <DialogHeader className="w-full max-w-[210mm] mb-4">
+                        <DialogTitle>Pré-visualização do PDF</DialogTitle>
+                        <DialogDescription>
+                            Verifique como o relatório ficará antes de enviar.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* The visible report to be captured */}
+                    <div id="report-preview-content" className="bg-white shadow-xl w-[210mm] min-h-[297mm] origin-top scale-95">
+                        {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
+                    </div>
+
+                    <div className="fixed bottom-6 right-6 flex gap-4 z-50">
+                        <Button variant="outline" onClick={() => setIsPreviewing(false)} disabled={isSending}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleConfirmSend} disabled={isSending} className="bg-green-600 hover:bg-green-700 text-lg px-8">
+                            {isSending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Send className="w-5 h-5 mr-2" />}
+                            {isSending ? uploadStatus : "Confirmar e Enviar"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Technician Signature Dialog */}
             <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
@@ -352,11 +372,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
                 <Button
                     className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700"
-                    onClick={handleSendReport}
+                    onClick={() => handleOpenPreview()}
                     disabled={isSending || isLoadingReport}
                 >
                     {isSending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (readOnly ? <MonitorUp className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />)}
-                    {isSending ? uploadStatus : (readOnly ? "Reenviar e Salvar no Drive" : "Finalizar, Enviar e Salvar")}
+                    {readOnly ? "Reenviar e Salvar no Drive" : "Finalizar, Enviar e Salvar"}
                 </Button>
             </div>
             {isLoadingReport && <div className="text-center text-xs text-slate-400">Carregando dados para geração de PDF...</div>}
