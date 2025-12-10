@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from "@/lib/supabase";
 import { Visit } from "@/api/entities";
@@ -144,6 +145,9 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
         try {
             // 1. Generate PDF (Client Side)
+            // Wait for images to load (critical for crossOrigin)
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
             const element = document.getElementById('report-pdf-hidden');
             if (!element) throw new Error("Template não encontrado");
 
@@ -227,8 +231,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     return (
         <div className="space-y-6 pb-20 relative">
 
-            {/* Hidden Report Container for PDF Generation */}
-            <div className="absolute top-0 left-0 w-[210mm] opacity-0 pointer-events-none z-[-1] overflow-hidden">
+            {/* Hidden Report Container for PDF Generation - Off-screen but visible for html2canvas */}
+            <div className="fixed top-0 left-[-10000px] w-[210mm] overflow-hidden z-[-1]">
                 <div id="report-pdf-hidden">
                     {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
                 </div>

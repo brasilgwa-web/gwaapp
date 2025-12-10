@@ -154,7 +154,7 @@ export function ReportTemplate({ data, onPrint, isPdfGeneration }) {
                         {photos.map(p => (
                             <div key={p.id} className="space-y-1">
                                 <div className="aspect-square bg-slate-100 rounded-lg overflow-hidden border">
-                                    <img src={p.photo_url} className="w-full h-full object-cover" alt="Evidência" />
+                                    <img src={p.photo_url} crossOrigin="anonymous" className="w-full h-full object-cover" alt="Evidência" />
                                 </div>
                                 {p.description && <p className="text-xs text-slate-500 text-center">{p.description}</p>}
                             </div>
@@ -169,7 +169,7 @@ export function ReportTemplate({ data, onPrint, isPdfGeneration }) {
                     <div className="text-center">
                         <div className="border-b border-slate-400 mb-2 h-16 flex items-end justify-center">
                             {technicianUser?.signature_url ? (
-                                <img src={technicianUser.signature_url} className="max-h-full mb-1" alt="Assinatura Técnico" />
+                                <img src={technicianUser.signature_url} crossOrigin="anonymous" className="max-h-full mb-1" alt="Assinatura Técnico" />
                             ) : (
                                 <span className="text-slate-400 italic text-xs mb-2">Assinado digitalmente</span>
                             )}
@@ -180,7 +180,7 @@ export function ReportTemplate({ data, onPrint, isPdfGeneration }) {
                     <div className="text-center">
                         <div className="border-b border-slate-400 mb-2 h-16 flex items-end justify-center">
                             {visit?.client_signature_url ? (
-                                <img src={visit.client_signature_url} className="max-h-full mb-1" alt="Assinatura Cliente" />
+                                <img src={visit.client_signature_url} crossOrigin="anonymous" className="max-h-full mb-1" alt="Assinatura Cliente" />
                             ) : (
                                 <span className="text-slate-300 text-xs mb-2">Não assinado</span>
                             )}
