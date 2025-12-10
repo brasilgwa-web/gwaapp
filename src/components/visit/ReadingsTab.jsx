@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 
 export default function ReadingsTab({ visit, readOnly }) {
+    if (!visit) return null;
     const queryClient = useQueryClient();
     const [openItems, setOpenItems] = React.useState({});
     const [allExpanded, setAllExpanded] = React.useState(true);

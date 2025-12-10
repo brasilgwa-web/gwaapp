@@ -16,8 +16,10 @@ import { ReportTemplate } from '@/components/visit/ReportTemplate';
 import html2pdf from 'html2pdf.js';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale"; // Import locale for email formatting
+import { formatDateAsLocal } from "@/lib/utils";
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
+    if (!visit) return null;
     const queryClient = useQueryClient();
     const [observations, setObservations] = useState(visit.observations || '');
     const [isGenerating, setIsGenerating] = useState(false);
