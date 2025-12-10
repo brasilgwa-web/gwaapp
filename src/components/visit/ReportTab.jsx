@@ -63,6 +63,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
+            queryClient.invalidateQueries({ queryKey: ['report', visit.id] }); // Ensure PDF data is fresh
             if (onUpdateVisit) onUpdateVisit();
             if (variables.client_signature_url) {
                 alert("Assinatura salva com sucesso!");
