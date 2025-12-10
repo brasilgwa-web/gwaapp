@@ -7,6 +7,8 @@ import { Core } from "@/api/integrations";
 import { useAuth } from "@/context/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -15,78 +17,49 @@ import ReadingsTab from "../components/visit/ReadingsTab";
 import ReportTab from "../components/visit/ReportTab";
 import { Card, CardContent } from "@/components/ui/card";
 
+
+// ... imports
+
 export default function VisitDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('readings');
     const { user } = useAuth();
+    const [isEditOpen, setIsEditOpen] = useState(false); // Edit Modal State
 
     // Fetch Visit Data
     const { data: visit, isLoading, error, refetch } = useQuery({
-        queryKey: ['visit', id],
-        queryFn: async () => {
-            // 1. Fetch Visit directly from Supabase
-            const { data: v, error: visitError } = await supabase
-                .from('visits')
-                .select('*')
-                .eq('id', id)
-                .single();
-
-            if (visitError) throw visitError;
-            if (!v) throw new Error("Visit not found");
-
-            // 2. Fetch Related Data Manually
-            // This avoids issues with joins if foreign keys are null or RLS is strict
-            let client = null;
-            let location = null;
-
-            if (v.client_id) {
-                const { data: c } = await supabase.from('clients').select('*').eq('id', v.client_id).single();
-                client = c;
-            }
-
-            if (v.location_id) {
-                const { data: l } = await supabase.from('locations').select('*').eq('id', v.location_id).single();
-                location = l;
-            }
-
-            return { ...v, client, location };
-        },
-        retry: 1,
-        enabled: !!id
+        // ... existing query
     });
 
-    // Fetch Results for Report Tab to pass down
-    const { data: results } = useQuery({
-        queryKey: ['results', id],
-        queryFn: () => TestResult.filter({ visit_id: id }, undefined, 1000),
-        enabled: !!id
+    // Update Mutation
+    const updateMutation = useMutation({
+        mutationFn: (data) => Visit.update(id, data),
+        onSuccess: () => {
+            refetch();
+            setIsEditOpen(false);
+            alert("Visita atualizada com sucesso!");
+        }
     });
 
-    if (isLoading) return <div className="flex items-center justify-center h-screen">Carregando...</div>;
-
-    // Explicitly handle "Visit not found" vs "Error"
-    if (error || !visit) {
-        return (
-            <div className="p-8 text-center flex flex-col items-center gap-4">
-                <p className="text-xl text-slate-700">Não foi possível carregar a visita</p>
-                <div className="text-sm text-red-500 bg-red-50 p-4 rounded border border-red-200 max-w-lg overflow-auto text-left w-full">
-                    <p className="font-bold">Detalhes do erro:</p>
-                    <pre className="whitespace-pre-wrap mt-2 text-xs font-mono">
-                        {error ? JSON.stringify(error, null, 2) : "Visita não encontrada (ID inválido ou sem permissão)"}
-                    </pre>
-                    {error?.message && <p className="mt-2 font-semibold">{error.message}</p>}
-                </div>
-                <Button variant="outline" onClick={() => navigate('/visits')}>Voltar para Visitas</Button>
-            </div>
-        );
-    }
+    // ... (keep existing code)
 
     const isAdmin = user?.role === 'admin';
     const isReadOnly = (visit.status === 'completed' || visit.status === 'synced');
 
     return (
         <div className="pb-20 md:pb-0">
+            {/* Edit Dialog */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Visita</DialogTitle>
+                        <DialogDescription>Alterar data ou detalhes da visita.</DialogDescription>
+                    </DialogHeader>
+                    <EditVisitForm visit={visit} onSubmit={updateMutation.mutate} isLoading={updateMutation.isPending} />
+                </DialogContent>
+            </Dialog>
+
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
@@ -102,73 +75,70 @@ export default function VisitDetailPage() {
                                     <span>•</span>
                                 </>
                             )}
+                            {/* Use local formatter */}
                             <span>{formatDateAsLocal(visit.visit_date, "d MMM yyyy")}</span>
                         </div>
                     </div>
                 </div>
-                <Button variant="outline" size="icon" className="text-blue-600 border-blue-200 bg-blue-50" title="Salvar">
-                    <Save className="w-5 h-5" />
-                </Button>
+                {/* Edit Button */}
+                {!isReadOnly && (
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="text-blue-600 border-blue-200 bg-blue-50"
+                        title="Editar Detalhes"
+                        onClick={() => setIsEditOpen(true)}
+                    >
+                        <Save className="w-5 h-5" />
+                    </Button>
+                )}
             </div>
 
-            {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="grid grid-cols-4 w-full bg-slate-100 p-1 rounded-xl">
-                    <TabsTrigger value="readings" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-lg text-xs md:text-sm">
-                        <ClipboardList className="w-4 h-4 md:mr-2" />
-                        <span className="hidden md:inline">Medições</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="photos" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-lg text-xs md:text-sm">
-                        <ImageIcon className="w-4 h-4 md:mr-2" />
-                        <span className="hidden md:inline">Fotos</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="info" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-lg text-xs md:text-sm">
-                        <Info className="w-4 h-4 md:mr-2" />
-                        <span className="hidden md:inline">Info</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="report" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-lg text-xs md:text-sm">
-                        <FileText className="w-4 h-4 md:mr-2" />
-                        <span className="hidden md:inline">Relatório</span>
-                    </TabsTrigger>
-                </TabsList>
+            {/* Tabs ... (keep existing) */}
 
-                <TabsContent value="readings" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                    <ReadingsTab visit={visit} readOnly={isReadOnly} />
-                </TabsContent>
-
-                <TabsContent value="photos" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                    <PhotosTab visitId={visit.id} readOnly={isReadOnly} />
-                </TabsContent>
-
-                <TabsContent value="info" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                    <Card>
-                        <CardContent className="p-6 space-y-4">
-                            <div>
-                                <label className="text-xs text-slate-400 font-semibold uppercase">Cliente</label>
-                                <p className="text-lg font-medium">{visit.client?.name}</p>
-                                <p className="text-sm text-slate-600">{visit.client?.address}</p>
-                            </div>
-                            <div>
-                                <label className="text-xs text-slate-400 font-semibold uppercase">Local</label>
-                                <p className="text-lg font-medium">{visit.location?.name}</p>
-                                <p className="text-sm text-slate-600">{visit.location?.description}</p>
-                            </div>
-                            <div>
-                                <label className="text-xs text-slate-400 font-semibold uppercase">Contato</label>
-                                <p className="text-lg font-medium">{visit.client?.contact_name}</p>
-                                <p className="text-sm text-slate-600">{visit.client?.email}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="report" className="mt-4 data-[state=inactive]:hidden" forceMount>
-                    <ReportTab visit={visit} results={results} onUpdateVisit={refetch} readOnly={isReadOnly} isAdmin={isAdmin} />
-                </TabsContent>
-            </Tabs>
+            {/* ... (keep existing return structure) */}
         </div>
     );
 }
+
+// Simple Edit Form Component
+function EditVisitForm({ visit, onSubmit, isLoading }) {
+    // Initialize with YYYY-MM-DD string
+    const [date, setDate] = useState(visit.visit_date ? visit.visit_date.split('T')[0] : '');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit({ visited_at: undefined, visit_date: date }); // Ensure we strictly update visit_date
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+                <label className="text-sm font-medium">Data da Visita</label>
+                <div className="relative">
+                    <Input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        required
+                    />
+                </div>
+                <p className="text-xs text-slate-500">
+                    Ajuste a data caso tenha sido registrada incorretamente.
+                </p>
+            </div>
+            <div className="flex justify-end pt-4">
+                <Button type="submit" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Salvar Alterações
+                </Button>
+            </div>
+        </form>
+    );
+}
+
+// ... (Keep PhotosTab)
+
 
 // Minimal Photos Tab Implementation
 function PhotosTab({ visitId, readOnly }) {
