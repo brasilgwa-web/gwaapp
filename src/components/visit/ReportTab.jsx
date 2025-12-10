@@ -26,7 +26,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [uploadStatus, setUploadStatus] = useState('');
 
     // Fetch Full Report Data for PDF Generation
-    const { data: reportData, isLoading: isLoadingReport } = useReportData(visit.id);
+    // We get 'refetch' to force a data update before previewing
+    const { data: reportData, isLoading: isLoadingReport, refetch: refetchReport } = useReportData(visit.id);
 
     // Fetch Current User to check signature
     const { user } = useAuth();
@@ -136,7 +137,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     // PDF & Email Logic
     // Step 1: Open Preview
     const handleOpenPreview = async () => {
-        if (!reportData) {
+        // Force refresh data from server to ensure latest readings/photos are included
+        // This fixes the issue where data added in other tabs wasn't showing up yet
+        const { data } = await refetchReport();
+
+        if (!data) {
             alert("Aguarde o carregamento completo dos dados do relatório.");
             return;
         }
