@@ -59,7 +59,8 @@ export default async function handler(request, response) {
         const drive = google.drive({ version: 'v3', auth });
 
         // Convert Base64 back to Buffer/Stream
-        const base64Data = fileBase64.replace(/^data:application\/pdf;base64,/, "");
+        // Remove header (data:application/pdf;base64,...) safely
+        const base64Data = fileBase64.includes(',') ? fileBase64.split(',')[1] : fileBase64;
         const fileBuffer = Buffer.from(base64Data, 'base64');
 
         // Needed for Stream
