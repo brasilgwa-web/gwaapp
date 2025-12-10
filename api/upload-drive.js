@@ -69,6 +69,7 @@ export default async function handler(request, response) {
             resource: fileMetadata,
             media: media,
             fields: 'id, webViewLink',
+            supportsAllDrives: true, // Needed for Shared Drives
         });
 
         return response.status(200).json({
