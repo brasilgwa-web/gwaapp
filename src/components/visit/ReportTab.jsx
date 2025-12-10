@@ -65,7 +65,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
-            queryClient.invalidateQueries({ queryKey: ['report', visit.id] }); // Ensure PDF data is fresh
+            queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] }); // Correct key for PDF data
             if (onUpdateVisit) onUpdateVisit();
             if (variables.client_signature_url) {
                 alert("Assinatura salva com sucesso!");
@@ -172,7 +172,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             // Generate Base64 PDF
             const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
 
-            const fileName = `${format(new Date(visit.visit_date), 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
+            // Force noon time for date parsing to avoid timezone shift (e.g. 21:00 prev day)
+            // '2025-12-10' becomes '2025-12-10T12:00:00'
+            const safeDate = visit.visit_date ? new Date(visit.visit_date + 'T12:00:00') : new Date();
+
+            const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
 
             // 2. Upload to Drive (if Folder ID exists)
             const driveFolderId = visit.client?.google_drive_folder_id;
@@ -204,11 +208,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             await Core.SendEmail({
                 to: visit.client?.email,
-                subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${format(new Date(visit.visit_date), 'dd/MM/yyyy')}`,
+                subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${format(safeDate, 'dd/MM/yyyy')}`,
                 body: `
                     Olá,
                     
-                    Segue em anexo o relatório da visita técnica realizada em ${format(new Date(visit.visit_date), 'dd/MM/yyyy')}.
+                    Segue em anexo o relatório da visita técnica realizada em ${format(safeDate, 'dd/MM/yyyy')}.
                     
                     Atenciosamente,
                     Equipe WGA Brasil
