@@ -1,67 +1,58 @@
 
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Printer, FlaskConical, MapPin, Beaker } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export function ReportTemplate({ data, onPrint, isPdfGeneration }) {
+const formatDateAsLocal = (dateStr) => {
+    if (!dateStr) return '-';
+    // Handle both YYYY-MM-DD and ISO strings safely
+    try {
+        const rawDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+        const [year, month, day] = rawDate.split('-').map(Number);
+        // Create date at noon local time to avoid timezone shifts
+        // month is 0-indexed in JS Date
+        return format(new Date(year, month - 1, day, 12, 0, 0), "d 'de' MMMM, yyyy", { locale: ptBR });
+    } catch (e) {
+        return dateStr; // Fallback
+    }
+};
 
-    // Safety check for null data
-    if (!data || !data.visit) return null;
-
+export function ReportTemplate({ data, isPdfGeneration = false }) {
     const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser } = data;
 
-    // Display Name Logic
-    const techName = technicianUser?.full_name || (visit?.technician_email !== 'current_user' ? visit?.technician_email : 'Técnico Responsável');
+    // Use technician attached to visit, or fallback to Created By, or current user if needed
+    const techName = technicianUser?.name || visit.technician_email || 'Técnico Responsável';
+    const techSignature = technicianUser?.signature_url;
 
     return (
-        <div className={`bg-white min-h-[297mm] ${isPdfGeneration ? '' : 'p-4 md:p-[15mm] mx-auto max-w-[210mm] shadow-lg print:shadow-none print:w-[210mm] print:max-w-none print:min-h-0 print:m-0 print:overflow-visible'}`}>
-            <style>{`
-                @media print {
-                    @page { margin: 0; size: auto; }
-                    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                }
-            `}</style>
-
-            {/* Action Bar - Hidden on Print/PDF Gen */}
-            {!isPdfGeneration && (
-                <div className="w-full mb-6 flex flex-col md:flex-row justify-between gap-4 print:hidden">
-                    <Button variant="outline" onClick={() => window.history.back()}>Voltar</Button>
-                    <div className="flex gap-2">
-                        <Button onClick={onPrint || (() => window.print())} className="bg-blue-600 w-full md:w-auto">
-                            <Printer className="w-4 h-4 mr-2" /> Imprimir / Salvar PDF
-                        </Button>
-                    </div>
-                </div>
-            )}
+        <div className={`bg-white text-slate-900 font-sans text-sm leading-tight ${isPdfGeneration ? 'p-0' : 'p-8 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
             {/* Header */}
-            <header className="border-b-2 border-blue-900 pb-6 mb-8 flex flex-col md:flex-row justify-between items-start gap-6">
-                <div className="flex items-center gap-3">
-                    <div className="bg-blue-600 p-3 rounded-lg print:border print:border-blue-600">
-                        <FlaskConical className="w-8 h-8 text-white print:text-blue-600" />
+            <header className="border-b-2 border-blue-600 pb-4 mb-6 flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                    <div className="bg-blue-600 text-white p-3 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2v7.31" /><path d="M14 2v7.31" /><path d="M8.5 2h7" /><path d="M14 9.3a6.36 6.36 0 0 1 0 11.91A6.36 6.36 0 0 1 14 9.3Z" /></svg>
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900 uppercase tracking-wide">Relatório Técnico</h1>
-                        <p className="text-sm text-slate-500">Análise de Qualidade de Água</p>
+                        <h1 className="text-2xl font-bold uppercase tracking-tight text-slate-900">Relatório Técnico</h1>
+                        <p className="text-blue-600 font-medium">Análise de Qualidade de Água</p>
                     </div>
                 </div>
-                <div className="text-left md:text-right text-sm text-slate-600">
-                    <p className="font-bold text-lg text-slate-900">WGA Brasil</p>
+                <div className="text-right text-xs text-slate-500">
+                    <p className="font-bold text-slate-800 text-base">WGA Brasil</p>
                     <p>www.wgabrasil.com.br</p>
                     <p>contato@wgabrasil.com.br</p>
                 </div>
             </header>
 
             {/* Info Block */}
-            <div className="grid grid-cols-2 gap-8 mb-8 text-sm border rounded-lg p-4 bg-slate-50 print:bg-white print:border-slate-300">
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6 grid grid-cols-2 gap-8">
                 <div>
                     <h3 className="font-bold text-blue-800 mb-2 uppercase text-xs">Cliente</h3>
-                    <p className="font-semibold text-lg">{client?.name}</p>
-                    <p className="break-words">{client?.address}</p>
-                    <p>{client?.city_state}</p>
-                    <p className="mt-1 text-slate-500">A/C: {client?.contact_name}</p>
+                    <p className="font-bold text-lg">{client?.name}</p>
+                    <p>{client?.address}</p>
+                    <p>{primaryLocation?.city}/{primaryLocation?.state}</p>
+                    {client?.contact_name && <p className="mt-1 text-xs text-slate-500">A/C: {client.contact_name}</p>}
                 </div>
                 <div className="text-right">
                     <h3 className="font-bold text-blue-800 mb-2 uppercase text-xs">Dados da Visita</h3>
@@ -73,127 +64,134 @@ export function ReportTemplate({ data, onPrint, isPdfGeneration }) {
             </div>
 
             {/* Results Table */}
-            <div className="mb-8 space-y-6">
-                <h2 className="text-lg font-bold text-slate-800 border-b pb-2">Resultados Analíticos</h2>
+            <section className="mb-8">
+                <h2 className="text-lg font-bold text-slate-800 border-b border-slate-200 pb-1 mb-4">Resultados Analíticos</h2>
 
-                {fullReportStructure?.map(({ location, equipments }) => (
-                    <div key={location.id} className="mb-8">
-                        <div className="flex items-center gap-2 mb-4 text-slate-600 uppercase text-xs font-bold tracking-wider border-b border-slate-200 pb-1 break-after-avoid">
-                            <MapPin className="w-4 h-4" />
-                            {location.name}
-                        </div>
-
-                        {equipments.map(({ equipment, tests }) => (
-                            <div key={equipment.id} className="mb-6 ml-2 break-inside-avoid">
-                                <div className="flex items-center gap-2 mb-2 pl-2 border-l-4 border-blue-600 bg-blue-50 py-1 break-after-avoid print:bg-slate-100">
-                                    <Beaker className="w-4 h-4 text-blue-700" />
-                                    <h3 className="font-bold text-blue-700 uppercase text-sm">{equipment.name}</h3>
+                {fullReportStructure?.length === 0 ? (
+                    <p className="text-slate-500 italic text-center py-4">Nenhum resultado registrado.</p>
+                ) : (
+                    <div className="space-y-6">
+                        {fullReportStructure.map((loc, idx) => (
+                            <div key={idx} className="space-y-4">
+                                <div className="flex items-center gap-2 text-slate-500 font-semibold uppercase text-xs tracking-wider">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+                                    {loc.location.name}
                                 </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm text-left table-fixed min-w-[500px] md:min-w-0">
-                                        <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
-                                            <tr>
-                                                <th className="p-2 w-[35%]">Parâmetro</th>
-                                                <th className="p-2 text-center w-[25%]">Faixa (VMP)</th>
-                                                <th className="p-2 text-center w-[15%]">Unid.</th>
-                                                <th className="p-2 text-right w-[15%]">Result.</th>
-                                                <th className="p-2 text-center w-[10%]">St</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {tests.map((t, i) => (
-                                                <tr key={i}>
-                                                    <td className="p-2 font-medium text-slate-800 break-words">
-                                                        {t.name}
-                                                        {t.observation && <div className="text-[10px] text-slate-400 font-normal leading-tight">{t.observation}</div>}
-                                                    </td>
-                                                    <td className="p-2 text-center text-slate-500 text-xs font-mono bg-slate-50/50 whitespace-nowrap">
-                                                        {t.min_value} - {t.max_value}
-                                                    </td>
-                                                    <td className="p-2 text-center text-slate-500 text-xs">
-                                                        {t.unit}
-                                                    </td>
-                                                    <td className="p-2 text-right font-bold font-mono print:text-black">
-                                                        {(t.result?.measured_value !== undefined && t.result?.measured_value !== null && t.result?.measured_value !== '') ? t.result.measured_value : '-'}
-                                                    </td>
-                                                    <td className="p-2 text-center">
-                                                        {t.result ? (
-                                                            <span className={`inline-block w-3 h-3 rounded-full ${t.result.status_light === 'red' ? 'bg-red-500' :
-                                                                t.result.status_light === 'yellow' ? 'bg-yellow-400' :
-                                                                    'bg-green-500'
-                                                                } print:border print:border-slate-400 shadow-sm`}></span>
-                                                        ) : (
-                                                            <span className="inline-block w-3 h-3 rounded-full bg-slate-200"></span>
-                                                        )}
-                                                    </td>
+
+                                {loc.equipments.map((eq, eqIdx) => (
+                                    <div key={eqIdx} className="bg-white border border-slate-200 rounded-sm overflow-hidden text-xs">
+                                        <div className="bg-blue-50 px-4 py-2 border-b border-blue-100 flex items-center gap-2 font-bold text-blue-900 border-l-4 border-l-blue-600">
+                                            <div className="h-3 w-3 bg-blue-600 rounded-sm"></div> {/* Equipment Icon Placeholder */}
+                                            {eq.equipment.name}
+                                        </div>
+                                        <table className="w-full">
+                                            <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
+                                                <tr>
+                                                    <th className="px-4 py-2 w-1/3">Parâmetro</th>
+                                                    <th className="px-4 py-2 text-center w-1/4">Faixa (VMP)</th>
+                                                    <th className="px-4 py-2 text-center w-1/6">Unid.</th>
+                                                    <th className="px-4 py-2 text-right w-1/4">Result.</th>
+                                                    <th className="px-4 py-2 text-center w-8">St</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {eq.tests.map((test, tIdx) => (
+                                                    <tr key={tIdx} className={tIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
+                                                        <td className="px-4 py-1.5 font-medium text-slate-700">{test.name}</td>
+                                                        <td className="px-4 py-1.5 text-center font-mono text-slate-500 bg-slate-50/50">{test.min_value} - {test.max_value}</td>
+                                                        <td className="px-4 py-1.5 text-center text-slate-500">{test.unit}</td>
+                                                        <td className="px-4 py-1.5 text-right font-mono font-bold text-slate-800">
+                                                            {test.result ? test.result.measured_value : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-1.5 text-center">
+                                                            {test.result?.status_light === 'red' && <div className="w-2 h-2 rounded-full bg-red-500 mx-auto" />}
+                                                            {test.result?.status_light === 'green' && <div className="w-2 h-2 rounded-full bg-green-500 mx-auto" />}
+                                                            {test.result?.status_light === 'yellow' && <div className="w-2 h-2 rounded-full bg-yellow-400 mx-auto" />}
+                                                            {!test.result && <div className="w-2 h-2 rounded-full bg-slate-200 mx-auto" />}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ))}
                             </div>
                         ))}
                     </div>
-                ))}
-                {(!fullReportStructure || fullReportStructure.length === 0) && <p className="text-slate-500 italic">Sem equipamentos ou medições configuradas.</p>}
-            </div>
+                )}
+            </section>
 
-            {/* Observations / AI Analysis */}
-            <div className="mb-8 break-inside-avoid">
-                <h2 className="text-lg font-bold text-slate-800 border-b pb-2 mb-4">Parecer Técnico</h2>
-                <div className="bg-slate-50 p-4 rounded-lg text-sm leading-relaxed whitespace-pre-line print:bg-white print:border text-justify">
-                    {visit?.observations || "Nenhuma observação registrada."}
+            {/* Observations / Technical Opinion */}
+            <section className="mb-8 break-inside-avoid">
+                <h2 className="text-lg font-bold text-slate-800 border-b border-slate-200 pb-1 mb-4">Parecer Técnico</h2>
+                <div className="bg-slate-50 p-4 rounded border border-slate-200 min-h-[100px] text-justify whitespace-pre-wrap">
+                    {visit.observations || "Nenhuma observação registrada."}
                 </div>
-            </div>
+            </section>
 
             {/* Photos Gallery */}
             {photos && photos.length > 0 && (
-                <div className="mb-8 break-inside-avoid">
-                    <h2 className="text-lg font-bold text-slate-800 border-b pb-2 mb-4">Registro Fotográfico</h2>
-                    <div className="grid grid-cols-3 gap-4">
+                <section className="mb-8 break-inside-avoidPage">
+                    <h2 className="text-lg font-bold text-slate-800 border-b border-slate-200 pb-1 mb-4">Registro Fotográfico</h2>
+                    <div className="grid grid-cols-2 gap-4">
                         {photos.map(p => (
-                            <div key={p.id} className="space-y-1">
-                                <div className="aspect-square bg-slate-100 rounded-lg overflow-hidden border">
-                                    <img src={p.photo_url} crossOrigin="anonymous" className="w-full h-full object-cover" alt="Evidência" />
-                                </div>
-                                {p.description && <p className="text-xs text-slate-500 text-center">{p.description}</p>}
+                            <div key={p.id} className="aspect-video bg-slate-100 rounded border border-slate-200 overflow-hidden relative">
+                                {/* Create a proxy-friendly image element */}
+                                <img
+                                    src={p.photo_url}
+                                    className="w-full h-full object-cover"
+                                    alt="Evidência"
+                                    crossOrigin="anonymous" // Essential for html2canvas
+                                />
                             </div>
                         ))}
                     </div>
-                </div>
+                </section>
             )}
 
             {/* Signatures */}
-            <div className="mt-12 pt-8 break-inside-avoid">
-                <div className="grid grid-cols-2 gap-12">
-                    <div className="text-center">
-                        <div className="border-b border-slate-400 mb-2 h-16 flex items-end justify-center">
-                            {technicianUser?.signature_url ? (
-                                <img src={technicianUser.signature_url} crossOrigin="anonymous" className="max-h-full mb-1" alt="Assinatura Técnico" />
+            <section className="mt-12 pt-8 border-t border-slate-200 break-inside-avoid">
+                <div className="grid grid-cols-2 gap-12 text-center">
+                    {/* Technician Signature */}
+                    <div className="flex flex-col items-center">
+                        <div className="h-20 mb-2 flex items-end justify-center w-full">
+                            {techSignature ? (
+                                <img src={techSignature} className="max-h-full mb-1" alt="Assinatura Técnico" crossOrigin="anonymous" />
                             ) : (
-                                <span className="text-slate-400 italic text-xs mb-2">Assinado digitalmente</span>
+                                <div className="w-32 h-0.5 bg-slate-300"></div>
                             )}
                         </div>
-                        <p className="font-bold text-sm uppercase">{techName}</p>
-                        <p className="text-xs text-slate-500">Técnico WGA Brasil</p>
+                        <div className="border-t border-slate-300 w-full pt-1">
+                            <p className="font-bold text-xs uppercase">{techName}</p>
+                            <p className="text-[10px] text-slate-500">Técnico WGA Brasil</p>
+                        </div>
                     </div>
-                    <div className="text-center">
-                        <div className="border-b border-slate-400 mb-2 h-16 flex items-end justify-center">
-                            {visit?.client_signature_url ? (
-                                <img src={visit.client_signature_url} crossOrigin="anonymous" className="max-h-full mb-1" alt="Assinatura Cliente" />
+
+                    {/* Client Signature */}
+                    <div className="flex flex-col items-center">
+                        <div className="h-20 mb-2 flex items-end justify-center w-full">
+                            {visit.client_signature_url ? (
+                                <img src={visit.client_signature_url} className="max-h-full mb-1" alt="Assinatura Cliente" crossOrigin="anonymous" />
                             ) : (
-                                <span className="text-slate-300 text-xs mb-2">Não assinado</span>
+                                <div className="text-xs text-slate-300 italic mb-2">Não assinado</div>
                             )}
                         </div>
-                        <p className="font-bold text-sm uppercase">{client?.contact_name || 'Cliente'}</p>
-                        <p className="text-xs text-slate-500">Responsável no Local</p>
+                        <div className="border-t border-slate-300 w-full pt-1">
+                            {client?.contact_name ? (
+                                <p className="font-bold text-xs uppercase">{client.contact_name}</p>
+                            ) : (
+                                <p className="font-bold text-xs uppercase">Cliente</p>
+                            )}
+                            <p className="text-[10px] text-slate-500">Responsável no Local</p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            {/* Footer */}
-            <footer className="mt-12 pt-4 border-t text-center text-xs text-slate-400 print:fixed print:bottom-0 print:left-0 print:w-full print:bg-white">
-                <p>Relatório gerado em {format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })} • WGA Brasil App</p>
+            {/* Footer disclaimer */}
+            <footer className="mt-8 text-[10px] text-slate-400 text-center border-t border-slate-100 pt-4">
+                Este relatório foi gerado eletronicamente e possui validade jurídica.
+                WGA Brasil - Soluções em Tratamento de Água.
             </footer>
         </div>
     );

@@ -15,6 +15,7 @@ import { useReportData } from '@/hooks/useReportData';
 import { ReportTemplate } from '@/components/visit/ReportTemplate';
 import html2pdf from 'html2pdf.js';
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale"; // Import locale for email formatting
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
     const queryClient = useQueryClient();
@@ -172,11 +173,15 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             // Generate Base64 PDF
             const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
 
-            // Force noon time for date parsing to avoid timezone shift (e.g. 21:00 prev day)
-            // But only if it's a simple date string (YYYY-MM-DD), not full ISO
-            const dateStr = visit.visit_date || new Date().toISOString();
-            const safeDateStr = dateStr.length === 10 ? dateStr + 'T12:00:00' : dateStr;
-            const safeDate = new Date(safeDateStr);
+            // --- DATE FIX ---
+            // Force manual parsing of YYYY-MM-DD to noon local time
+            // This bypasses browser timezone shifts (e.g. UTC midnight -> Previous day)
+            let safeDate = new Date();
+            if (visit.visit_date) {
+                const dateStr = visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date;
+                const [y, m, d] = dateStr.split('-').map(Number);
+                safeDate = new Date(y, m - 1, d, 12, 0, 0);
+            }
 
             const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
 
