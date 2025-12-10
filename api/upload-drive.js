@@ -25,16 +25,30 @@ export default async function handler(request, response) {
     }
 
     try {
-        // Authenticate using Environment Variable (Production/Secure) or File (Local)
         let auth;
-        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+        const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
+        const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
+        const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
+
+        // Strategy 1: OAuth2 (Personal Gmail & Workspace) - PREFERRED for Personal
+        if (clientId && clientSecret && refreshToken) {
+            console.log("Using OAuth2 Authentication");
+            const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+            oauth2Client.setCredentials({ refresh_token: refreshToken });
+            auth = oauth2Client;
+        }
+        // Strategy 2: Service Account (Workspace Only)
+        else if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+            console.log("Using Service Account Authentication (Env Var)");
             const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
             auth = new google.auth.GoogleAuth({
                 credentials,
                 scopes: ['https://www.googleapis.com/auth/drive.file'],
             });
-        } else {
-            // Fallback for local testing if file exists
+        }
+        // Strategy 3: Service Account File (Local Dev)
+        else {
+            console.log("Using Service Account File (Local)");
             const keyFilePath = path.join(process.cwd(), 'api', 'service-account.json');
             auth = new google.auth.GoogleAuth({
                 keyFile: keyFilePath,
@@ -45,7 +59,6 @@ export default async function handler(request, response) {
         const drive = google.drive({ version: 'v3', auth });
 
         // Convert Base64 back to Buffer/Stream
-        // Remove data:application/pdf;base64, prefix if present
         const base64Data = fileBase64.replace(/^data:application\/pdf;base64,/, "");
         const fileBuffer = Buffer.from(base64Data, 'base64');
 
@@ -69,7 +82,7 @@ export default async function handler(request, response) {
             resource: fileMetadata,
             media: media,
             fields: 'id, webViewLink',
-            supportsAllDrives: true, // Needed for Shared Drives
+            supportsAllDrives: true,
         });
 
         return response.status(200).json({
