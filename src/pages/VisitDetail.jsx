@@ -27,6 +27,10 @@ export default function VisitDetailPage() {
     const { user } = useAuth();
     const [isEditOpen, setIsEditOpen] = useState(false); // Edit Modal State
 
+    React.useEffect(() => {
+        console.log("VisitDetail v2 loaded");
+    }, []);
+
     // Fetch Visit Data
     const { data: visit, isLoading, error, refetch } = useQuery({
         // ... existing query
@@ -77,10 +81,6 @@ export default function VisitDetailPage() {
                             )}
                             {/* Use local formatter */}
                             <span>{formatDateAsLocal(visit.visit_date, "d MMM yyyy")}</span>
-                        </div>
-                        {/* DEBUG ONLY */}
-                        <div className="text-[10px] text-red-500 font-mono">
-                            RAW: {visit.visit_date}
                         </div>
                     </div>
                 </div>
