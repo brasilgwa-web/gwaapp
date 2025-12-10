@@ -11,7 +11,7 @@ import { CalendarIcon, Search, Plus, ChevronRight, Calendar, CheckCircle2, Clock
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link, useNavigate } from 'react-router-dom';
-import { createPageUrl } from '../utils';
+import { createPageUrl, formatDateAsLocal } from '@/lib/utils';
 
 export default function VisitsPage() {
     const navigate = useNavigate();
@@ -165,7 +165,7 @@ export default function VisitsPage() {
                                         </div>
                                         <div className="text-sm text-slate-400 flex items-center gap-2">
                                             <Calendar className="w-3 h-3" />
-                                            {format(new Date(visit.visit_date), "d 'de' MMMM, yyyy", { locale: ptBR })}
+                                            {formatDateAsLocal(visit.visit_date)}
                                         </div>
                                     </div>
                                     <ChevronRight className="text-slate-300 w-5 h-5" />

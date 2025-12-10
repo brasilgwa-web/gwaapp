@@ -1,21 +1,6 @@
 
 import React from 'react';
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-
-const formatDateAsLocal = (dateStr) => {
-    if (!dateStr) return '-';
-    // Handle both YYYY-MM-DD and ISO strings safely
-    try {
-        const rawDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
-        const [year, month, day] = rawDate.split('-').map(Number);
-        // Create date at noon local time to avoid timezone shifts
-        // month is 0-indexed in JS Date
-        return format(new Date(year, month - 1, day, 12, 0, 0), "d 'de' MMMM, yyyy", { locale: ptBR });
-    } catch (e) {
-        return dateStr; // Fallback
-    }
-};
+import { formatDateAsLocal } from '@/lib/utils';
 
 export function ReportTemplate({ data, isPdfGeneration = false }) {
     const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser } = data;
