@@ -187,6 +187,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             // 2. Upload to Drive (if Folder ID exists)
             const driveFolderId = visit.client?.google_drive_folder_id;
+            let driveLink = null;
+
             if (driveFolderId) {
                 setUploadStatus('Enviando para o Google Drive...');
                 const uploadRes = await fetch('/api/upload-drive', {
@@ -203,7 +205,9 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     console.error("Drive upload failed", await uploadRes.json());
                     alert("Aviso: Falha ao salvar no Google Drive. Verifique o ID da pasta.");
                 } else {
-                    console.log("Drive Upload Success");
+                    const responseData = await uploadRes.json();
+                    driveLink = responseData.webViewLink;
+                    console.log("Drive Upload Success. Link:", driveLink);
                 }
             }
 
@@ -213,23 +217,22 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 await Visit.update(visit.id, { status: 'completed' });
             }
 
+            const emailBody = `
+                Olá,
+                
+                Segue abaixo o link para o relatório da visita técnica realizada em ${format(safeDate, 'dd/MM/yyyy')}.
+                
+                ${driveLink ? `<p><strong><a href="${driveLink}">Clique aqui para visualizar o Relatório (Google Drive)</a></strong></p>` : '<p>Nota: O arquivo não pôde ser salvo no Drive, favor contactar o suporte.</p>'}
+                
+                Atenciosamente,
+                Equipe WGA Brasil
+            `;
+
             await Core.SendEmail({
                 to: visit.client?.email,
                 subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${format(safeDate, 'dd/MM/yyyy')}`,
-                body: `
-                    Olá,
-                    
-                    Segue em anexo o relatório da visita técnica realizada em ${format(safeDate, 'dd/MM/yyyy')}.
-                    
-                    Atenciosamente,
-                    Equipe WGA Brasil
-                `,
-                attachments: [
-                    {
-                        filename: fileName,
-                        content: pdfBase64.split(',')[1]
-                    }
-                ]
+                body: emailBody,
+                // Attachments removed as per user request
             });
 
             alert("Sucesso! Relatório enviado e salvo.");
