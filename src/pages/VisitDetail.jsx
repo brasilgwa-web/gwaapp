@@ -78,6 +78,10 @@ export default function VisitDetailPage() {
                             {/* Use local formatter */}
                             <span>{formatDateAsLocal(visit.visit_date, "d MMM yyyy")}</span>
                         </div>
+                        {/* DEBUG ONLY */}
+                        <div className="text-[10px] text-red-500 font-mono">
+                            RAW: {visit.visit_date}
+                        </div>
                     </div>
                 </div>
                 {/* Edit Button */}
