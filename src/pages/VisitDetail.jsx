@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateAsLocal } from '@/lib/utils';
 import ReadingsTab from "../components/visit/ReadingsTab";
 import ReportTab from "../components/visit/ReportTab";
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,7 +102,7 @@ export default function VisitDetailPage() {
                                     <span>•</span>
                                 </>
                             )}
-                            <span>{format(new Date(visit.visit_date), "d MMM yyyy", { locale: ptBR })}</span>
+                            <span>{formatDateAsLocal(visit.visit_date, "d MMM yyyy")}</span>
                         </div>
                     </div>
                 </div>
