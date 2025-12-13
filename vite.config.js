@@ -30,30 +30,30 @@ export default defineConfig({
         dir: 'ltr',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'pwa-192x192.jpg',
             sizes: '192x192',
-            type: 'image/png',
+            type: 'image/jpeg',
             purpose: 'any maskable'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-512x512.jpg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/jpeg',
             purpose: 'any maskable'
           }
         ],
         screenshots: [
           {
-            src: 'screenshot-mobile.png',
+            src: 'screenshot-mobile.jpg',
             sizes: '1080x1920',
-            type: 'image/png',
+            type: 'image/jpeg',
             form_factor: 'narrow',
             label: 'Mobile Dashboard'
           },
           {
-            src: 'screenshot-desktop.png',
+            src: 'screenshot-desktop.jpg',
             sizes: '1920x1080',
-            type: 'image/png',
+            type: 'image/jpeg',
             form_factor: 'wide',
             label: 'Desktop Dashboard'
           }
@@ -64,7 +64,7 @@ export default defineConfig({
             short_name: "Dashboard",
             description: "Open the dashboard",
             url: "/",
-            icons: [{ src: "pwa-192x192.png", sizes: "192x192" }]
+            icons: [{ src: "pwa-192x192.jpg", sizes: "192x192" }]
           }
         ],
         related_applications: [],
