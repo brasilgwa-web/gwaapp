@@ -5,9 +5,9 @@
         ],
         "target": {
             "namespace": "android_app",
-            "package_name": "com.wgabrasil.app",
+            "package_name": "app.vercel.gwaapp.twa",
             "sha256_cert_fingerprints": [
-                "REPLACE_WITH_YOUR_SHA256_FINGERPRINT_FROM_PWABUILDER"
+                "8D:74:8D:A0:6C:5C:02:C4:DA:73:DA:57:5E:7F:AB:34:21:C0:A1:D1:6A:6C:DE:B1:10:A5:1C:73:11:40:F3:4E"
             ]
         }
     }
