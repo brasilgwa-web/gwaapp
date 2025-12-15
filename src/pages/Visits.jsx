@@ -281,6 +281,9 @@ function NewVisitDialog() {
             <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Nova Visita - Selecione o Cliente</DialogTitle>
+                    <DialogDescription>
+                        Selecione um cliente da lista abaixo para iniciar uma nova visita técnica.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="py-4 flex-1 overflow-y-auto flex flex-col">

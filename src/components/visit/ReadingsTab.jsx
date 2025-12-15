@@ -115,7 +115,7 @@ export default function ReadingsTab({ visit, readOnly }) {
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
             // Update visit status to in_progress if it was scheduled
-            if (visit.status === 'scheduled') {
+            if (visit?.status === 'scheduled') {
                 Visit.update(visit.id, { status: 'in_progress' })
                     .then(() => queryClient.invalidateQueries({ queryKey: ['visit', visit.id] }));
             }
