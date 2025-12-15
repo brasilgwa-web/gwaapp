@@ -22,20 +22,12 @@ export default function ReadingsTab({ visit, readOnly }) {
     };
 
     // --- Queries ---
-
-    // Core Data
     const { data: locations } = useQuery({ queryKey: ['locations', visit.client_id], queryFn: () => Location.filter({ client_id: visit.client_id }, undefined, 200) });
     const { data: allLocationEquipments } = useQuery({ queryKey: ['locationEquipments'], queryFn: () => LocationEquipment.list(undefined, 1000) });
     const { data: allEquipments } = useQuery({ queryKey: ['equipments'], queryFn: () => Equipment.list(undefined, 1000) });
-
-    // Tests & Links
     const { data: equipmentTestsLinks } = useQuery({ queryKey: ['equipmentTests'], queryFn: () => EquipmentTest.list(undefined, 1000) });
     const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list(undefined, 1000) });
-
-    // Visit Data
     const { data: results } = useQuery({ queryKey: ['results', visit.id], queryFn: () => TestResult.filter({ visit_id: visit.id }, undefined, 1000) });
-
-    // V1.1 New Data
     const { data: analysisGroups } = useQuery({ queryKey: ['analysisGroups'], queryFn: () => AnalysisGroup.list() });
     const { data: analysisGroupItems } = useQuery({ queryKey: ['analysisGroupItems'], queryFn: () => AnalysisGroupItem.list(undefined, 2000) });
     const { data: visitSamples } = useQuery({
@@ -44,8 +36,6 @@ export default function ReadingsTab({ visit, readOnly }) {
     });
 
     // --- Mutations ---
-
-    // Save Test Result
     const saveResultMutation = useMutation({
         mutationFn: async ({ testId, equipmentId, value, min, max, tolerance }) => {
             setIsSaving(true);
@@ -58,13 +48,8 @@ export default function ReadingsTab({ visit, readOnly }) {
                 return TestResult.create({ visit_id: visit.id, test_definition_id: testId, equipment_id: equipmentId, measured_value: parseFloat(value), status_light: status });
             }
         },
-        onMutate: async (vars) => {
-            // Optimistic Update (Simplified)
-            setIsSaving(true);
-        },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
-            // Update status if needed
             if (visit?.status === 'scheduled') {
                 Visit.update(visit.id, { status: 'in_progress' }).then(() => queryClient.invalidateQueries({ queryKey: ['visit', visit.id] }));
             }
@@ -72,12 +57,10 @@ export default function ReadingsTab({ visit, readOnly }) {
         }
     });
 
-    // Save Sample Info (Time, Group, Complementary)
     const saveSampleMutation = useMutation({
         mutationFn: async ({ locationEquipmentId, field, value }) => {
             setIsSaving(true);
             const existing = visitSamples?.find(s => s.location_equipment_id === locationEquipmentId);
-
             if (existing) {
                 return VisitEquipmentSample.update(existing.id, { [field]: value });
             } else {
@@ -94,11 +77,9 @@ export default function ReadingsTab({ visit, readOnly }) {
         }
     });
 
-    // Apply Analysis Group (Insert Missing Tests)
     const applyGroupMutation = useMutation({
         mutationFn: async ({ locationEquipmentId, groupId, equipmentId }) => {
             setIsSaving(true);
-            // 1. Save the group selection
             const existingSample = visitSamples?.find(s => s.location_equipment_id === locationEquipmentId);
             if (existingSample) {
                 await VisitEquipmentSample.update(existingSample.id, { analysis_group_id: groupId });
@@ -117,8 +98,9 @@ export default function ReadingsTab({ visit, readOnly }) {
         if (value === '') return;
         saveResultMutation.mutate({
             testId: test.id,
-            equipmentId, // This is the CATALOG ID (Equipment Table), not LocationEquipment ID, consistent with prev logic
+            equipmentId,
             value,
+            // Use effective limits (already calculated in data prep with overrides)
             min: test.min_value,
             max: test.max_value,
             tolerance: test.tolerance_percent
@@ -144,8 +126,10 @@ export default function ReadingsTab({ visit, readOnly }) {
                     const catalogItem = allEquipments.find(e => e.id === le.equipment_id);
                     if (!catalogItem) return null;
 
-                    // 1. Tests linked via Equipment Configuration
-                    const linkedTestIds = equipmentTestsLinks.filter(et => et.equipment_id === catalogItem.id).map(et => et.test_definition_id);
+                    // 1. Tests linked via Equipment Configuration (with Limits override support)
+                    // Get 'EquipmentTest' links
+                    const linkedTestsData = equipmentTestsLinks.filter(et => et.equipment_id === catalogItem.id);
+                    const linkedTestIds = linkedTestsData.map(et => et.test_definition_id);
 
                     // 2. Tests linked via Selected Analysis Group (if any)
                     let groupTestIds = [];
@@ -158,7 +142,22 @@ export default function ReadingsTab({ visit, readOnly }) {
 
                     // 3. Merge Lists
                     const allTestIds = [...new Set([...linkedTestIds, ...groupTestIds])];
-                    const tests = allTests.filter(t => allTestIds.includes(t.id));
+                    const tests = allTestIds.map(testId => {
+                        const originalTest = allTests.find(t => t.id === testId);
+                        if (!originalTest) return null;
+
+                        // Check for override in linkedTestsData
+                        const override = linkedTestsData.find(et => et.test_definition_id === testId);
+
+                        // Merge Override
+                        return {
+                            ...originalTest, // Base definition
+                            // Priorities: Override > Definition
+                            min_value: override?.min_value ?? originalTest.min_value,
+                            max_value: override?.max_value ?? originalTest.max_value,
+                            unit: override?.unit ?? originalTest.unit
+                        };
+                    }).filter(Boolean);
 
                     return {
                         ...catalogItem,
@@ -166,7 +165,7 @@ export default function ReadingsTab({ visit, readOnly }) {
                         catalog_id: catalogItem.id, // Catalog ID
                         tests,
                         uniqueId: le.id,
-                        sample // Attach sample for easier access
+                        sample
                     };
                 })
                 .filter(item => item && item.tests.length > 0);
@@ -175,7 +174,7 @@ export default function ReadingsTab({ visit, readOnly }) {
         }).filter(l => l.equipments.length > 0);
     }, [locations, allLocationEquipments, allEquipments, equipmentTestsLinks, allTests, visitSamples, analysisGroupItems]);
 
-    // Initial Expansion
+
     const toggleAll = () => {
         if (!groupedData) return;
         const newState = !allExpanded;

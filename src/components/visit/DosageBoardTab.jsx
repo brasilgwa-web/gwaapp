@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Location, LocationEquipment, Equipment, Product, VisitDosage } from "@/api/entities";
+import { Location, LocationEquipment, Equipment, ClientProduct, EquipmentDosageParams, VisitDosage, Product } from "@/api/entities";
 import { Input } from "@/components/ui/input";
-import { Beaker, Save, Loader2, MapPin, Package, Droplets } from "lucide-react";
+import { Beaker, Save, Loader2, MapPin, Package, Droplets, AlertTriangle, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -14,7 +14,14 @@ export default function DosageBoardTab({ visit, readOnly }) {
     // Queries
     const { data: locations } = useQuery({ queryKey: ['locations', visit.client_id], queryFn: () => Location.filter({ client_id: visit.client_id }, undefined, 200) });
     const { data: allLocationEquipments } = useQuery({ queryKey: ['locationEquipments'], queryFn: () => LocationEquipment.list(undefined, 1000) });
-    const { data: products } = useQuery({ queryKey: ['products'], queryFn: () => Product.list() });
+    const { data: allEquipments } = useQuery({ queryKey: ['equipments'], queryFn: () => Equipment.list(undefined, 1000) });
+
+    // Setup Data
+    const { data: clientProducts } = useQuery({ queryKey: ['clientProducts', visit.client_id], queryFn: () => ClientProduct.filter({ client_id: visit.client_id }) });
+    const { data: dosageParams } = useQuery({ queryKey: ['dosageParams'], queryFn: () => EquipmentDosageParams.list() }); // We filter in memory or per equipment loop
+    const { data: allProducts } = useQuery({ queryKey: ['products'], queryFn: () => Product.list() });
+
+    // Visit Data
     const { data: dosages } = useQuery({
         queryKey: ['dosages', visit.id],
         queryFn: () => VisitDosage.filter({ visit_id: visit.id }, undefined, 1000)
@@ -22,7 +29,7 @@ export default function DosageBoardTab({ visit, readOnly }) {
 
     // Save Mutation
     const saveDosageMutation = useMutation({
-        mutationFn: async ({ locationEquipmentId, productId, field, value }) => {
+        mutationFn: async ({ locationEquipmentId, productId, value }) => {
             setIsSaving(true);
             const numValue = value === '' ? null : parseFloat(value);
 
@@ -33,13 +40,13 @@ export default function DosageBoardTab({ visit, readOnly }) {
             );
 
             if (existing) {
-                return VisitDosage.update(existing.id, { [field]: numValue });
+                return VisitDosage.update(existing.id, { dosage_applied: numValue });
             } else {
                 return VisitDosage.create({
                     visit_id: visit.id,
                     location_equipment_id: locationEquipmentId,
                     product_id: productId,
-                    [field]: numValue
+                    dosage_applied: numValue
                 });
             }
         },
@@ -49,29 +56,86 @@ export default function DosageBoardTab({ visit, readOnly }) {
         }
     });
 
-    const handleBlur = (locationEquipmentId, productId, field, value) => {
-        saveDosageMutation.mutate({ locationEquipmentId, productId, field, value });
+    const handleBlur = (locationEquipmentId, productId, value) => {
+        saveDosageMutation.mutate({ locationEquipmentId, productId, value });
     };
 
-    const getDosage = (locEqId, prodId) => dosages?.find(d => d.location_equipment_id === locEqId && d.product_id === prodId);
+    const getDosageRecord = (locEqId, prodId) => dosages?.find(d => d.location_equipment_id === locEqId && d.product_id === prodId);
 
     // Prepare Grid Data
     const groupedData = useMemo(() => {
-        if (!locations || !allLocationEquipments) return [];
-        return locations.map(loc => ({
-            ...loc,
-            equipments: allLocationEquipments.filter(le => le.location_id === loc.id)
-        })).filter(l => l.equipments.length > 0);
-    }, [locations, allLocationEquipments]);
+        if (!locations || !allLocationEquipments || !allEquipments || !clientProducts || !dosageParams || !allProducts) return null;
+
+        return locations.map(loc => {
+            const equipmentsWithProducts = allLocationEquipments
+                .filter(le => le.location_id === loc.id)
+                .map(le => {
+                    const catalogItem = allEquipments.find(e => e.id === le.equipment_id);
+                    // Find products linked to this equipment type (instance specific logic?) 
+                    // In V1.2, EquipmentDosageParams links location_equipment_id (Specific Instance) -> Product
+                    // Wait, looking at V1.2 Entities: 
+                    // EquipmentDosageParams links `location_equipment_id` (instance) to `product_id`.
+                    // So we must find params for THIS instance.
+
+                    const instanceParams = dosageParams.filter(dp => dp.location_equipment_id === le.id);
+
+                    // If no params, should we show all client products? 
+                    // User said: "Configurar quais produtos ele utiliza". If configured, show specific.
+                    // If none, maybe fallback to all? Let's stick to configured for cleanliness, or All if none to ensure usability.
+                    // Let's rely on what's in Client Inventory broadly if no specific params?
+                    // Better: Show linked params products FIRST. If simple, maybe just show all inventory?
+                    // User Request: "No cadastro... serem considerados os tipos". 
+                    // Let's stick to: Iterate Client Products, check if relevant.
+                    // Actually, the prompt says "Configurar... quais produtos utiliza".
+
+                    // Proposed Logic:
+                    // 1. Get products identified in instanceParams.
+                    // 2. Map them to display.
+
+                    const linkedProdIds = instanceParams.map(p => p.product_id);
+
+                    // We only display products that are configured for this equipment? 
+                    // Or do we display all products available in Client Stock?
+                    // Most flexible: Display All Client Products for every equipment might be clutter.
+                    // Let's display products that are in `instanceParams`. 
+                    // If `instanceParams` is empty, user hasn't configured properly. 
+                    // BUT, to be safe, if empty, maybe show nothing or show all? 
+                    // Let's show products from `instanceParams`.
+
+                    const productsToDisplay = instanceParams.map(dp => {
+                        const prod = allProducts.find(p => p.id === dp.product_id);
+                        const clientStock = clientProducts.find(cp => cp.product_id === dp.product_id);
+                        return {
+                            ...prod,
+                            doseParams: dp,
+                            clientStock: clientStock, // Contains current_stock, min_stock
+                        };
+                    }).filter(p => p.id); // Valid products
+
+                    return {
+                        ...le,
+                        catalogName: catalogItem?.name || 'Equipamento',
+                        products: productsToDisplay
+                    };
+                })
+                .filter(e => e.products.length > 0); // Hide if no products configured
+
+            return {
+                ...loc,
+                equipments: equipmentsWithProducts
+            };
+        }).filter(l => l.equipments.length > 0);
+    }, [locations, allLocationEquipments, allEquipments, clientProducts, dosageParams, allProducts]);
 
 
-    if (!products) return <div className="p-4 text-center"><Loader2 className="animate-spin inline mr-2" />Carregando produtos...</div>;
-    if (products.length === 0) return (
+    if (!groupedData) return <div className="p-4 text-center"><Loader2 className="animate-spin inline mr-2" />Carregando dados de dosagem...</div>;
+
+    if (groupedData.length === 0) return (
         <Card className="bg-slate-50 border-dashed">
             <CardContent className="p-8 text-center text-slate-500">
                 <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                <p>Nenhum produto químico cadastrado.</p>
-                <p className="text-sm mt-2">Vá em Configurações &gt; Produtos Químicos para cadastrar.</p>
+                <p>Nenhum produto configurado para os equipamentos deste cliente.</p>
+                <p className="text-sm mt-2">Configure os produtos e dosagens na tela de Detalhes do Cliente.</p>
             </CardContent>
         </Card>
     );
@@ -96,50 +160,61 @@ export default function DosageBoardTab({ visit, readOnly }) {
                             <Card key={eq.id} className="overflow-hidden">
                                 <div className="bg-blue-600 px-4 py-2 text-white flex items-center gap-2">
                                     <Beaker className="w-4 h-4 opacity-75" />
-                                    <span className="font-semibold text-sm uppercase">{eq.name}</span>
+                                    <span className="font-semibold text-sm uppercase">{eq.catalogName}</span>
                                 </div>
                                 <div className="p-0 overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-xs border-b">
                                             <tr>
                                                 <th className="px-4 py-3 text-left w-1/3">Produto</th>
-                                                <th className="px-4 py-3 text-center w-24">Unidade</th>
-                                                <th className="px-4 py-3 text-center">Estoque Atual</th>
-                                                <th className="px-4 py-3 text-center">Dosagem Aplicada</th>
+                                                <th className="px-4 py-3 text-center">Recomendado</th>
+                                                <th className="px-4 py-3 text-center w-32">Estoque (Kg/L)</th>
+                                                <th className="px-4 py-3 text-center w-32">Aplicado</th>
+                                                <th className="px-4 py-3 text-center w-32">Final</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {products.map(prod => {
-                                                const record = getDosage(eq.id, prod.id);
+                                            {eq.products.map(prod => {
+                                                const record = getDosageRecord(eq.id, prod.id);
+                                                const applied = record?.dosage_applied || 0;
+                                                const currentStock = prod.clientStock?.current_stock || 0;
+                                                const minStock = prod.clientStock?.min_stock || 0;
+                                                const finalStock = currentStock - applied;
+                                                const isLowStock = finalStock < minStock;
+
                                                 return (
                                                     <tr key={prod.id} className="hover:bg-slate-50">
-                                                        <td className="px-4 py-2 font-medium text-slate-700">{prod.name}</td>
-                                                        <td className="px-4 py-2 text-center text-xs text-slate-500">{prod.unit}</td>
-                                                        <td className="px-4 py-2">
+                                                        <td className="px-4 py-3">
+                                                            <div className="font-medium text-slate-700">{prod.name}</div>
+                                                            <div className="text-xs text-slate-400">{prod.unit}</div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center text-xs text-slate-500">
+                                                            {prod.doseParams?.recommended_dosage || '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600">
+                                                                {currentStock}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
                                                             <div className="flex items-center justify-center gap-2">
-                                                                <Package className="w-3 h-3 text-slate-400" />
+                                                                <Droplets className="w-3 h-3 text-blue-400" />
                                                                 <Input
                                                                     type="number" step="0.1"
-                                                                    className="h-8 w-24 text-center"
+                                                                    className="h-8 w-20 text-center font-bold text-blue-600 border-blue-200 focus:border-blue-500"
                                                                     placeholder="0"
-                                                                    defaultValue={record?.current_stock}
-                                                                    onBlur={(e) => handleBlur(eq.id, prod.id, 'current_stock', e.target.value)}
+                                                                    defaultValue={record?.dosage_applied}
+                                                                    onBlur={(e) => handleBlur(eq.id, prod.id, e.target.value)}
                                                                     disabled={readOnly}
                                                                 />
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-2">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <Droplets className="w-3 h-3 text-slate-400" />
-                                                                <Input
-                                                                    type="number" step="0.1"
-                                                                    className="h-8 w-24 text-center"
-                                                                    placeholder="0"
-                                                                    defaultValue={record?.dosage_applied}
-                                                                    onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
-                                                                    disabled={readOnly}
-                                                                />
+                                                        <td className="px-4 py-3 text-center">
+                                                            <div className={`flex items-center justify-center font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
+                                                                {finalStock.toFixed(1)}
+                                                                {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 text-red-500" />}
                                                             </div>
+                                                            {isLowStock && <div className="text-[10px] text-red-500 font-semibold mt-0.5">Mín: {minStock}</div>}
                                                         </td>
                                                     </tr>
                                                 );
@@ -152,10 +227,6 @@ export default function DosageBoardTab({ visit, readOnly }) {
                     </div>
                 </div>
             ))}
-
-            {groupedData.length === 0 && (
-                <Card className="bg-slate-50 border-dashed"><CardContent className="p-8 text-center text-slate-500"><p>Nenhum local/equipamento encontrado.</p></CardContent></Card>
-            )}
         </div>
     );
 }
