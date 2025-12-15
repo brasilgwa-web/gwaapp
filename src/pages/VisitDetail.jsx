@@ -129,9 +129,24 @@ export default function VisitDetailPage() {
                 )}
             </div>
 
-            {/* Tabs ... (keep existing) */}
-
-            {/* ... (keep existing return structure) */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+                    <TabsTrigger value="readings">Leituras</TabsTrigger>
+                    <TabsTrigger value="report">Relatório</TabsTrigger>
+                </TabsList>
+                <TabsContent value="readings" className="mt-6">
+                    <ReadingsTab visit={visit} readOnly={isReadOnly} />
+                </TabsContent>
+                <TabsContent value="report" className="mt-6">
+                    <ReportTab
+                        visit={visit}
+                        results={[]}
+                        onUpdateVisit={refetch}
+                        readOnly={isReadOnly}
+                        isAdmin={isAdmin}
+                    />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
