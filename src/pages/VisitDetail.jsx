@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2, Beaker } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from '@/lib/utils';
@@ -130,8 +130,9 @@ export default function VisitDetailPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 lg:w-[600px] mb-4">
+                <TabsList className="grid w-full grid-cols-5 lg:w-[750px] mb-4">
                     <TabsTrigger value="readings" title="Leituras"><ClipboardList className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Leituras</span></TabsTrigger>
+                    <TabsTrigger value="dosages" title="Dosagens"><Beaker className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Dosagens</span></TabsTrigger>
                     <TabsTrigger value="photos" title="Fotos"><ImageIcon className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Fotos</span></TabsTrigger>
                     <TabsTrigger value="details" title="Detalhes"><Info className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Detalhes</span></TabsTrigger>
                     <TabsTrigger value="report" title="Relatório"><FileText className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Relatório</span></TabsTrigger>
@@ -139,6 +140,10 @@ export default function VisitDetailPage() {
 
                 <TabsContent value="readings" className="mt-2">
                     <ReadingsTab visit={visit} readOnly={isReadOnly} />
+                </TabsContent>
+
+                <TabsContent value="dosages" className="mt-2">
+                    <DosageBoardTab visit={visit} readOnly={isReadOnly} />
                 </TabsContent>
 
                 <TabsContent value="photos" className="mt-2">
