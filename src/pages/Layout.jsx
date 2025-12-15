@@ -78,6 +78,7 @@ export default function Layout() {
     { name: 'Equipamentos', href: '/setup/equipments', icon: Box },
     { name: 'Testes', href: '/setup/tests', icon: TestTube },
     { name: 'Produtos Químicos', href: '/setup/products', icon: Beaker },
+    { name: 'Modelos de Relatório', href: '/setup/templates', icon: FileText },
   ];
 
   const adminNavigation = [
