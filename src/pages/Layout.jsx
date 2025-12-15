@@ -12,7 +12,8 @@ import {
   LogOut,
   Settings,
   UserCircle,
-  Construction
+  Construction,
+  Beaker
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ export default function Layout() {
     { name: 'Clientes e Locais', href: '/setup/clients', icon: Users },
     { name: 'Equipamentos', href: '/setup/equipments', icon: Box },
     { name: 'Testes', href: '/setup/tests', icon: TestTube },
+    { name: 'Produtos Químicos', href: '/setup/products', icon: Beaker },
   ];
 
   const adminNavigation = [
@@ -130,8 +132,8 @@ export default function Layout() {
                     to={item.href}
                     onClick={() => setIsSidebarOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                       }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -152,8 +154,8 @@ export default function Layout() {
                       to={item.href}
                       onClick={() => setIsSidebarOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
                       <Icon className="w-5 h-5" />
@@ -175,8 +177,8 @@ export default function Layout() {
                           to={item.href}
                           onClick={() => setIsSidebarOpen(false)}
                           className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
-                              ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                             }`}
                         >
                           <Icon className="w-5 h-5" />

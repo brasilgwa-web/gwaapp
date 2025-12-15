@@ -5,6 +5,7 @@ import Login from "./Login";
 import SetupClients from "./SetupClients";
 import SetupEquipments from "./SetupEquipments";
 import SetupTests from "./SetupTests";
+import SetupProducts from "./SetupProducts";
 import Dashboard from "./Dashboard";
 import Visits from "./Visits";
 import VisitDetail from "./VisitDetail";
@@ -32,6 +33,7 @@ export default function Pages() {
                 <Route path="setup/clients" element={<SetupClients />} />
                 <Route path="setup/equipments" element={<SetupEquipments />} />
                 <Route path="setup/tests" element={<SetupTests />} />
+                <Route path="setup/products" element={<SetupProducts />} />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="*" element={<div>Página não encontrada</div>} />
