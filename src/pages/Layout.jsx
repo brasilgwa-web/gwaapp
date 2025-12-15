@@ -13,7 +13,8 @@ import {
   Settings,
   UserCircle,
   Construction,
-  Beaker
+  Beaker,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
