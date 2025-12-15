@@ -28,8 +28,8 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                     </div>
 
                     <div>
-                        <h1 className="text-xl font-bold uppercase tracking-tight text-slate-900 leading-none">Relatório de Visita Técnica</h1>
-                        <p className="text-blue-600 font-medium text-sm">Tratamento de Águas Industriais</p>
+                        <h1 className="text-xl font-bold uppercase tracking-tight text-slate-900 leading-none">Relatório de Atendimento Técnico</h1>
+                        <p className="text-blue-600 font-medium text-sm">Cadeia de Custódia</p>
                     </div>
                 </div>
                 <div className="text-right text-xs text-slate-500">
