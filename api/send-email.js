@@ -1,9 +1,15 @@
 
+import nodemailer from 'nodemailer';
+
 export default async function handler(request, response) {
     // CORS configuration
     response.setHeader('Access-Control-Allow-Credentials', true)
     response.setHeader('Access-Control-Allow-Origin', '*')
     response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
+    response.setHeader(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    )
 
     if (request.method === 'OPTIONS') {
         return response.status(200).json({})
@@ -14,37 +20,37 @@ export default async function handler(request, response) {
     }
 
     const { to, subject, html, text } = request.body;
-    const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_5KRFpXdk_NVgRqS5Vj521ARdkjSxa8i5U'; // Fallback for testing, but ideally env var
 
-    if (!RESEND_API_KEY) {
-        return response.status(500).json({ error: 'Missing Resend API Key' });
-    }
+    // Credentials provided by user (Should be in process.env in production)
+    const SMTP_HOST = process.env.SMTP_HOST || 'smtp-relay.brevo.com';
+    const SMTP_PORT = process.env.SMTP_PORT || 587;
+    const SMTP_USER = process.env.SMTP_USER || '9e18bc001@smtp-brevo.com';
+    const SMTP_PASS = process.env.SMTP_PASS || '8LQ6B2N73MYRmwCO';
 
     try {
-        const res = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${RESEND_API_KEY}`
+        const transporter = nodemailer.createTransport({
+            host: SMTP_HOST,
+            port: SMTP_PORT,
+            secure: false, // true for 465, false for other ports
+            auth: {
+                user: SMTP_USER,
+                pass: SMTP_PASS,
             },
-            body: JSON.stringify({
-                from: 'onboarding@resend.dev', // Default testing domain
-                to: to,
-                subject: subject,
-                html: html,
-                text: text
-            })
         });
 
-        const data = await res.json();
+        const info = await transporter.sendMail({
+            from: '"WGA App" <no-reply@wgabrasil.com.br>', // Generic sender
+            to: to,
+            subject: subject,
+            text: text,
+            html: html,
+        });
 
-        if (!res.ok) {
-            throw new Error(data.message || 'Failed to send email');
-        }
+        console.log("Message sent: %s", info.messageId);
+        return response.status(200).json({ message: 'Email sent successfully via Brevo SMTP', id: info.messageId });
 
-        return response.status(200).json(data);
     } catch (error) {
-        console.error("Email API Error:", error);
-        return response.status(500).json({ error: error.message });
+        console.error("SMTP Error:", error);
+        return response.status(500).json({ error: 'Failed to send email via SMTP', details: error.message });
     }
 }

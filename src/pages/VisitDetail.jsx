@@ -33,7 +33,9 @@ export default function VisitDetailPage() {
 
     // Fetch Visit Data
     const { data: visit, isLoading, error, refetch } = useQuery({
-        // ... existing query
+        queryKey: ['visit', id],
+        queryFn: () => Visit.filter({ id: id }).then(res => res[0]),
+        enabled: !!id
     });
 
     // Update Mutation
@@ -46,9 +48,28 @@ export default function VisitDetailPage() {
         }
     });
 
-    // ... (keep existing code)
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh]">
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-4" />
+                <p className="text-slate-500">Carregando detalhes da visita...</p>
+            </div>
+        );
+    }
+
+    if (error || !visit) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
+                <Info className="w-10 h-10 text-red-500 mb-4" />
+                <h2 className="text-xl font-bold text-slate-800">Visita não encontrada</h2>
+                <p className="text-slate-500 mb-6">Não foi possível carregar os dados desta visita.</p>
+                <Button onClick={() => navigate('/visits')}>Voltar para Lista</Button>
+            </div>
+        );
+    }
 
     const isAdmin = user?.role === 'admin';
+    // Now safe to access visit properties
     const isReadOnly = (visit.status === 'completed' || visit.status === 'synced');
 
     return (
