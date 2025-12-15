@@ -34,7 +34,17 @@ export default function VisitDetailPage() {
     // Fetch Visit Data
     const { data: visit, isLoading, error, refetch } = useQuery({
         queryKey: ['visit', id],
-        queryFn: () => Visit.filter({ id: id }).then(res => res[0]),
+        queryFn: async () => {
+            const [visit] = await Visit.filter({ id: id });
+            if (!visit) return null;
+
+            const [client, location] = await Promise.all([
+                Client.filter({ id: visit.client_id }).then(res => res[0]),
+                visit.location_id ? Location.filter({ id: visit.location_id }).then(res => res[0]) : Promise.resolve(null)
+            ]);
+
+            return { ...visit, client, location };
+        },
         enabled: !!id
     });
 
