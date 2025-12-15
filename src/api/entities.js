@@ -1,10 +1,10 @@
 import { supabase } from '../lib/supabase';
 
 // Helper to create a standard CRUD adapter for a table
-const createAdapter = (tableName) => ({
-    list: async (orderBy = 'created_at', limit = 100) => {
+const createAdapter = (tableName, defaultSortField = 'created_at') => ({
+    list: async (orderBy = defaultSortField, limit = 100) => {
         // Handle sorting if string provided like '-visit_date'
-        let orderCol = 'created_date';
+        let orderCol = orderBy;
         let ascending = false;
 
         if (typeof orderBy === 'string') {
@@ -17,9 +17,10 @@ const createAdapter = (tableName) => ({
             }
         }
 
-        // Map legacy column names if needed
-        if (orderCol === 'visit_date') orderCol = 'visit_date';
-        if (orderCol === 'created_at') orderCol = 'created_date';
+        // Standardize default sorting if passed explicitly as 'created_at' but table uses 'created_date'
+        if (orderCol === 'created_at' && defaultSortField === 'created_date') {
+            orderCol = 'created_date';
+        }
 
         const { data, error } = await supabase
             .from(tableName)
@@ -88,6 +89,10 @@ const createAdapter = (tableName) => ({
 
         if (limit) query = query.limit(limit);
 
+        // Simple sort if needed, strictly defaulting to created_at if not specified might be risky if column missing,
+        // but typically filter() usage in this app doesn't rely heavily on implicit sort.
+        // We will skip explicit sort unless passed to avoid "column does not exist" errors in filter too.
+
         const { data, error } = await query;
         if (error) {
             console.error(`Error filtering ${tableName}:`, error);
@@ -97,23 +102,28 @@ const createAdapter = (tableName) => ({
     }
 });
 
-export const Client = createAdapter('clients');
-export const Location = createAdapter('locations');
-export const Equipment = createAdapter('equipments');
-export const TestDefinition = createAdapter('test_definitions');
-export const Visit = createAdapter('visits');
-export const TestResult = createAdapter('test_results');
-export const VisitPhoto = createAdapter('visit_photos');
-export const EquipmentTest = createAdapter('equipment_tests');
-// V1.1 New Entities
-export const Product = createAdapter('products');
-export const DosagePlan = createAdapter('dosage_plans');
-export const AnalysisGroup = createAdapter('analysis_groups');
-export const AnalysisGroupItem = createAdapter('analysis_group_items');
-export const ObservationTemplate = createAdapter('observation_templates');
-export const ReportSequence = createAdapter('report_sequences');
-export const VisitEquipmentSample = createAdapter('visit_equipment_samples');
-export const VisitDosage = createAdapter('visit_dosages');
+// Legacy Tables (Check DB schema or existing code usage to confirm 'created_date')
+// Assuming these use 'created_date' based on the bug report context
+export const Client = createAdapter('clients', 'created_date');
+export const Location = createAdapter('locations', 'created_date');
+export const Equipment = createAdapter('equipments', 'created_date');
+export const TestDefinition = createAdapter('test_definitions', 'created_date');
+export const Visit = createAdapter('visits', 'created_date');
+export const TestResult = createAdapter('test_results', 'created_date');
+export const VisitPhoto = createAdapter('visit_photos', 'created_date');
+export const EquipmentTest = createAdapter('equipment_tests', 'created_date');
+
+// V1.1 New Entities (Standard 'created_at')
+export const Product = createAdapter('products', 'created_at');
+export const DosagePlan = createAdapter('dosage_plans', 'created_at');
+export const AnalysisGroup = createAdapter('analysis_groups', 'created_at');
+export const AnalysisGroupItem = createAdapter('analysis_group_items', 'created_at');
+export const ObservationTemplate = createAdapter('observation_templates', 'created_at');
+export const ReportSequence = createAdapter('report_sequences', 'created_at');
+export const VisitEquipmentSample = createAdapter('visit_equipment_samples', 'created_at');
+export const VisitDosage = createAdapter('visit_dosages', 'created_at');
+export const LocationEquipment = createAdapter('location_equipments', 'created_at');
+
 // Helper to get formatted Report Number
 export const getNextReportNumber = async () => {
     // This would likely be a server-side function or an RPC, 
@@ -122,7 +132,6 @@ export const getNextReportNumber = async () => {
     // Leaving as placeholder or manual implementation in the UI for now.
     return null;
 };
-export const LocationEquipment = createAdapter('location_equipments');
 
 // Mock User auth object to satisfy generic calls if any (Auth is handled via Context now)
 export const User = {
