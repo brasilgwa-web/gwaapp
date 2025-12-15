@@ -1,38 +1,48 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from "@/lib/supabase";
-import { Visit } from "@/api/entities";
+import { Visit, ObservationTemplate } from "@/api/entities";
 import { Core } from "@/api/integrations";
 import { useAuth } from "@/context/AuthContext";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SignaturePad from "./SignaturePad";
-import { Bot, Send, FileText, Loader2, ExternalLink, Mail, AlertTriangle, CheckCircle, Lock, MonitorUp } from "lucide-react";
+import { Bot, Send, FileText, Loader2, ExternalLink, Mail, AlertTriangle, CheckCircle, Lock, MonitorUp, Plus, Droplets, quote } from "lucide-react";
 import { useReportData } from '@/hooks/useReportData';
 import { ReportTemplate } from '@/components/visit/ReportTemplate';
 import html2pdf from 'html2pdf.js';
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale"; // Import locale for email formatting
+import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from "@/lib/utils";
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
     if (!visit) return null;
     const queryClient = useQueryClient();
+
+    // Form States
     const [observations, setObservations] = useState(visit.observations || '');
+    const [generalObservations, setGeneralObservations] = useState(visit.general_observations || '');
+    const [discharges, setDischarges] = useState(visit.discharges_drainages || '');
+
+    // UI States
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSending, setIsSending] = useState(false);
-    const [isPreviewing, setIsPreviewing] = useState(false); // New state for preview modal
+    const [isPreviewing, setIsPreviewing] = useState(false);
     const [showSignatureDialog, setShowSignatureDialog] = useState(false);
     const [uploadStatus, setUploadStatus] = useState('');
 
     // Fetch Full Report Data for PDF Generation
-    // We get 'refetch' to force a data update before previewing
     const { data: reportData, isLoading: isLoadingReport, refetch: refetchReport } = useReportData(visit.id);
 
-    // Fetch Current User to check signature
+    // Fetch Templates
+    const { data: templates } = useQuery({ queryKey: ['observationTemplates'], queryFn: () => ObservationTemplate.list() });
+
+    // Fetch Current User
     const { user } = useAuth();
 
     // Check for signature on mount
@@ -68,7 +78,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         },
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
-            queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] }); // Correct key for PDF data
+            queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] });
             if (onUpdateVisit) onUpdateVisit();
             if (variables.client_signature_url) {
                 alert("Assinatura salva com sucesso!");
@@ -78,6 +88,12 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             alert("Erro ao salvar: " + err.message);
         }
     });
+
+    // Handlers for Blur (Auto-save)
+    const handleBlur = (field, value) => {
+        if (readOnly) return;
+        updateMutation.mutate({ [field]: value });
+    };
 
     const handleGenerateAI = async () => {
         setIsGenerating(true);
@@ -123,6 +139,15 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         }
     };
 
+    const handleInsertTemplate = (templateId, targetSetter, fieldName, currentValue) => {
+        const template = templates?.find(t => t.id === templateId);
+        if (template) {
+            const newValue = currentValue ? currentValue + "\n" + template.content : template.content;
+            targetSetter(newValue);
+            handleBlur(fieldName, newValue);
+        }
+    };
+
     const handleSaveSignature = (url) => {
         updateMutation.mutate({ client_signature_url: url });
     };
@@ -138,10 +163,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     };
 
     // PDF & Email Logic
-    // Step 1: Open Preview
     const handleOpenPreview = async () => {
-        // Force refresh data from server to ensure latest readings/photos are included
-        // This fixes the issue where data added in other tabs wasn't showing up yet
         const { data } = await refetchReport();
 
         if (!data) {
@@ -151,17 +173,14 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         setIsPreviewing(true);
     };
 
-    // Step 2: Generate and Send from Preview
     const handleConfirmSend = async () => {
         setIsSending(true);
         setUploadStatus('Gerando PDF...');
 
         try {
-            // Target the visible template inside the preview
             const element = document.getElementById('report-preview-content');
             if (!element) throw new Error("Template de pré-visualização não encontrado");
 
-            // Wait a moment ensures images in modal are rendered
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const opt = {
@@ -172,12 +191,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // Generate Base64 PDF
             const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
 
-            // --- DATE FIX ---
-            // Force manual parsing of YYYY-MM-DD to noon local time
-            // This bypasses browser timezone shifts (e.g. UTC midnight -> Previous day)
             let safeDate = new Date();
             if (visit.visit_date) {
                 const dateStr = visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date;
@@ -187,7 +202,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
 
-            // 2. Upload to Drive (if Folder ID exists)
+            // Upload to Drive
             const driveFolderId = visit.client?.google_drive_folder_id;
             let driveLink = null;
 
@@ -209,11 +224,10 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 } else {
                     const responseData = await uploadRes.json();
                     driveLink = responseData.webViewLink;
-                    console.log("Drive Upload Success. Link:", driveLink);
                 }
             }
 
-            // 3. Send Email
+            // Send Email
             setUploadStatus('Enviando email...');
             if (!readOnly) {
                 await Visit.update(visit.id, { status: 'completed' });
@@ -234,12 +248,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 to: visit.client?.email,
                 subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${format(safeDate, 'dd/MM/yyyy')}`,
                 body: emailBody,
-                // Attachments removed as per user request
             });
 
             alert("Sucesso! Relatório enviado e salvo.");
             updateMutation.mutate({ status: 'synced' });
-            setIsPreviewing(false); // Close preview
+            setIsPreviewing(false);
 
         } catch (error) {
             console.error("Process Error:", error);
@@ -253,7 +266,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     return (
         <div className="space-y-6 pb-20 relative">
 
-            {/* Preview Dialog/Modal */}
+            {/* Preview Dialog */}
             <Dialog open={isPreviewing} onOpenChange={setIsPreviewing}>
                 <DialogContent className="max-w-[230mm] h-[90vh] overflow-y-auto bg-slate-100 p-8 flex flex-col items-center">
                     <DialogHeader className="w-full max-w-[210mm] mb-4">
@@ -263,15 +276,12 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         </DialogDescription>
                     </DialogHeader>
 
-                    {/* The visible report to be captured */}
                     <div id="report-preview-content" className="bg-white shadow-xl w-[210mm] min-h-[297mm] origin-top scale-95">
                         {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
                     </div>
 
                     <div className="fixed bottom-6 right-6 flex gap-4 z-50">
-                        <Button variant="outline" onClick={() => setIsPreviewing(false)} disabled={isSending}>
-                            Cancelar
-                        </Button>
+                        <Button variant="outline" onClick={() => setIsPreviewing(false)} disabled={isSending}>Cancelar</Button>
                         <Button onClick={handleConfirmSend} disabled={isSending} className="bg-green-600 hover:bg-green-700 text-lg px-8">
                             {isSending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Send className="w-5 h-5 mr-2" />}
                             {isSending ? uploadStatus : "Confirmar e Enviar"}
@@ -280,14 +290,12 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </DialogContent>
             </Dialog>
 
-            {/* Technician Signature Dialog */}
+            {/* Signature Dialog */}
             <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Assinatura do Técnico Necessária</DialogTitle>
-                        <DialogDescription>
-                            Para finalizar relatórios, você precisa cadastrar sua assinatura digital.
-                        </DialogDescription>
+                        <DialogDescription>Para finalizar relatórios, cadastre sua assinatura digital.</DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                         <SignaturePad onSave={handleSaveTechnicianSignature} />
@@ -295,18 +303,14 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </DialogContent>
             </Dialog>
 
-            {/* Warning if no signature */}
+            {/* Warnings */}
             {user && !user.signature_url && !showSignatureDialog && !readOnly && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                    <div className="flex items-center">
-                        <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
-                        <p className="text-sm text-yellow-700">
-                            Você ainda não cadastrou sua assinatura.
-                            <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>
-                                Clique aqui para cadastrar
-                            </Button>
-                        </p>
-                    </div>
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex items-center">
+                    <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
+                    <p className="text-sm text-yellow-700">
+                        Você ainda não cadastrou sua assinatura.
+                        <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>Cadastrar agora</Button>
+                    </p>
                 </div>
             )}
 
@@ -314,27 +318,38 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 <div className="bg-slate-100 border-l-4 border-slate-500 p-4 mb-4 flex justify-between items-center">
                     <div className="flex items-center">
                         <Lock className="h-5 w-5 text-slate-500 mr-2" />
-                        <p className="text-sm text-slate-700">
-                            Visita finalizada. Modo somente leitura.
-                        </p>
+                        <p className="text-sm text-slate-700">Visita finalizada. Modo somente leitura.</p>
                     </div>
-                    {isAdmin && (
-                        <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>
-                    )}
+                    {isAdmin && <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>}
                 </div>
             )}
 
+            {/* 1. Descargas e Drenagens */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2"><Droplets className="w-4 h-4 text-blue-500" />Descargas e Drenagens</CardTitle>
+                    <CardDescription>Informe as descargas de fundo ou drenagens realizadas.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Input
+                        placeholder="Ex: Descarga de fundo em todas as caldeiras..."
+                        value={discharges}
+                        onChange={(e) => setDischarges(e.target.value)}
+                        onBlur={() => handleBlur('discharges_drainages', discharges)}
+                        disabled={readOnly}
+                    />
+                </CardContent>
+            </Card>
+
+            {/* 2. Análise Técnica (Observações) */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-base">Análise Técnica</CardTitle>
+                    <div>
+                        <CardTitle className="text-base">Observações (Análise Técnica)</CardTitle>
+                        <CardDescription>Análise dos resultados e recomendações.</CardDescription>
+                    </div>
                     {!readOnly && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleGenerateAI}
-                            disabled={isGenerating}
-                            className="bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100"
-                        >
+                        <Button variant="outline" size="sm" onClick={handleGenerateAI} disabled={isGenerating} className="bg-purple-50 text-purple-600 border-purple-200">
                             {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Bot className="w-4 h-4 mr-2" />}
                             Gerar com IA
                         </Button>
@@ -344,58 +359,71 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     <Textarea
                         value={observations}
                         onChange={(e) => setObservations(e.target.value)}
-                        onBlur={() => !readOnly && updateMutation.mutate({ observations })}
-                        className="min-h-[200px] font-normal disabled:bg-slate-50 disabled:text-slate-500"
-                        placeholder="Descreva as observações da visita ou use a IA para gerar..."
+                        onBlur={() => handleBlur('observations', observations)}
+                        className="min-h-[150px]"
+                        placeholder="Descreva a análise técnica..."
                         disabled={readOnly}
                     />
                 </CardContent>
             </Card>
 
+            {/* 3. Observações Gerais */}
             <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Assinatura do Cliente</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-base">Observações Gerais</CardTitle>
+                        <CardDescription>Informações complementares e sugestões.</CardDescription>
+                    </div>
+                    {!readOnly && (
+                        <Select onValueChange={(val) => handleInsertTemplate(val, setGeneralObservations, 'general_observations', generalObservations)}>
+                            <SelectTrigger className="w-[180px] h-8 text-xs">
+                                <SelectValue placeholder="Inserir Modelo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {templates?.map(t => (
+                                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
                 </CardHeader>
                 <CardContent>
+                    <Textarea
+                        value={generalObservations}
+                        onChange={(e) => setGeneralObservations(e.target.value)}
+                        onBlur={() => handleBlur('general_observations', generalObservations)}
+                        className="min-h-[100px]"
+                        placeholder="Observações gerais..."
+                        disabled={readOnly}
+                    />
+                </CardContent>
+            </Card>
+
+            {/* 4. Client Signature */}
+            <Card>
+                <CardHeader><CardTitle className="text-base">Assinatura do Cliente</CardTitle></CardHeader>
+                <CardContent>
                     {readOnly ? (
-                        visit.client_signature_url ? (
-                            <img src={visit.client_signature_url} className="h-24 border rounded bg-slate-50" alt="Assinatura" />
-                        ) : <p className="text-slate-400 italic">Não assinado</p>
+                        visit.client_signature_url ? <img src={visit.client_signature_url} className="h-24 border rounded bg-slate-50" alt="Assinatura" /> : <p className="text-slate-400 italic">Não assinado</p>
                     ) : (
-                        <SignaturePad
-                            savedUrl={visit.client_signature_url}
-                            onSave={handleSaveSignature}
-                        />
+                        <SignaturePad savedUrl={visit.client_signature_url} onSave={handleSaveSignature} />
                     )}
                 </CardContent>
             </Card>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col md:flex-row items-center gap-3 md:static md:border-0 md:bg-transparent md:p-0">
-                <a
-                    href={`/report/${visit.id}`}
-                    target="_blank"
-                    className="w-full md:flex-1"
-                >
-                    <Button variant="outline" className="w-full">
-                        <FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web
-                    </Button>
+            {/* Footer / Actions */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col md:flex-row items-center gap-3 md:status md:border-0 md:bg-transparent md:p-0">
+                <a href={`/report/${visit.id}`} target="_blank" className="w-full md:flex-1">
+                    <Button variant="outline" className="w-full"><FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web</Button>
                 </a>
 
                 {!readOnly && (
-                    <Button
-                        className="w-full md:flex-1 bg-green-600 hover:bg-green-700"
-                        onClick={handleFinalize}
-                    >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Finalizar Localmente
+                    <Button className="w-full md:flex-1 bg-green-600 hover:bg-green-700" onClick={handleFinalize}>
+                        <CheckCircle className="w-4 h-4 mr-2" /> Finalizar Localmente
                     </Button>
                 )}
 
-                <Button
-                    className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700"
-                    onClick={() => handleOpenPreview()}
-                    disabled={isSending || isLoadingReport}
-                >
+                <Button className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleOpenPreview()} disabled={isSending || isLoadingReport}>
                     {isSending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (readOnly ? <MonitorUp className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />)}
                     {readOnly ? "Reenviar e Salvar no Drive" : "Finalizar, Enviar e Salvar"}
                 </Button>
