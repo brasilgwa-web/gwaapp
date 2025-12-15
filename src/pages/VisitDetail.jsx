@@ -130,14 +130,53 @@ export default function VisitDetailPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-                    <TabsTrigger value="readings">Leituras</TabsTrigger>
-                    <TabsTrigger value="report">Relatório</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-4 lg:w-[600px] mb-4">
+                    <TabsTrigger value="readings" title="Leituras"><ClipboardList className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Leituras</span></TabsTrigger>
+                    <TabsTrigger value="photos" title="Fotos"><ImageIcon className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Fotos</span></TabsTrigger>
+                    <TabsTrigger value="details" title="Detalhes"><Info className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Detalhes</span></TabsTrigger>
+                    <TabsTrigger value="report" title="Relatório"><FileText className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Relatório</span></TabsTrigger>
                 </TabsList>
-                <TabsContent value="readings" className="mt-6">
+
+                <TabsContent value="readings" className="mt-2">
                     <ReadingsTab visit={visit} readOnly={isReadOnly} />
                 </TabsContent>
-                <TabsContent value="report" className="mt-6">
+
+                <TabsContent value="photos" className="mt-2">
+                    <PhotosTab visitId={visit.id} readOnly={isReadOnly} />
+                </TabsContent>
+
+                <TabsContent value="details" className="mt-2">
+                    <Card>
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium text-slate-500">Cliente</label>
+                                    <p className="text-lg font-medium">{visit.client?.name}</p>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-slate-500">Local</label>
+                                    <p className="text-lg font-medium">{visit.location?.name || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-slate-500">Data da Visita</label>
+                                    <p>{formatDateAsLocal(visit.visit_date)}</p>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-slate-500">Status</label>
+                                    <p className="capitalize">{visit.status === 'in_progress' ? 'Em Andamento' : visit.status === 'scheduled' ? 'Agendada' : visit.status}</p>
+                                </div>
+                                {visit.technician_email && (
+                                    <div className="md:col-span-2">
+                                        <label className="text-sm font-medium text-slate-500">Técnico Responsável</label>
+                                        <p>{visit.technician_email}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="report" className="mt-2">
                     <ReportTab
                         visit={visit}
                         results={[]}
