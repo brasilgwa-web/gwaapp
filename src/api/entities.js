@@ -112,6 +112,8 @@ export const AnalysisGroup = createAdapter('analysis_groups');
 export const AnalysisGroupItem = createAdapter('analysis_group_items');
 export const ObservationTemplate = createAdapter('observation_templates');
 export const ReportSequence = createAdapter('report_sequences');
+export const VisitEquipmentSample = createAdapter('visit_equipment_samples');
+export const VisitDosage = createAdapter('visit_dosages');
 // Helper to get formatted Report Number
 export const getNextReportNumber = async () => {
     // This would likely be a server-side function or an RPC, 
