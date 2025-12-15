@@ -50,6 +50,12 @@ export default function TestCatalog() {
             min_value: parseFloat(formData.get('min_value')),
             max_value: parseFloat(formData.get('max_value')),
             tolerance_percent: parseFloat(formData.get('tolerance_percent') || 10),
+            // V1.1 New Fields
+            dilution_factor: parseFloat(formData.get('dilution_factor') || 1),
+            ld: formData.get('ld'),
+            lq: formData.get('lq'),
+            method_uncertainty: formData.get('method_uncertainty'),
+            methodology: formData.get('methodology'),
             observation: formData.get('observation')
         };
 
@@ -75,25 +81,37 @@ export default function TestCatalog() {
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Catálogo de Testes</CardTitle>
-                    <CardDescription>Defina os parâmetros analisados (ex: pH, Dureza)</CardDescription>
+                    <CardDescription>Defina os parâmetros analisados e seus dados laboratoriais (LD, LQ, Metodologia)</CardDescription>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Teste</Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader><DialogTitle>{editingTest ? 'Editar Teste' : 'Novo Teste'}</DialogTitle></DialogHeader>
                         <form onSubmit={handleSubmit} className="grid gap-4">
-                            <div className="grid gap-2"><Label>Nome</Label><Input name="name" defaultValue={editingTest?.name} placeholder="Ex: pH" required /></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-2"><Label>Unidade</Label><Input name="unit" defaultValue={editingTest?.unit} placeholder="Ex: ppm" required /></div>
-                                <div className="grid gap-2"><Label>Observação Padrão</Label><Input name="observation" defaultValue={editingTest?.observation} /></div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid gap-2"><Label>Nome do Teste</Label><Input name="name" defaultValue={editingTest?.name} placeholder="Ex: pH, Condutividade" required /></div>
+
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-3 rounded-lg border">
+                                <div className="grid gap-2"><Label>Unidade</Label><Input name="unit" defaultValue={editingTest?.unit} placeholder="Ex: uS/cm" required /></div>
                                 <div className="grid gap-2"><Label>Mínimo</Label><Input name="min_value" defaultValue={editingTest?.min_value} type="number" step="0.01" required /></div>
                                 <div className="grid gap-2"><Label>Máximo</Label><Input name="max_value" defaultValue={editingTest?.max_value} type="number" step="0.01" required /></div>
                                 <div className="grid gap-2"><Label>Tolerância (%)</Label><Input name="tolerance_percent" defaultValue={editingTest?.tolerance_percent || 10} type="number" step="1" required /></div>
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid gap-2"><Label>LD (Lim. Detecção)</Label><Input name="ld" defaultValue={editingTest?.ld} placeholder="Ex: 0.1" /></div>
+                                <div className="grid gap-2"><Label>LQ (Lim. Quantificação)</Label><Input name="lq" defaultValue={editingTest?.lq} placeholder="Ex: 0.5" /></div>
+                                <div className="grid gap-2"><Label>Incerteza do Método</Label><Input name="method_uncertainty" defaultValue={editingTest?.method_uncertainty} placeholder="Ex: 1.19" /></div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid gap-2"><Label>Fator Diluição (Padrão)</Label><Input name="dilution_factor" defaultValue={editingTest?.dilution_factor || 1} type="number" step="0.1" /></div>
+                                <div className="grid gap-2"><Label>Metodologia (ISO/SMEWW)</Label><Input name="methodology" defaultValue={editingTest?.methodology} placeholder="Ex: SMEWW 2510 B" /></div>
+                            </div>
+
+                            <div className="grid gap-2"><Label>Observação Padrão</Label><Input name="observation" defaultValue={editingTest?.observation} /></div>
+
                             <DialogFooter>
                                 <Button type="submit">{editingTest ? 'Salvar Alterações' : 'Criar Teste'}</Button>
                             </DialogFooter>
@@ -102,13 +120,14 @@ export default function TestCatalog() {
                 </Dialog>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Nome</TableHead>
                                 <TableHead>Unidade</TableHead>
-                                <TableHead>Faixa Ideal</TableHead>
+                                <TableHead>Faixa</TableHead>
+                                <TableHead>Metodologia</TableHead>
                                 <TableHead className="w-24"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -117,7 +136,8 @@ export default function TestCatalog() {
                                 <TableRow key={test.id}>
                                     <TableCell className="font-medium">{test.name}</TableCell>
                                     <TableCell>{test.unit}</TableCell>
-                                    <TableCell><span className="font-mono bg-slate-100 px-2 py-1 rounded">{test.min_value} - {test.max_value}</span></TableCell>
+                                    <TableCell><span className="font-mono bg-slate-100 px-2 py-1 rounded text-xs">{test.min_value} - {test.max_value}</span></TableCell>
+                                    <TableCell className="text-xs text-slate-500">{test.methodology || '-'}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-1">
                                             <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600" onClick={() => openEdit(test)}>
@@ -130,7 +150,7 @@ export default function TestCatalog() {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {tests?.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-slate-500 py-4">Nenhum teste cadastrado.</TableCell></TableRow>}
+                            {tests?.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-4">Nenhum teste cadastrado.</TableCell></TableRow>}
                         </TableBody>
                     </Table>
                 </div>
