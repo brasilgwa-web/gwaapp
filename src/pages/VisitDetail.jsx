@@ -15,6 +15,7 @@ import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from '@/lib/utils';
 import ReadingsTab from "../components/visit/ReadingsTab";
 import ReportTab from "../components/visit/ReportTab";
+import DosageBoardTab from "../components/visit/DosageBoardTab";
 import { Card, CardContent } from "@/components/ui/card";
 
 
