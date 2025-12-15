@@ -1,7 +1,6 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User } from "@/api/entities";
+import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product } from "@/api/entities";
 
 export function useReportData(id) {
     return useQuery({
@@ -36,21 +35,27 @@ export function useReportData(id) {
             const locationEquipmentsResults = await Promise.all(locationEquipmentPromises);
             const allLocationEquipments = locationEquipmentsResults.flat();
 
-            // 4. Fetch remaining data
+            // 4. Fetch remaining data (Results, Definitions, Equipment, Tests, Photos, Users, Dosages, Samples, Products)
             const [
                 allResults,
                 allDefinitions,
                 allEquipments,
                 allEquipmentTests,
                 photos,
-                allUsers
+                allUsers,
+                allDosages,
+                allSamples,
+                allProducts
             ] = await Promise.all([
                 TestResult.filter({ visit_id: id }, undefined, 2000),
                 TestDefinition.list(undefined, 1000),
                 Equipment.list(undefined, 1000),
                 EquipmentTest.list(undefined, 1000),
                 VisitPhoto.filter({ visit_id: id }, undefined, 100),
-                User.list(undefined, 1000)
+                User.list(undefined, 1000),
+                VisitDosage.filter({ visit_id: id }, undefined, 1000),
+                VisitEquipmentSample.filter({ visit_id: id }, undefined, 1000),
+                Product.list(undefined, 1000)
             ]);
 
             // Attempt to find technician
@@ -79,17 +84,28 @@ export function useReportData(id) {
                         const testsWithResults = tests.map(test => {
                             const result = allResults.find(r =>
                                 r.test_definition_id === test.id &&
-                                (r.equipment_id === le.id || r.equipment_id === catalogItem.id)
+                                (r.equipment_id === le.id || r.equipment_id === catalogItem.id) // Check both instance and catalog IDs
                             );
                             return { ...test, result };
                         });
 
+                        // Attach Sample Info (Time, Complementary)
+                        const sampleInfo = allSamples.find(s => s.location_equipment_id === le.id);
+
+                        // Attach Dosages (Product + Dosage Record)
+                        const dosages = allProducts.map(prod => {
+                            const record = allDosages.find(d => d.location_equipment_id === le.id && d.product_id === prod.id);
+                            return { product: prod, record };
+                        });
+
                         return {
-                            equipment: { ...catalogItem, id: le.id },
-                            tests: testsWithResults
+                            equipment: { ...catalogItem, id: le.id }, // id is LocationEquipment ID
+                            tests: testsWithResults,
+                            sample: sampleInfo,
+                            dosages: dosages
                         };
                     })
-                    .filter(item => item && item.tests.length > 0);
+                    .filter(item => item && (item.tests.length > 0 || item.dosages.length > 0)); // Keep if has tests OR dosages
 
                 return {
                     location: loc,
