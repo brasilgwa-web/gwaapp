@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, TestResult, Visit, AnalysisGroup, AnalysisGroupItem, VisitEquipmentSample } from "@/api/entities";
 import { Input } from "@/components/ui/input";
 import { calculateStatus, getStatusColor } from "@/components/analysisUtils";
-import { AlertCircle, CheckCircle, MinusCircle, Beaker, ChevronDown, ChevronUp, MapPin, ChevronsUpDown, Save, Loader2, Clock, FileText, Layers } from "lucide-react";
+import { AlertCircle, CheckCircle, MinusCircle, Beaker, ChevronDown, ChevronUp, MapPin, ChevronsUpDown, Save, Loader2, Clock, FileText, Layers, Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -105,25 +105,6 @@ export default function ReadingsTab({ visit, readOnly }) {
             } else {
                 await VisitEquipmentSample.create({ visit_id: visit.id, location_equipment_id: locationEquipmentId, analysis_group_id: groupId });
             }
-
-            // 2. Identify tests in this group
-            const items = analysisGroupItems?.filter(i => i.group_id === groupId);
-            if (!items || items.length === 0) return;
-
-            // 3. Ensure these tests exist as "Pending" results if not already there
-            // Note: In this UI, we render based on available tests. 
-            // If the group adds tests NOT linked to the equipment, we might need to handle that.
-            // For now, assuming we just auto-fill or just highlight? 
-            // The requirement says "quadro para selecionar qual será o grupo".
-            // Let's assume selecting the group mainly records it. 
-            // If we strictly want to ADD rows, we need to manipulate the 'groupedData' or 'EquipmentTest' links? 
-            // Actually, usually tests are defined by Equipment. 
-            // BUT, if the user wants to add 'Extra' tests via Group, we might need a way to show them.
-            // For simplicity/robustness V1.1: We will just save the Group ID. 
-            // The UI will show tests LINKED to the equipment. 
-            // If the group has tests that are NOT linked, they won't show up unless we change logic.
-            // *Self-Correction*: Use case is likely "Select Routine Group" -> fills defaults? Or just documents it.
-            // Let's just save the ID for now.
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['visitSamples', visit.id] });
@@ -163,27 +144,36 @@ export default function ReadingsTab({ visit, readOnly }) {
                     const catalogItem = allEquipments.find(e => e.id === le.equipment_id);
                     if (!catalogItem) return null;
 
-                    // Linked Tests
+                    // 1. Tests linked via Equipment Configuration
                     const linkedTestIds = equipmentTestsLinks.filter(et => et.equipment_id === catalogItem.id).map(et => et.test_definition_id);
-                    // Also include tests from the selected Analysis Group? 
-                    // Current Implementation: Only shows Linked Tests. 
-                    // Future improvement: Show union of Linked + Group Tests.
 
-                    const tests = allTests.filter(t => linkedTestIds.includes(t.id));
+                    // 2. Tests linked via Selected Analysis Group (if any)
+                    let groupTestIds = [];
+                    const sample = getSample(le.id);
+                    if (sample?.analysis_group_id && analysisGroupItems) {
+                        groupTestIds = analysisGroupItems
+                            .filter(agi => agi.group_id === sample.analysis_group_id)
+                            .map(agi => agi.test_definition_id);
+                    }
+
+                    // 3. Merge Lists
+                    const allTestIds = [...new Set([...linkedTestIds, ...groupTestIds])];
+                    const tests = allTests.filter(t => allTestIds.includes(t.id));
 
                     return {
                         ...catalogItem,
                         id: le.id, // LocationEquipment ID (Instance)
                         catalog_id: catalogItem.id, // Catalog ID
                         tests,
-                        uniqueId: le.id
+                        uniqueId: le.id,
+                        sample // Attach sample for easier access
                     };
                 })
                 .filter(item => item && item.tests.length > 0);
 
             return { ...location, equipments: equipmentsWithTests };
         }).filter(l => l.equipments.length > 0);
-    }, [locations, allLocationEquipments, allEquipments, equipmentTestsLinks, allTests]);
+    }, [locations, allLocationEquipments, allEquipments, equipmentTestsLinks, allTests, visitSamples, analysisGroupItems]);
 
     // Initial Expansion
     const toggleAll = () => {
@@ -228,7 +218,7 @@ export default function ReadingsTab({ visit, readOnly }) {
 
                     {location.equipments.map(equipment => {
                         const isOpen = openItems[equipment.uniqueId] ?? true;
-                        const sampleData = getSample(equipment.uniqueId);
+                        const sampleData = equipment.sample;
 
                         return (
                             <Collapsible
@@ -271,13 +261,26 @@ export default function ReadingsTab({ visit, readOnly }) {
                                                 value={sampleData?.analysis_group_id || ""}
                                                 onValueChange={(val) => applyGroupMutation.mutate({ locationEquipmentId: equipment.uniqueId, groupId: val, equipmentId: equipment.catalog_id })}
                                             >
-                                                <SelectTrigger className="h-8 bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                                                <SelectTrigger className="h-8 bg-white"><SelectValue placeholder="Selecione um Kit..." /></SelectTrigger>
                                                 <SelectContent>
                                                     {analysisGroups?.map(g => (
                                                         <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
+
+                                            {/* Helper to show what's in the group */}
+                                            {sampleData?.analysis_group_id && analysisGroupItems && allTests && (
+                                                <div className="mt-1 text-[10px] text-slate-500 leading-tight">
+                                                    <span className="font-semibold">Inclui: </span>
+                                                    {analysisGroupItems
+                                                        .filter(i => i.group_id === sampleData.analysis_group_id)
+                                                        .map(i => allTests.find(t => t.id === i.test_definition_id)?.name)
+                                                        .filter(Boolean)
+                                                        .join(', ') || "Nenhum teste vinculado."
+                                                    }
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Análises Complementares */}
