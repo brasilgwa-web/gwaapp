@@ -115,7 +115,7 @@ export const EquipmentTest = createAdapter('equipment_tests', 'created_date');
 
 // V1.1 New Entities (Standard 'created_at')
 export const Product = createAdapter('products', 'created_at');
-export const DosagePlan = createAdapter('dosage_plans', 'created_at');
+export const DosagePlan = createAdapter('dosage_plans', 'created_at'); // Deprecated/Legacy in V1.2? usage might be replaced by EquipmentDosageParams
 export const AnalysisGroup = createAdapter('analysis_groups', 'created_at');
 export const AnalysisGroupItem = createAdapter('analysis_group_items', 'created_at');
 export const ObservationTemplate = createAdapter('observation_templates', 'created_at');
@@ -123,6 +123,10 @@ export const ReportSequence = createAdapter('report_sequences', 'created_at');
 export const VisitEquipmentSample = createAdapter('visit_equipment_samples', 'created_at');
 export const VisitDosage = createAdapter('visit_dosages', 'created_at');
 export const LocationEquipment = createAdapter('location_equipments', 'created_at');
+
+// V1.2 New Entities
+export const ClientProduct = createAdapter('client_products', 'created_at');
+export const EquipmentDosageParams = createAdapter('equipment_dosage_params', 'created_at');
 
 // Helper to get formatted Report Number
 export const getNextReportNumber = async () => {
