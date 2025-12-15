@@ -105,6 +105,22 @@ export const Visit = createAdapter('visits');
 export const TestResult = createAdapter('test_results');
 export const VisitPhoto = createAdapter('visit_photos');
 export const EquipmentTest = createAdapter('equipment_tests');
+// V1.1 New Entities
+export const Product = createAdapter('products');
+export const DosagePlan = createAdapter('dosage_plans');
+export const AnalysisGroup = createAdapter('analysis_groups');
+export const AnalysisGroupItem = createAdapter('analysis_group_items');
+export const ObservationTemplate = createAdapter('observation_templates');
+export const ReportSequence = createAdapter('report_sequences');
+
+// Helper to get formatted Report Number
+export const getNextReportNumber = async () => {
+    // This would likely be a server-side function or an RPC, 
+    // but for now we might handle it via a direct insert/update logic in the component 
+    // or a specialized RPC if we created one. 
+    // Leaving as placeholder or manual implementation in the UI for now.
+    return null;
+};
 export const LocationEquipment = createAdapter('location_equipments');
 
 // Mock User auth object to satisfy generic calls if any (Auth is handled via Context now)

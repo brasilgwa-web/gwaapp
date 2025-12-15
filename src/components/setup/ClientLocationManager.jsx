@@ -48,12 +48,12 @@ export default function ClientLocationManager() {
             name: formData.get('name'),
             email: formData.get('email'),
             contact_name: formData.get('contact_name'),
+            client_code: formData.get('client_code'),
             address: formData.get('address'),
-            cnpj: formData.get('cnpj'),
-            address: formData.get('address'),
-            cnpj: formData.get('cnpj'),
             city_state: formData.get('city_state'),
-            google_drive_folder_id: formData.get('google_drive_folder_id')
+            google_drive_folder_id: formData.get('google_drive_folder_id'),
+            // V1.1 New Field
+            default_discharges_drainages: formData.get('default_discharges_drainages')
         };
 
         if (editingClient) {
@@ -86,16 +86,36 @@ export default function ClientLocationManager() {
                     <DialogTrigger asChild>
                         <Button onClick={openNewClient} className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Novo Cliente</Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-2xl">
                         <DialogHeader><DialogTitle>{editingClient ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle></DialogHeader>
                         <form onSubmit={handleClientSubmit} className="space-y-4">
-                            <div className="grid gap-2"><Label>Empresa</Label><Input name="name" defaultValue={editingClient?.name} required /></div>
-                            <div className="grid gap-2"><Label>CNPJ</Label><Input name="cnpj" defaultValue={editingClient?.cnpj} /></div>
-                            <div className="grid gap-2"><Label>ID Pasta Drive</Label><Input name="google_drive_folder_id" defaultValue={editingClient?.google_drive_folder_id} placeholder="ID da pasta do Google Drive" /></div>
-                            <div className="grid gap-2"><Label>Email (Relatórios)</Label><Input name="email" type="email" defaultValue={editingClient?.email} required /></div>
-                            <div className="grid gap-2"><Label>Contato</Label><Input name="contact_name" defaultValue={editingClient?.contact_name} /></div>
-                            <div className="grid gap-2"><Label>Endereço</Label><Input name="address" defaultValue={editingClient?.address} /></div>
-                            <div className="grid gap-2"><Label>Cidade/UF</Label><Input name="city_state" defaultValue={editingClient?.city_state} /></div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2"><Label>Empresa</Label><Input name="name" defaultValue={editingClient?.name} required /></div>
+                                <div className="space-y-2"><Label>Código do Cliente</Label><Input name="client_code" defaultValue={editingClient?.client_code} placeholder="Ex: C001" /></div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2"><Label>Email (Relatórios)</Label><Input name="email" type="email" defaultValue={editingClient?.email} required /></div>
+                                <div className="space-y-2"><Label>Contato</Label><Input name="contact_name" defaultValue={editingClient?.contact_name} /></div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2"><Label>Endereço</Label><Input name="address" defaultValue={editingClient?.address} /></div>
+                                <div className="space-y-2"><Label>Cidade/UF</Label><Input name="city_state" defaultValue={editingClient?.city_state} /></div>
+                            </div>
+
+                            <div className="space-y-2"><Label>ID Pasta Drive</Label><Input name="google_drive_folder_id" defaultValue={editingClient?.google_drive_folder_id} placeholder="ID da pasta do Google Drive" /></div>
+
+                            <div className="space-y-2">
+                                <Label>Descargas e Drenagens (Padrão)</Label>
+                                <textarea
+                                    name="default_discharges_drainages"
+                                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
+                                    defaultValue={editingClient?.default_discharges_drainages}
+                                    placeholder="Texto padrão para aparecer no relatório..."
+                                />
+                            </div>
+
                             <DialogFooter><Button type="submit">{editingClient ? 'Salvar' : 'Criar'}</Button></DialogFooter>
                         </form>
                     </DialogContent>
