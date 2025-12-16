@@ -34,18 +34,13 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         queryKey: ['client_direct', visit.client_id],
         queryFn: async () => {
             if (!visit.client_id) return null;
-            console.log("Fetching client DIRECT for:", visit.client_id);
             const { data, error } = await supabase
                 .from('clients')
                 .select('*')
                 .eq('id', visit.client_id)
                 .single();
 
-            if (error) {
-                console.error("Direct fetch error:", error);
-                return null;
-            }
-            console.log("Client DIRECT result:", data);
+            if (error) return null;
             return data;
         },
         enabled: !visit.discharges_drainages && !readOnly,
@@ -55,10 +50,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     // Effect to load default if empty and available
     useEffect(() => {
         if (!discharges && clientDetails?.default_discharges_drainages) {
-            console.log("Applying default discharges:", clientDetails.default_discharges_drainages);
             setDischarges(clientDetails.default_discharges_drainages);
-        } else {
-            console.log("Skipping apply. Current:", discharges, "Default:", clientDetails?.default_discharges_drainages);
         }
     }, [clientDetails, discharges]); // Trigger on client load or if discharges is empty (safeguard)
 
