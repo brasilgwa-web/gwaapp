@@ -36,7 +36,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             if (!visit.client_id) return null;
             console.log("Fetching client details for:", visit.client_id);
             const res = await Client.filter({ id: visit.client_id });
-            console.log("Client fetch result:", res);
+            console.log("Client FULL result:", JSON.stringify(res[0], null, 2)); // Debugging
             return res && res.length > 0 ? res[0] : null;
         },
         enabled: !visit.discharges_drainages && !readOnly,
@@ -48,6 +48,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         if (!discharges && clientDetails?.default_discharges_drainages) {
             console.log("Applying default discharges:", clientDetails.default_discharges_drainages);
             setDischarges(clientDetails.default_discharges_drainages);
+        } else {
+            console.log("Skipping apply. Current:", discharges, "Default:", clientDetails?.default_discharges_drainages);
         }
     }, [clientDetails, discharges]); // Trigger on client load or if discharges is empty (safeguard)
 
