@@ -42,40 +42,30 @@ export default function ReadingsTab({ visit, readOnly }) {
         mutationFn: async ({ testId, equipmentId, value, min, max, tolerance }) => {
             setIsSaving(true);
             const numValue = parseFloat(value);
+            const status = calculateStatus(value, min, max, tolerance);
 
-            console.log("=== SAVE DEBUG ===");
-            console.log("visit_id:", visit.id);
-            console.log("equipment_id:", equipmentId);
-            console.log("test_definition_id:", testId);
-            console.log("value:", numValue);
-
-            // Step 1: Check if record exists
-            const { data: existingData, error: selectError } = await supabase
+            // Check if record exists
+            const { data: existingData } = await supabase
                 .from('test_results')
                 .select('*')
                 .eq('visit_id', visit.id)
                 .eq('equipment_id', equipmentId)
                 .eq('test_definition_id', testId);
 
-            console.log("SELECT result:", existingData, "error:", selectError);
-
             if (existingData && existingData.length > 0) {
-                // Record exists - UPDATE only the value
-                console.log("Record exists, doing UPDATE...");
+                // Record exists - UPDATE
                 const { data: updateData, error: updateError } = await supabase
                     .from('test_results')
-                    .update({ measured_value: numValue })
+                    .update({ measured_value: numValue, status_light: status, updated_date: new Date().toISOString() })
                     .eq('visit_id', visit.id)
                     .eq('equipment_id', equipmentId)
                     .eq('test_definition_id', testId)
                     .select();
 
-                console.log("UPDATE result:", updateData, "error:", updateError);
                 if (updateError) throw updateError;
                 return updateData?.[0];
             } else {
                 // Record doesn't exist - INSERT
-                console.log("Record does NOT exist, doing INSERT...");
                 const { data: insertData, error: insertError } = await supabase
                     .from('test_results')
                     .insert({
@@ -83,18 +73,21 @@ export default function ReadingsTab({ visit, readOnly }) {
                         equipment_id: equipmentId,
                         test_definition_id: testId,
                         measured_value: numValue,
+                        status_light: status,
                         created_date: new Date().toISOString(),
                         updated_date: new Date().toISOString()
                     })
                     .select();
 
-                console.log("INSERT result:", insertData, "error:", insertError);
                 if (insertError) throw insertError;
                 return insertData?.[0];
             }
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
+            if (visit?.status === 'scheduled') {
+                Visit.update(visit.id, { status: 'in_progress' }).then(() => queryClient.invalidateQueries({ queryKey: ['visit', visit.id] }));
+            }
             setTimeout(() => setIsSaving(false), 500);
         }
     });
@@ -351,7 +344,7 @@ export default function ReadingsTab({ visit, readOnly }) {
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {equipment.tests.map((test, idx) => {
-                                                    const result = getResult(test.id, equipment.catalog_id);
+                                                    const result = getResult(test.id, equipment.id);
                                                     const status = result?.status_light || 'neutral';
                                                     return (
                                                         <tr key={test.id} className={`hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
@@ -367,7 +360,7 @@ export default function ReadingsTab({ visit, readOnly }) {
                                                                 <Input
                                                                     type="number" step="0.01" defaultValue={result?.measured_value} placeholder="-"
                                                                     className={`h-7 w-24 ml-auto text-right font-mono text-sm ${getStatusColor(status)}`}
-                                                                    onBlur={(e) => handleBlur(test, equipment.catalog_id, e.target.value)}
+                                                                    onBlur={(e) => handleBlur(test, equipment.id, e.target.value)}
                                                                     disabled={readOnly}
                                                                 />
                                                             </td>
