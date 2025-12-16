@@ -83,16 +83,23 @@ export default function ReadingsTab({ visit, readOnly }) {
                 return insertData?.[0];
             }
         },
-        onSettled: () => {
+        onSettled: async () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
+
+            // Fetch fresh visit data to check service_start_time
+            const { data: freshVisit } = await supabase.from('visits').select('*').eq('id', visit.id).single();
+
             // Auto-capture service_start_time on first change
-            if (!visit?.service_start_time && visit?.status !== 'completed') {
-                Visit.update(visit.id, { service_start_time: new Date().toISOString() })
-                    .then(() => queryClient.invalidateQueries({ queryKey: ['visit', visit.id] }));
+            if (freshVisit && !freshVisit.service_start_time && freshVisit.status !== 'completed') {
+                await supabase.from('visits').update({ service_start_time: new Date().toISOString() }).eq('id', visit.id);
+                queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
             }
-            if (visit?.status === 'scheduled') {
-                Visit.update(visit.id, { status: 'in_progress' }).then(() => queryClient.invalidateQueries({ queryKey: ['visit', visit.id] }));
+
+            if (freshVisit?.status === 'scheduled') {
+                await supabase.from('visits').update({ status: 'in_progress' }).eq('id', visit.id);
+                queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
             }
+
             setTimeout(() => setIsSaving(false), 500);
         }
     });
