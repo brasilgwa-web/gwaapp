@@ -41,60 +41,60 @@ export default function ReadingsTab({ visit, readOnly }) {
     const saveResultMutation = useMutation({
         mutationFn: async ({ testId, equipmentId, value, min, max, tolerance }) => {
             setIsSaving(true);
-            const status = calculateStatus(value, min, max, tolerance);
             const numValue = parseFloat(value);
 
-            // Try UPDATE first (most common case)
-            const { data: updateData, error: updateError } = await supabase
+            console.log("=== SAVE DEBUG ===");
+            console.log("visit_id:", visit.id);
+            console.log("equipment_id:", equipmentId);
+            console.log("test_definition_id:", testId);
+            console.log("value:", numValue);
+
+            // Step 1: Check if record exists
+            const { data: existingData, error: selectError } = await supabase
                 .from('test_results')
-                .update({ measured_value: numValue, status_light: status, updated_date: new Date().toISOString() })
+                .select('*')
                 .eq('visit_id', visit.id)
                 .eq('equipment_id', equipmentId)
-                .eq('test_definition_id', testId)
-                .select();
+                .eq('test_definition_id', testId);
 
-            // If update succeeded (affected rows > 0), we're done
-            if (updateData && updateData.length > 0) {
-                return updateData[0];
+            console.log("SELECT result:", existingData, "error:", selectError);
+
+            if (existingData && existingData.length > 0) {
+                // Record exists - UPDATE only the value
+                console.log("Record exists, doing UPDATE...");
+                const { data: updateData, error: updateError } = await supabase
+                    .from('test_results')
+                    .update({ measured_value: numValue })
+                    .eq('visit_id', visit.id)
+                    .eq('equipment_id', equipmentId)
+                    .eq('test_definition_id', testId)
+                    .select();
+
+                console.log("UPDATE result:", updateData, "error:", updateError);
+                if (updateError) throw updateError;
+                return updateData?.[0];
+            } else {
+                // Record doesn't exist - INSERT
+                console.log("Record does NOT exist, doing INSERT...");
+                const { data: insertData, error: insertError } = await supabase
+                    .from('test_results')
+                    .insert({
+                        visit_id: visit.id,
+                        equipment_id: equipmentId,
+                        test_definition_id: testId,
+                        measured_value: numValue,
+                        created_date: new Date().toISOString(),
+                        updated_date: new Date().toISOString()
+                    })
+                    .select();
+
+                console.log("INSERT result:", insertData, "error:", insertError);
+                if (insertError) throw insertError;
+                return insertData?.[0];
             }
-
-            // No rows updated means record doesn't exist, so INSERT
-            const { data: insertData, error: insertError } = await supabase
-                .from('test_results')
-                .insert({
-                    visit_id: visit.id,
-                    equipment_id: equipmentId,
-                    test_definition_id: testId,
-                    measured_value: numValue,
-                    status_light: status,
-                    created_date: new Date().toISOString(),
-                    updated_date: new Date().toISOString()
-                })
-                .select()
-                .single();
-
-            if (insertError) {
-                // If insert also fails with conflict, try update one more time
-                if (insertError.code === '23505' || insertError.message?.includes('conflict')) {
-                    const { data: retryData } = await supabase
-                        .from('test_results')
-                        .update({ measured_value: numValue, status_light: status, updated_date: new Date().toISOString() })
-                        .eq('visit_id', visit.id)
-                        .eq('equipment_id', equipmentId)
-                        .eq('test_definition_id', testId)
-                        .select()
-                        .single();
-                    return retryData;
-                }
-                throw insertError;
-            }
-            return insertData;
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
-            if (visit?.status === 'scheduled') {
-                Visit.update(visit.id, { status: 'in_progress' }).then(() => queryClient.invalidateQueries({ queryKey: ['visit', visit.id] }));
-            }
             setTimeout(() => setIsSaving(false), 500);
         }
     });
