@@ -42,18 +42,53 @@ export default function ReadingsTab({ visit, readOnly }) {
         mutationFn: async ({ testId, equipmentId, value, min, max, tolerance }) => {
             setIsSaving(true);
             const status = calculateStatus(value, min, max, tolerance);
+            const numValue = parseFloat(value);
 
-            // Use database function for atomic upsert (most reliable approach)
-            const { data, error } = await supabase.rpc('upsert_test_result', {
-                p_visit_id: visit.id,
-                p_equipment_id: equipmentId,
-                p_test_definition_id: testId,
-                p_measured_value: parseFloat(value),
-                p_status_light: status
-            });
+            // Try UPDATE first (most common case)
+            const { data: updateData, error: updateError } = await supabase
+                .from('test_results')
+                .update({ measured_value: numValue, status_light: status, updated_date: new Date().toISOString() })
+                .eq('visit_id', visit.id)
+                .eq('equipment_id', equipmentId)
+                .eq('test_definition_id', testId)
+                .select();
 
-            if (error) throw error;
-            return data;
+            // If update succeeded (affected rows > 0), we're done
+            if (updateData && updateData.length > 0) {
+                return updateData[0];
+            }
+
+            // No rows updated means record doesn't exist, so INSERT
+            const { data: insertData, error: insertError } = await supabase
+                .from('test_results')
+                .insert({
+                    visit_id: visit.id,
+                    equipment_id: equipmentId,
+                    test_definition_id: testId,
+                    measured_value: numValue,
+                    status_light: status,
+                    created_date: new Date().toISOString(),
+                    updated_date: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (insertError) {
+                // If insert also fails with conflict, try update one more time
+                if (insertError.code === '23505' || insertError.message?.includes('conflict')) {
+                    const { data: retryData } = await supabase
+                        .from('test_results')
+                        .update({ measured_value: numValue, status_light: status, updated_date: new Date().toISOString() })
+                        .eq('visit_id', visit.id)
+                        .eq('equipment_id', equipmentId)
+                        .eq('test_definition_id', testId)
+                        .select()
+                        .single();
+                    return retryData;
+                }
+                throw insertError;
+            }
+            return insertData;
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
