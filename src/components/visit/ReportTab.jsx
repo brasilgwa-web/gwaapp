@@ -29,18 +29,27 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [generalObservations, setGeneralObservations] = useState(visit.general_observations || '');
     const [discharges, setDischarges] = useState(visit.discharges_drainages || '');
 
-    // Fetch Client Details (to get default discharges) - Forced Fresh
-    const { data: clientDetails, refetch: refetchClient } = useQuery({
-        queryKey: ['client_full', visit.client_id], // New key to force refresh
+    // Fetch Client Details (to get default discharges) - Direct Supabase Call
+    const { data: clientDetails } = useQuery({
+        queryKey: ['client_direct', visit.client_id],
         queryFn: async () => {
             if (!visit.client_id) return null;
-            console.log("Fetching client details for:", visit.client_id);
-            const res = await Client.filter({ id: visit.client_id });
-            console.log("Client FULL result:", JSON.stringify(res[0], null, 2)); // Debugging
-            return res && res.length > 0 ? res[0] : null;
+            console.log("Fetching client DIRECT for:", visit.client_id);
+            const { data, error } = await supabase
+                .from('clients')
+                .select('*')
+                .eq('id', visit.client_id)
+                .single();
+
+            if (error) {
+                console.error("Direct fetch error:", error);
+                return null;
+            }
+            console.log("Client DIRECT result:", data);
+            return data;
         },
         enabled: !visit.discharges_drainages && !readOnly,
-        staleTime: 0 // Always fetch fresh
+        staleTime: 0
     });
 
     // Effect to load default if empty and available
