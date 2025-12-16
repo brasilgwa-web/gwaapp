@@ -43,43 +43,17 @@ export default function ReadingsTab({ visit, readOnly }) {
             setIsSaving(true);
             const status = calculateStatus(value, min, max, tolerance);
 
-            // Fetch existing record directly from DB to avoid stale cache issues
-            const { data: existingRecord } = await supabase
-                .from('test_results')
-                .select('*')
-                .eq('visit_id', visit.id)
-                .eq('equipment_id', equipmentId)
-                .eq('test_definition_id', testId)
-                .maybeSingle();
+            // Use database function for atomic upsert (most reliable approach)
+            const { data, error } = await supabase.rpc('upsert_test_result', {
+                p_visit_id: visit.id,
+                p_equipment_id: equipmentId,
+                p_test_definition_id: testId,
+                p_measured_value: parseFloat(value),
+                p_status_light: status
+            });
 
-            if (existingRecord) {
-                // Update existing record using CTID if no ID column, or use matching columns
-                const { data, error } = await supabase
-                    .from('test_results')
-                    .update({ measured_value: parseFloat(value), status_light: status })
-                    .eq('visit_id', visit.id)
-                    .eq('equipment_id', equipmentId)
-                    .eq('test_definition_id', testId)
-                    .select()
-                    .single();
-                if (error) throw error;
-                return data;
-            } else {
-                // Insert new record
-                const { data, error } = await supabase
-                    .from('test_results')
-                    .insert({
-                        visit_id: visit.id,
-                        equipment_id: equipmentId,
-                        test_definition_id: testId,
-                        measured_value: parseFloat(value),
-                        status_light: status
-                    })
-                    .select()
-                    .single();
-                if (error) throw error;
-                return data;
-            }
+            if (error) throw error;
+            return data;
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
