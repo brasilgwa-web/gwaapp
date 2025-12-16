@@ -29,23 +29,27 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [generalObservations, setGeneralObservations] = useState(visit.general_observations || '');
     const [discharges, setDischarges] = useState(visit.discharges_drainages || '');
 
-    // Fetch Client Details (to get default discharges) - Optimized
-    const { data: clientDetails } = useQuery({
-        queryKey: ['client', visit.client_id],
+    // Fetch Client Details (to get default discharges) - Forced Fresh
+    const { data: clientDetails, refetch: refetchClient } = useQuery({
+        queryKey: ['client_full', visit.client_id], // New key to force refresh
         queryFn: async () => {
             if (!visit.client_id) return null;
+            console.log("Fetching client details for:", visit.client_id);
             const res = await Client.filter({ id: visit.client_id });
-            return res[0];
+            console.log("Client fetch result:", res);
+            return res && res.length > 0 ? res[0] : null;
         },
-        enabled: !visit.discharges_drainages && !readOnly // Only fetch if we need a default
+        enabled: !visit.discharges_drainages && !readOnly,
+        staleTime: 0 // Always fetch fresh
     });
 
     // Effect to load default if empty and available
     useEffect(() => {
         if (!discharges && clientDetails?.default_discharges_drainages) {
+            console.log("Applying default discharges:", clientDetails.default_discharges_drainages);
             setDischarges(clientDetails.default_discharges_drainages);
         }
-    }, [clientDetails]); // Only run when clientDetails arrives
+    }, [clientDetails, discharges]); // Trigger on client load or if discharges is empty (safeguard)
 
     // UI States
     const [isGenerating, setIsGenerating] = useState(false);
