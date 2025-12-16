@@ -1,31 +1,19 @@
 export const calculateStatus = (value, min, max, tolerancePercent = 10) => {
     if (value === null || value === undefined || value === '') return 'neutral';
     const val = parseFloat(value);
-    if (isNaN(val)) return 'neutral';
+    const minVal = parseFloat(min);
+    const maxVal = parseFloat(max);
 
-    // Determine tolerance range
-    // Logic: 
-    // Green: [min + tol, max - tol]
-    // Yellow: [min, min + tol) OR (max - tol, max]
-    // Red: < min OR > max
-    
-    // Wait, the prompt says:
-    // Green: [min, max]
-    // Yellow: "close to limits" (e.g. 10% distance). 
-    // This implies Yellow is INSIDE the accepted range but close to edge, OR slightly OUTSIDE?
-    // Usually "Warning" (Yellow) is when you are approaching the limit but still safe, OR slightly off.
-    // Prompt says: "Amarelo: valor medido próximo dos limites". 
-    // Red: "Abaixo do minimo ou acima do maximo".
-    // So RED is strictly OUTSIDE [min, max].
-    // So YELLOW must be INSIDE [min, max] but close to edges.
-    
-    if (val < min || val > max) return 'red';
+    // console.log("Calc Status:", { val, minVal, maxVal, tolerancePercent }); // Debug log
 
-    const range = max - min;
-    const safetyMargin = range * (tolerancePercent / 100); // e.g. 10% of the total range
+    if (isNaN(val) || isNaN(minVal) || isNaN(maxVal)) return 'neutral';
 
-    // If value is within the bottom 10% of the range or top 10% of the range
-    if ((val - min) <= safetyMargin || (max - val) <= safetyMargin) {
+    if (val < minVal || val > maxVal) return 'red';
+
+    const range = maxVal - minVal;
+    const safetyMargin = range * ((tolerancePercent || 10) / 100);
+
+    if ((val - minVal) <= safetyMargin || (maxVal - val) <= safetyMargin) {
         return 'yellow';
     }
 
