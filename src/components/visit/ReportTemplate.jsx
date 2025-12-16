@@ -75,8 +75,9 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                             const start = new Date(visit.service_start_time);
                                             const end = new Date(visit.service_end_time);
                                             const diffMs = end - start;
-                                            const hours = Math.floor(diffMs / (1000 * 60 * 60));
-                                            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                                            const totalMinutes = Math.round(diffMs / (1000 * 60));
+                                            const hours = Math.floor(totalMinutes / 60);
+                                            const minutes = totalMinutes % 60;
                                             return `${hours}h ${minutes}min`;
                                         })()}
                                     </div>

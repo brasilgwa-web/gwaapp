@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import { Visit, Client, TestResult } from "@/api/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
-import { Users, ClipboardCheck, AlertTriangle, CheckCircle2, FileText, Filter, Calendar as CalendarIcon, ArrowRight } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { Users, ClipboardCheck, AlertTriangle, CheckCircle2, FileText, Filter, Calendar as CalendarIcon, ArrowRight, Clock } from "lucide-react";
 import { useNavigate, Link } from 'react-router-dom';
 import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,6 +18,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const [filters, setFilters] = useState({
         clientId: "all",
+        technicianId: "all",
         startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
         endDate: format(new Date(), 'yyyy-MM-dd')
     });
@@ -28,6 +30,19 @@ export default function Dashboard() {
         queryFn: async () => {
             try {
                 return await Client.list();
+            } catch (e) {
+                return [];
+            }
+        }
+    });
+
+    // Fetch Technicians (Users) for Filter
+    const { data: technicians } = useQuery({
+        queryKey: ['technicians'],
+        queryFn: async () => {
+            try {
+                const { data } = await supabase.from('profiles').select('id, name, email');
+                return data || [];
             } catch (e) {
                 return [];
             }
@@ -51,7 +66,8 @@ export default function Dashboard() {
                     const visitDate = parseISO(v.visit_date);
                     const dateMatch = isWithinInterval(visitDate, { start, end });
                     const clientMatch = filters.clientId === "all" || v.client_id === filters.clientId;
-                    return dateMatch && clientMatch;
+                    const techMatch = filters.technicianId === "all" || v.technician_id === filters.technicianId;
+                    return dateMatch && clientMatch && techMatch;
                 });
 
                 // 3. Fetch Results (optimization: only for filtered visits would be better, but tricky with current SDK without massive queries)
@@ -109,6 +125,26 @@ export default function Dashboard() {
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 10); // Top 10 clients
 
+                // Calculate Time Per Visit (for visits with both start and end times)
+                const timePerVisit = filteredVisits
+                    .filter(v => v.service_start_time && v.service_end_time)
+                    .map(v => {
+                        const start = new Date(v.service_start_time);
+                        const end = new Date(v.service_end_time);
+                        const minutes = Math.round((end - start) / (1000 * 60));
+                        return {
+                            clientName: clientMap.get(v.client_id) || 'Desconhecido',
+                            date: format(parseISO(v.visit_date), 'dd/MM'),
+                            minutes,
+                            hours: (minutes / 60).toFixed(1)
+                        };
+                    })
+                    .slice(0, 15); // Last 15 visits with time data
+
+                const avgTimeMinutes = timePerVisit.length > 0
+                    ? Math.round(timePerVisit.reduce((sum, v) => sum + v.minutes, 0) / timePerVisit.length)
+                    : 0;
+
                 return {
                     totalVisits,
                     completedVisits,
@@ -117,7 +153,9 @@ export default function Dashboard() {
                     complianceRate,
                     chartData,
                     criticalVisits: enrichedCriticalVisits,
-                    visitsByClient
+                    visitsByClient,
+                    timePerVisit,
+                    avgTimeMinutes
                 };
             } catch (error) {
                 console.error("Dashboard data fetch failed:", error);
@@ -129,7 +167,9 @@ export default function Dashboard() {
                     complianceRate: 0,
                     chartData: [],
                     criticalVisits: [],
-                    visitsByClient: []
+                    visitsByClient: [],
+                    timePerVisit: [],
+                    avgTimeMinutes: 0
                 };
             }
         }
@@ -160,6 +200,23 @@ export default function Dashboard() {
                                 <SelectItem value="all">Todos os Clientes</SelectItem>
                                 {clients?.map(c => (
                                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-slate-400" />
+                        <Select
+                            value={filters.technicianId}
+                            onValueChange={(val) => setFilters(prev => ({ ...prev, technicianId: val }))}
+                        >
+                            <SelectTrigger className="w-[160px] h-9 text-xs">
+                                <SelectValue placeholder="Técnico" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos Técnicos</SelectItem>
+                                {technicians?.map(t => (
+                                    <SelectItem key={t.id} value={t.id}>{t.name || t.email}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -308,6 +365,55 @@ export default function Dashboard() {
                                 </Button>
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* Time Spent Per Visit Chart */}
+                <Card className="md:col-span-2">
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                            Tempo por Visita
+                            {stats?.avgTimeMinutes > 0 && (
+                                <span className="text-sm font-normal text-slate-500 ml-auto">
+                                    Média: {Math.floor(stats.avgTimeMinutes / 60)}h {stats.avgTimeMinutes % 60}min
+                                </span>
+                            )}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        {stats?.timePerVisit?.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={stats.timePerVisit} margin={{ top: 5, right: 30, left: 20, bottom: 30 }}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis
+                                        dataKey="clientName"
+                                        tick={{ fontSize: 10 }}
+                                        angle={-45}
+                                        textAnchor="end"
+                                        height={80}
+                                        interval={0}
+                                    />
+                                    <YAxis
+                                        label={{ value: 'Minutos', angle: -90, position: 'insideLeft', fontSize: 11 }}
+                                        tick={{ fontSize: 11 }}
+                                    />
+                                    <Tooltip
+                                        formatter={(value) => [`${value} min`, 'Tempo']}
+                                        labelFormatter={(label) => `Cliente: ${label}`}
+                                    />
+                                    <Bar dataKey="minutes" fill="#8b5cf6" name="Tempo (min)" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                                <div className="text-center">
+                                    <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                    <p>Nenhuma visita com tempo registrado</p>
+                                    <p className="text-xs mt-1">Os tempos são capturados automaticamente</p>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
