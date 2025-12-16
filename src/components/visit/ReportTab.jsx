@@ -177,14 +177,80 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         updateMutation.mutate({ client_signature_url: url });
     };
 
+    // --- Stock Management Logic ---
+    const handleSyncStock = async (action) => {
+        // Fetch dosages for this visit
+        const { data: dosages, error } = await supabase.from('visit_dosages').select('*').eq('visit_id', visit.id);
+        if (error || !dosages) {
+            console.error("Error fetching dosages for stock sync:", error);
+            return;
+        }
+
+        for (const dosage of dosages) {
+            if (!dosage.product_id || !dosage.dosage_applied) continue;
+
+            const { data: clientProduct } = await supabase.from('client_products')
+                .select('*')
+                .eq('client_id', visit.client_id)
+                .eq('product_id', dosage.product_id)
+                .single();
+
+            if (clientProduct) {
+                const currentStock = parseFloat(clientProduct.current_stock || 0);
+                const applied = parseFloat(dosage.dosage_applied);
+                let newStock = currentStock;
+
+                if (action === 'deduct') {
+                    newStock = currentStock - applied;
+                } else if (action === 'restore') {
+                    newStock = currentStock + applied;
+                }
+
+                await supabase.from('client_products')
+                    .update({ current_stock: newStock })
+                    .eq('id', clientProduct.id);
+            }
+        }
+    };
+
     const handleFinalize = async () => {
-        if (!confirm("Tem certeza que deseja finalizar? Após isso, não será possível editar.")) return;
-        updateMutation.mutate({ status: 'completed' });
+        if (!confirm("Tem certeza que deseja finalizar? O estoque será debitado e a visita será concluída.")) return;
+
+        try {
+            // Deduct Stock if not already deducted
+            if (!visit.stock_deducted_at) {
+                await handleSyncStock('deduct');
+            }
+
+            updateMutation.mutate({
+                status: 'completed',
+                stock_deducted_at: new Date().toISOString()
+            });
+
+        } catch (error) {
+            console.error("Finalize Error:", error);
+            alert("Erro ao finalizar visita (Estoque): " + error.message);
+        }
     };
 
     const handleReopen = async () => {
-        if (!confirm("Reabrir esta visita para edição?")) return;
-        updateMutation.mutate({ status: 'in_progress' });
+        if (!confirm("Reabrir esta visita? O estoque será estornado para permitir edição.")) return;
+
+        try {
+            // Restore Stock if it was deducted
+            if (visit.stock_deducted_at) {
+                await handleSyncStock('restore');
+            }
+
+            updateMutation.mutate({
+                status: 'in_progress',
+                stock_deducted_at: null // Reset flag
+            });
+
+        } catch (error) {
+            console.error("Reopen Error:", error);
+            alert("Erro ao reabrir visita (Estoque): " + error.message);
+        }
     };
 
     // PDF & Email Logic
