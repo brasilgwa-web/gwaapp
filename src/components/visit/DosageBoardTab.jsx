@@ -170,13 +170,16 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                 <th className="px-4 py-3 text-center">Recomendado</th>
                                                 <th className="px-4 py-3 text-center w-32">Estoque (Kg/L)</th>
                                                 <th className="px-4 py-3 text-center w-32">Aplicado</th>
-                                                <th className="px-4 py-3 text-center w-32">Final</th>
+                                                <th className="px-4 py-3 text-center w-32">Estoque Final</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {eq.products.map(prod => {
                                                 const record = getDosageRecord(eq.id, prod.id);
-                                                const applied = record?.dosage_applied || 0;
+                                                // Default to recommended dosage if no record exists
+                                                const recommended = prod.doseParams?.recommended_dosage || 0;
+                                                const applied = record?.dosage_applied ?? recommended;
+
                                                 const currentStock = prod.clientStock?.current_stock || 0;
                                                 const minStock = prod.clientStock?.min_stock || 0;
                                                 const finalStock = currentStock - applied;
@@ -189,10 +192,10 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                             <div className="text-xs text-slate-400">{prod.unit}</div>
                                                         </td>
                                                         <td className="px-4 py-3 text-center text-xs text-slate-500">
-                                                            {prod.doseParams?.recommended_dosage || '-'}
+                                                            {recommended || '-'}
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
-                                                            <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600">
+                                                            <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600 block w-full text-center">
                                                                 {currentStock}
                                                             </span>
                                                         </td>
@@ -203,7 +206,7 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                     type="number" step="0.1"
                                                                     className="h-8 w-20 text-center font-bold text-blue-600 border-blue-200 focus:border-blue-500"
                                                                     placeholder="0"
-                                                                    defaultValue={record?.dosage_applied}
+                                                                    defaultValue={applied}
                                                                     onBlur={(e) => handleBlur(eq.id, prod.id, e.target.value)}
                                                                     disabled={readOnly}
                                                                 />
