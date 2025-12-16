@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, TestResult, Visit, AnalysisGroup, AnalysisGroupItem, VisitEquipmentSample } from "@/api/entities";
 import { Input } from "@/components/ui/input";
@@ -220,6 +220,26 @@ export default function ReadingsTab({ visit, readOnly }) {
             return { ...location, equipments: equipmentsWithTests };
         }).filter(l => l.equipments.length > 0);
     }, [locations, allLocationEquipments, allEquipments, equipmentTestsLinks, allTests, visitSamples, analysisGroupItems]);
+
+    // Auto-apply default analysis group for equipments that have one configured
+    useEffect(() => {
+        if (!allLocationEquipments || !visitSamples || readOnly) return;
+
+        allLocationEquipments.forEach(le => {
+            // Check if equipment has a default group and no sample exists with a group
+            if (le.default_analysis_group_id) {
+                const existingSample = visitSamples.find(s => s.location_equipment_id === le.id);
+                // Only auto-apply if no group is currently selected
+                if (!existingSample?.analysis_group_id) {
+                    applyGroupMutation.mutate({
+                        locationEquipmentId: le.id,
+                        groupId: le.default_analysis_group_id,
+                        equipmentId: le.equipment_id
+                    });
+                }
+            }
+        });
+    }, [allLocationEquipments, visitSamples?.length, readOnly]);
 
 
     const toggleAll = () => {

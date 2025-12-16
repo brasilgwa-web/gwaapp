@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, Product, EquipmentDosageParams } from "@/api/entities";
+import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, Product, EquipmentDosageParams, AnalysisGroup } from "@/api/entities";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -150,6 +151,19 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
         queryFn: () => EquipmentDosageParams.filter({ location_equipment_id: locationEquipment.id })
     });
 
+    // --- Analysis Groups Logic ---
+    const { data: analysisGroups } = useQuery({ queryKey: ['analysisGroups'], queryFn: () => AnalysisGroup.list() });
+
+    const updateDefaultGroup = useMutation({
+        mutationFn: async (groupId) => {
+            const { error } = await supabase.from('location_equipments')
+                .update({ default_analysis_group_id: groupId || null })
+                .eq('id', locationEquipment.id);
+            if (error) throw error;
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locationEquipments'] })
+    });
+
     const addProduct = useMutation({
         mutationFn: (data) => EquipmentDosageParams.create({ ...data, location_equipment_id: locationEquipment.id }),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipmentDosageParams', locationEquipment.id] })
@@ -171,6 +185,26 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                 <DialogHeader>
                     <DialogTitle>Configurar {catalogItem?.name}</DialogTitle>
                 </DialogHeader>
+
+                {/* Default Analysis Group Selector */}
+                <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 mb-4">
+                    <Label className="text-sm font-bold text-purple-800 mb-2 block">Grupo de Análise Padrão</Label>
+                    <Select
+                        value={locationEquipment.default_analysis_group_id || "none"}
+                        onValueChange={(val) => updateDefaultGroup.mutate(val === "none" ? null : val)}
+                    >
+                        <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Selecione um grupo..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="none">Nenhum (selecionar manualmente)</SelectItem>
+                            {analysisGroups?.map(g => (
+                                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-purple-600 mt-1">Este grupo será carregado automaticamente na visita.</p>
+                </div>
 
                 <Tabs defaultValue="products" className="flex-1 overflow-hidden flex flex-col">
                     <TabsList>
