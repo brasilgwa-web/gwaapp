@@ -123,27 +123,33 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                         <table className="w-full text-xs border-x border-b border-slate-200">
                                             <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
                                                 <tr>
-                                                    <th className="px-3 py-1.5 w-[30%]">Parâmetro</th>
-                                                    <th className="px-3 py-1.5 text-center w-[15%]">Unidade</th>
-                                                    <th className="px-3 py-1.5 text-center w-[20%]">Faixa Controle</th>
-                                                    <th className="px-3 py-1.5 text-center w-[15%]">Resultado</th>
-                                                    <th className="px-3 py-1.5 text-right w-[20%]">Metodologia</th>
+                                                    <th className="px-2 py-1.5">Parâmetro</th>
+                                                    <th className="px-2 py-1.5 text-center">Und.</th>
+                                                    <th className="px-2 py-1.5 text-center">VMP</th>
+                                                    <th className="px-2 py-1.5 text-center">LD</th>
+                                                    <th className="px-2 py-1.5 text-center">LQ</th>
+                                                    <th className="px-2 py-1.5 text-center">Incerteza</th>
+                                                    <th className="px-2 py-1.5 text-center">Resultado</th>
+                                                    <th className="px-2 py-1.5 text-right">Metodologia</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {eq.tests.map((test, tIdx) => (
                                                     <tr key={tIdx} className={tIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
-                                                        <td className="px-3 py-1 font-medium text-slate-700">{test.name}</td>
-                                                        <td className="px-3 py-1 text-center text-slate-500">{test.unit || '-'}</td>
-                                                        <td className="px-3 py-1 text-center font-mono text-slate-500">{test.min_value} - {test.max_value}</td>
-                                                        <td className="px-3 py-1 text-center font-bold">
+                                                        <td className="px-2 py-1 font-medium text-slate-700">{test.name}</td>
+                                                        <td className="px-2 py-1 text-center text-slate-500">{test.unit || '-'}</td>
+                                                        <td className="px-2 py-1 text-center font-mono text-slate-500 text-[10px]">{test.min_value} - {test.max_value}</td>
+                                                        <td className="px-2 py-1 text-center text-slate-400">{test.ld || '-'}</td>
+                                                        <td className="px-2 py-1 text-center text-slate-400">{test.lq || '-'}</td>
+                                                        <td className="px-2 py-1 text-center text-slate-400 text-[10px]">{test.method_uncertainty || '-'}</td>
+                                                        <td className="px-2 py-1 text-center font-bold">
                                                             {test.result ? (
                                                                 <span className={test.result.status_light === 'red' ? 'text-red-600' : test.result.status_light === 'green' ? 'text-green-600' : 'text-yellow-600'}>
                                                                     {test.result.measured_value}
                                                                 </span>
                                                             ) : '-'}
                                                         </td>
-                                                        <td className="px-3 py-1 text-right text-[9px] text-slate-400 truncate max-w-[100px]" title={test.methodology}>
+                                                        <td className="px-2 py-1 text-right text-[9px] text-slate-400 truncate max-w-[80px]" title={test.methodology}>
                                                             {test.methodology || '-'}
                                                         </td>
                                                     </tr>
