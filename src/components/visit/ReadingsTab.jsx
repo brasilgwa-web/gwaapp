@@ -43,25 +43,43 @@ export default function ReadingsTab({ visit, readOnly }) {
             setIsSaving(true);
             const status = calculateStatus(value, min, max, tolerance);
 
-            // Use Upsert to handle race conditions (409 errors)
-            const payload = {
-                visit_id: visit.id,
-                equipment_id: equipmentId,
-                test_definition_id: testId,
-                measured_value: parseFloat(value),
-                status_light: status
-            };
-
-            // We need to fetch the ID if we want to be clean, but upsert on unique keys works best.
-            // Assumption: unique constraint on (visit_id, equipment_id, test_definition_id) exists.
-            const { data, error } = await supabase
+            // Fetch existing record directly from DB to avoid stale cache issues
+            const { data: existingRecord } = await supabase
                 .from('test_results')
-                .upsert(payload, { onConflict: 'visit_id, equipment_id, test_definition_id' })
-                .select()
-                .single();
+                .select('*')
+                .eq('visit_id', visit.id)
+                .eq('equipment_id', equipmentId)
+                .eq('test_definition_id', testId)
+                .maybeSingle();
 
-            if (error) throw error;
-            return data;
+            if (existingRecord) {
+                // Update existing record using CTID if no ID column, or use matching columns
+                const { data, error } = await supabase
+                    .from('test_results')
+                    .update({ measured_value: parseFloat(value), status_light: status })
+                    .eq('visit_id', visit.id)
+                    .eq('equipment_id', equipmentId)
+                    .eq('test_definition_id', testId)
+                    .select()
+                    .single();
+                if (error) throw error;
+                return data;
+            } else {
+                // Insert new record
+                const { data, error } = await supabase
+                    .from('test_results')
+                    .insert({
+                        visit_id: visit.id,
+                        equipment_id: equipmentId,
+                        test_definition_id: testId,
+                        measured_value: parseFloat(value),
+                        status_light: status
+                    })
+                    .select()
+                    .single();
+                if (error) throw error;
+                return data;
+            }
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
