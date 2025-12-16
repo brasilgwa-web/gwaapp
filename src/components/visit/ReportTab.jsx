@@ -29,6 +29,24 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [generalObservations, setGeneralObservations] = useState(visit.general_observations || '');
     const [discharges, setDischarges] = useState(visit.discharges_drainages || '');
 
+    // Fetch Client Details (to get default discharges) - Optimized
+    const { data: clientDetails } = useQuery({
+        queryKey: ['client', visit.client_id],
+        queryFn: async () => {
+            if (!visit.client_id) return null;
+            const res = await Client.filter({ id: visit.client_id });
+            return res[0];
+        },
+        enabled: !visit.discharges_drainages && !readOnly // Only fetch if we need a default
+    });
+
+    // Effect to load default if empty and available
+    useEffect(() => {
+        if (!discharges && clientDetails?.default_discharges_drainages) {
+            setDischarges(clientDetails.default_discharges_drainages);
+        }
+    }, [clientDetails]); // Only run when clientDetails arrives
+
     // UI States
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSending, setIsSending] = useState(false);
