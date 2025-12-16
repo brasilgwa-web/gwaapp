@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+import { supabase } from "@/lib/supabase";
+
 export default function ReadingsTab({ visit, readOnly }) {
     if (!visit) return null;
     const queryClient = useQueryClient();
@@ -40,13 +42,26 @@ export default function ReadingsTab({ visit, readOnly }) {
         mutationFn: async ({ testId, equipmentId, value, min, max, tolerance }) => {
             setIsSaving(true);
             const status = calculateStatus(value, min, max, tolerance);
-            const existing = results?.find(r => r.test_definition_id === testId && r.equipment_id === equipmentId);
 
-            if (existing) {
-                return TestResult.update(existing.id, { measured_value: parseFloat(value), status_light: status });
-            } else {
-                return TestResult.create({ visit_id: visit.id, test_definition_id: testId, equipment_id: equipmentId, measured_value: parseFloat(value), status_light: status });
-            }
+            // Use Upsert to handle race conditions (409 errors)
+            const payload = {
+                visit_id: visit.id,
+                equipment_id: equipmentId,
+                test_definition_id: testId,
+                measured_value: parseFloat(value),
+                status_light: status
+            };
+
+            // We need to fetch the ID if we want to be clean, but upsert on unique keys works best.
+            // Assumption: unique constraint on (visit_id, equipment_id, test_definition_id) exists.
+            const { data, error } = await supabase
+                .from('test_results')
+                .upsert(payload, { onConflict: 'visit_id, equipment_id, test_definition_id' })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
