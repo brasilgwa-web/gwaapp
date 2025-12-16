@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from "@/lib/supabase";
+import { generateTechnicalAnalysis } from "@/lib/gemini";
 import { Visit, ObservationTemplate } from "@/api/entities";
 import { Core } from "@/api/integrations";
 import { useAuth } from "@/context/AuthContext";
@@ -123,42 +124,30 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const handleGenerateAI = async () => {
         setIsGenerating(true);
         try {
-            const context = {
-                client: visit.client?.name,
-                location: visit.location?.name,
-                date: visit.visit_date,
+            // Prepare visit data for AI analysis
+            const visitData = {
+                client: visit.client,
                 results: results?.map(r => ({
-                    test: r.test_definition_id,
-                    value: r.measured_value,
-                    status: r.status_light
-                }))
+                    test_name: r.test_name || r.test?.name,
+                    test_definition_id: r.test_definition_id,
+                    measured_value: r.measured_value,
+                    unit: r.unit || r.test?.unit,
+                    status_light: r.status_light
+                })),
+                dosages: [], // Could be populated from report data if available
+                observations: observations
             };
 
-            const prompt = `
-                Atue como um engenheiro químico sênior da WGA Brasil.
-                Analise os seguintes dados de uma visita técnica:
-                Cliente: ${context.client}
-                Local: ${context.location}
-                Resultados: ${JSON.stringify(context.results)}
+            const aiAnalysis = await generateTechnicalAnalysis(visitData);
 
-                Gere um texto técnico, direto e profissional para o relatório (em português).
-                Estruture em: 
-                1. Resumo Geral
-                2. Anomalias Encontradas (focar nos vermelhos/amarelos)
-                3. Recomendações de ação.
-                
-                Se tudo estiver verde, elogie a manutenção.
-                Use texto corrido e bullets onde necessário.
-            `;
-
-            const response = await Core.InvokeLLM({ prompt: prompt });
-
-            const newObs = observations ? observations + "\n\n--- Análise IA ---\n" + response.result : response.result;
+            const newObs = observations
+                ? observations + "\n\n--- Análise IA (Gemini) ---\n" + aiAnalysis
+                : aiAnalysis;
             setObservations(newObs);
             updateMutation.mutate({ observations: newObs, ai_generated_analysis: true });
         } catch (error) {
             console.error("AI Error:", error);
-            alert("Erro ao gerar análise IA.");
+            alert("Erro ao gerar análise IA: " + (error.message || 'Erro desconhecido'));
         } finally {
             setIsGenerating(false);
         }
