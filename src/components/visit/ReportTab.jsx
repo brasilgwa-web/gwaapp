@@ -179,54 +179,27 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
     // --- Stock Management Logic ---
     const handleSyncStock = async (action) => {
-        console.log("=== STOCK SYNC DEBUG ===");
-        console.log("Action:", action);
-        console.log("Visit ID:", visit.id);
-        console.log("Client ID:", visit.client_id);
-
         // Fetch dosages for this visit
         const { data: dosages, error } = await supabase.from('visit_dosages').select('*').eq('visit_id', visit.id);
-        console.log("Dosages found:", dosages, "Error:", error);
-
-        if (error || !dosages || dosages.length === 0) {
-            console.error("No dosages found for stock sync:", error);
-            return;
-        }
+        if (error || !dosages || dosages.length === 0) return;
 
         for (const dosage of dosages) {
-            console.log("Processing dosage:", dosage);
+            if (!dosage.product_id || !dosage.dosage_applied) continue;
 
-            if (!dosage.product_id || !dosage.dosage_applied) {
-                console.log("Skipping - missing product_id or dosage_applied");
-                continue;
-            }
-
-            const { data: clientProduct, error: cpError } = await supabase.from('client_products')
+            const { data: clientProduct } = await supabase.from('client_products')
                 .select('*')
                 .eq('client_id', visit.client_id)
                 .eq('product_id', dosage.product_id)
                 .single();
 
-            console.log("Client Product found:", clientProduct, "Error:", cpError);
-
             if (clientProduct) {
                 const currentStock = parseFloat(clientProduct.current_stock || 0);
                 const applied = parseFloat(dosage.dosage_applied);
-                let newStock = currentStock;
+                let newStock = action === 'deduct' ? currentStock - applied : currentStock + applied;
 
-                if (action === 'deduct') {
-                    newStock = currentStock - applied;
-                } else if (action === 'restore') {
-                    newStock = currentStock + applied;
-                }
-
-                console.log(`Updating stock: ${currentStock} ${action === 'deduct' ? '-' : '+'} ${applied} = ${newStock}`);
-
-                const { error: updateError } = await supabase.from('client_products')
+                await supabase.from('client_products')
                     .update({ current_stock: newStock })
                     .eq('id', clientProduct.id);
-
-                console.log("Update result:", updateError ? updateError : "Success");
             }
         }
     };
