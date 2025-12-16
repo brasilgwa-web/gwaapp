@@ -75,7 +75,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                             const start = new Date(visit.service_start_time);
                                             const end = new Date(visit.service_end_time);
                                             const diffMs = end - start;
-                                            const totalMinutes = Math.round(diffMs / (1000 * 60));
+                                            const totalMinutes = Math.ceil(diffMs / (1000 * 60));
                                             const hours = Math.floor(totalMinutes / 60);
                                             const minutes = totalMinutes % 60;
                                             return `${hours}h ${minutes}min`;
@@ -171,13 +171,13 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                     Quadro de Dosagens e Estoques
                 </h2>
 
-                {fullReportStructure?.some(l => l.equipments.some(e => e.dosages.some(d => d.record?.current_stock || d.record?.dosage_applied))) ? (
+                {fullReportStructure?.some(l => l.equipments.some(e => e.dosages?.some(d => d.product))) ? (
                     <div className="space-y-6">
                         {fullReportStructure.map((loc, idx) => (
                             <div key={idx} className="space-y-4">
                                 {loc.equipments.map((eq, eqIdx) => {
-                                    // Filter only products that have data or are relevant
-                                    const activeDosages = eq.dosages.filter(d => d.record?.current_stock != null || d.record?.dosage_applied != null || d.product);
+                                    // Show ALL configured products for this equipment (not just modified ones)
+                                    const activeDosages = eq.dosages.filter(d => d.product);
                                     if (activeDosages.length === 0) return null;
 
                                     return (
