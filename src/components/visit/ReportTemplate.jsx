@@ -58,7 +58,28 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                             {visit.service_start_time && (
                                 <>
                                     <div className="text-slate-500 text-right">Chegada:</div>
-                                    <div className="font-medium">{visit.service_start_time.substring(0, 5)}</div>
+                                    <div className="font-medium">{new Date(visit.service_start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                                </>
+                            )}
+                            {visit.service_end_time && (
+                                <>
+                                    <div className="text-slate-500 text-right">Saída:</div>
+                                    <div className="font-medium">{new Date(visit.service_end_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                                </>
+                            )}
+                            {visit.service_start_time && visit.service_end_time && (
+                                <>
+                                    <div className="text-slate-500 text-right">Tempo Dedicado:</div>
+                                    <div className="font-medium text-blue-600">
+                                        {(() => {
+                                            const start = new Date(visit.service_start_time);
+                                            const end = new Date(visit.service_end_time);
+                                            const diffMs = end - start;
+                                            const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                                            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                                            return `${hours}h ${minutes}min`;
+                                        })()}
+                                    </div>
                                 </>
                             )}
                         </div>

@@ -174,7 +174,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     };
 
     const handleSaveSignature = (url) => {
-        updateMutation.mutate({ client_signature_url: url });
+        // Capture service_end_time when client signs
+        updateMutation.mutate({
+            client_signature_url: url,
+            service_end_time: new Date().toISOString()
+        });
     };
 
     // --- Stock Management Logic ---

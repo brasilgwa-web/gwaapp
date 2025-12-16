@@ -52,6 +52,11 @@ export default function DosageBoardTab({ visit, readOnly }) {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['dosages', visit.id] });
+            // Auto-capture service_start_time on first change
+            if (!visit?.service_start_time && visit?.status !== 'completed') {
+                Visit.update(visit.id, { service_start_time: new Date().toISOString() })
+                    .then(() => queryClient.invalidateQueries({ queryKey: ['visit', visit.id] }));
+            }
             setTimeout(() => setIsSaving(false), 500);
         }
     });

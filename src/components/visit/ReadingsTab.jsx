@@ -85,6 +85,11 @@ export default function ReadingsTab({ visit, readOnly }) {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['results', visit.id] });
+            // Auto-capture service_start_time on first change
+            if (!visit?.service_start_time && visit?.status !== 'completed') {
+                Visit.update(visit.id, { service_start_time: new Date().toISOString() })
+                    .then(() => queryClient.invalidateQueries({ queryKey: ['visit', visit.id] }));
+            }
             if (visit?.status === 'scheduled') {
                 Visit.update(visit.id, { status: 'in_progress' }).then(() => queryClient.invalidateQueries({ queryKey: ['visit', visit.id] }));
             }
