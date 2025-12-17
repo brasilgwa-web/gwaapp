@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Settings, Box, FlaskConical, Beaker } from "lucide-react";
+import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle } from "lucide-react";
 
 export default function ClientEquipmentManager({ client }) {
     const queryClient = useQueryClient();
@@ -188,7 +188,19 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
 
                 {/* Default Analysis Group Selector */}
                 <div className="bg-purple-50 p-3 rounded-lg border border-purple-100 mb-4">
-                    <Label className="text-sm font-bold text-purple-800 mb-2 block">Grupo de Análise Padrão</Label>
+                    <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-bold text-purple-800">Grupo de Análise Padrão</Label>
+                        {updateDefaultGroup.isPending && (
+                            <span className="text-xs text-purple-600 flex items-center gap-1">
+                                <Loader2 className="w-3 h-3 animate-spin" /> Salvando...
+                            </span>
+                        )}
+                        {updateDefaultGroup.isSuccess && !updateDefaultGroup.isPending && (
+                            <span className="text-xs text-green-600 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" /> Salvo!
+                            </span>
+                        )}
+                    </div>
                     <Select
                         value={locationEquipment.default_analysis_group_id || "none"}
                         onValueChange={(val) => updateDefaultGroup.mutate(val === "none" ? null : val)}
