@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Visit, Client, Location, TestResult, VisitPhoto } from "@/api/entities";
+import { Visit, Client, Location, TestResult, TestDefinition, VisitPhoto } from "@/api/entities";
 import { Core } from "@/api/integrations";
 import { useAuth } from "@/context/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,6 +45,26 @@ export default function VisitDetailPage() {
             ]);
 
             return { ...visit, client, location };
+        },
+        enabled: !!id
+    });
+
+    // Fetch Test Results for this visit
+    const { data: testResults } = useQuery({
+        queryKey: ['testResults', id],
+        queryFn: async () => {
+            if (!id) return [];
+            const results = await TestResult.filter({ visit_id: id }, undefined, 1000);
+            // Enrich with test definition names
+            const testDefs = await TestDefinition.list(undefined, 1000);
+            return results.map(r => {
+                const def = testDefs.find(t => t.id === r.test_definition_id);
+                return {
+                    ...r,
+                    test_name: def?.name || 'Teste',
+                    unit: def?.unit || ''
+                };
+            });
         },
         enabled: !!id
     });
@@ -185,7 +205,7 @@ export default function VisitDetailPage() {
                 <TabsContent value="report" className="mt-2">
                     <ReportTab
                         visit={visit}
-                        results={[]}
+                        results={testResults || []}
                         onUpdateVisit={refetch}
                         readOnly={isReadOnly}
                         isAdmin={isAdmin}
