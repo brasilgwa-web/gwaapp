@@ -23,6 +23,29 @@ export default function Login() {
 
     const from = location.state?.from?.pathname || "/";
 
+    // Translate common Supabase auth errors to Portuguese
+    const translateAuthError = (errorMessage) => {
+        const translations = {
+            'Invalid login credentials': 'Credenciais inválidas. Verifique seu email e senha.',
+            'Email not confirmed': 'Email não confirmado. Verifique sua caixa de entrada.',
+            'User not found': 'Usuário não encontrado.',
+            'Invalid password': 'Senha incorreta.',
+            'Email already registered': 'Este email já está cadastrado.',
+            'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres.',
+            'Signup requires a valid password': 'É necessário uma senha válida.',
+            'Unable to validate email address': 'Email inválido.',
+            'Email rate limit exceeded': 'Muitas tentativas. Aguarde alguns minutos.',
+            'Too many requests': 'Muitas tentativas. Aguarde alguns minutos.',
+        };
+
+        for (const [eng, pt] of Object.entries(translations)) {
+            if (errorMessage?.toLowerCase().includes(eng.toLowerCase())) {
+                return pt;
+            }
+        }
+        return errorMessage || 'Erro de autenticação. Tente novamente.';
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -45,7 +68,7 @@ export default function Login() {
             }
         } catch (err) {
             console.error("Auth failed:", err);
-            setError(err.message || (isLogin ? "Erro ao entrar." : "Erro ao cadastrar."));
+            setError(translateAuthError(err.message));
         } finally {
             setIsLoading(false);
         }
