@@ -362,15 +362,48 @@ export default function ReadingsTab({ visit, readOnly }) {
                                         </div>
                                     </div>
 
-                                    {/* Results Table */}
-                                    <div className="overflow-x-auto">
+                                    {/* Results - Mobile card layout */}
+                                    <div className="md:hidden divide-y divide-slate-100">
+                                        {equipment.tests.map((test, idx) => {
+                                            const result = getResult(test.id, equipment.id);
+                                            const status = result?.status_light || 'neutral';
+                                            return (
+                                                <div key={test.id} className="p-3 space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-medium text-slate-700">{test.name}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            {status === 'red' && <div className="w-3 h-3 rounded-full bg-red-500" />}
+                                                            {status === 'green' && <div className="w-3 h-3 rounded-full bg-green-500" />}
+                                                            {status === 'yellow' && <div className="w-3 h-3 rounded-full bg-yellow-400" />}
+                                                            {status === 'neutral' && <div className="w-3 h-3 rounded-full bg-slate-200" />}
+                                                        </div>
+                                                    </div>
+                                                    {test.observation && <div className="text-xs text-slate-400">{test.observation}</div>}
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs text-slate-500">VMP: {test.min_value} - {test.max_value} {test.unit}</span>
+                                                        <Input
+                                                            type="number" step="0.01"
+                                                            defaultValue={result?.measured_value}
+                                                            placeholder="Resultado"
+                                                            className={`h-9 flex-1 text-right font-mono ${getStatusColor(status)}`}
+                                                            onBlur={(e) => handleBlur(test, equipment.id, e.target.value)}
+                                                            disabled={readOnly}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Results - Desktop Table */}
+                                    <div className="hidden md:block overflow-x-auto">
                                         <table className="w-full text-sm text-left">
                                             <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-xs border-b">
                                                 <tr>
-                                                    <th className="px-4 py-2 min-w-[150px]">Parâmetro</th>
-                                                    <th className="px-4 py-2 text-center min-w-[100px]">VMP</th>
-                                                    <th className="px-4 py-2 text-center min-w-[60px]">Unid.</th>
-                                                    <th className="px-4 py-2 text-right min-w-[100px]">Resultado</th>
+                                                    <th className="px-4 py-2">Parâmetro</th>
+                                                    <th className="px-4 py-2 text-center">VMP</th>
+                                                    <th className="px-4 py-2 text-center">Unid.</th>
+                                                    <th className="px-4 py-2 text-right">Resultado</th>
                                                     <th className="px-4 py-2 text-center w-12">St</th>
                                                 </tr>
                                             </thead>

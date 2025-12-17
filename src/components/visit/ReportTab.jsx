@@ -487,7 +487,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             </Card>
 
             {/* Footer / Actions */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col md:flex-row items-center gap-3 md:status md:border-0 md:bg-transparent md:p-0">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col gap-3 md:relative md:flex-row md:border-0 md:bg-transparent md:p-0">
                 <a href={`/report/${visit.id}`} target="_blank" className="w-full md:flex-1">
                     <Button variant="outline" className="w-full"><FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web</Button>
                 </a>
