@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -15,7 +17,8 @@ import {
   Construction,
   Beaker,
   FileText,
-  Bot
+  Bot,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
@@ -28,14 +31,45 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { filterNavigation, ROUTE_PERMISSIONS } from "@/lib/permissions";
 
 export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  // Temporary mock role until we migrate roles to Supabase
-  const userRole = user?.app_metadata?.role || 'admin';
+  // Fetch user permissions from database
+  const { data: userPermissions } = useQuery({
+    queryKey: ['userPermissions', user?.role_id],
+    queryFn: async () => {
+      if (!user?.role_id) {
+        // Fallback: get tecnico permissions
+        const { data: tecnicoRole } = await supabase
+          .from('roles')
+          .select('id')
+          .eq('name', 'tecnico')
+          .single();
+
+        if (tecnicoRole) {
+          const { data: perms } = await supabase
+            .from('role_permissions')
+            .select('route_key')
+            .eq('role_id', tecnicoRole.id);
+          return perms?.map(p => p.route_key) || ['dashboard', 'visits'];
+        }
+        return ['dashboard', 'visits'];
+      }
+
+      const { data: perms } = await supabase
+        .from('role_permissions')
+        .select('route_key')
+        .eq('role_id', user.role_id);
+
+      return perms?.map(p => p.route_key) || [];
+    },
+    enabled: true,
+    staleTime: 60000, // Cache for 1 minute
+  });
 
   const handleLogout = async () => {
     try {
@@ -71,23 +105,37 @@ export default function Layout() {
     );
   }
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Minhas Visitas', href: '/visits', icon: ClipboardCheck },
+  // All navigation items with permission keys
+  const allNavigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permKey: 'dashboard' },
+    { name: 'Minhas Visitas', href: '/visits', icon: ClipboardCheck, permKey: 'visits' },
   ];
 
-  const setupNavigation = [
-    { name: 'Clientes e Locais', href: '/setup/clients', icon: Users },
-    { name: 'Equipamentos', href: '/setup/equipments', icon: Box },
-    { name: 'Testes', href: '/setup/tests', icon: TestTube },
-    { name: 'Produtos Químicos', href: '/setup/products', icon: Beaker },
-    { name: 'Modelos de Relatório', href: '/setup/templates', icon: FileText },
+  const allSetupNavigation = [
+    { name: 'Clientes e Locais', href: '/setup/clients', icon: Users, permKey: 'setup_clients' },
+    { name: 'Equipamentos', href: '/setup/equipments', icon: Box, permKey: 'setup_equipments' },
+    { name: 'Testes', href: '/setup/tests', icon: TestTube, permKey: 'setup_tests' },
+    { name: 'Produtos Químicos', href: '/setup/products', icon: Beaker, permKey: 'setup_products' },
+    { name: 'Modelos de Relatório', href: '/setup/templates', icon: FileText, permKey: 'setup_templates' },
   ];
 
-  const adminNavigation = [
-    { name: 'Gestão de Usuários', href: '/users', icon: Users },
-    { name: 'Configurações IA', href: '/setup/ai', icon: Bot },
+  const allAdminNavigation = [
+    { name: 'Gestão de Usuários', href: '/users', icon: Users, permKey: 'admin_users' },
+    { name: 'Configurações IA', href: '/setup/ai', icon: Bot, permKey: 'admin_ai' },
   ];
+
+  // Filter navigation based on user permissions
+  const navigation = allNavigation.filter(item =>
+    userPermissions?.includes(item.permKey)
+  );
+
+  const setupNavigation = allSetupNavigation.filter(item =>
+    userPermissions?.includes(item.permKey)
+  );
+
+  const adminNavigation = allAdminNavigation.filter(item =>
+    userPermissions?.includes(item.permKey)
+  );
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -106,7 +154,6 @@ export default function Layout() {
         </Button>
         <div className="flex items-center gap-2">
           <div className="bg-blue-600 p-2 rounded-lg">
-            {/* Using LayoutDashboard as a logo placeholder if FlaskConical is missing or just use text */}
             <LayoutDashboard className="w-5 h-5 text-white" />
           </div>
           <span className="font-bold text-lg text-slate-800">WGA Brasil</span>
@@ -147,93 +194,101 @@ export default function Layout() {
                 );
               })}
 
-              {/* Submenu Cadastros */}
-              <div className="pt-4">
-                <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Cadastros</p>
-                {setupNavigation.map((item) => {
-                  const Icon = item.icon;
-                  const active = isActive(item.href);
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      onClick={() => setIsSidebarOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                        }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {item.name}
-                    </Link>
-                  );
-                })}
+              {/* Submenu Cadastros - only show if user has any setup permissions */}
+              {setupNavigation.length > 0 && (
+                <div className="pt-4">
+                  <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Cadastros</p>
+                  {setupNavigation.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                          }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
 
-                {/* Administration Menu - showing for everyone temporarily or check role */}
-                {(userRole === 'admin' || true) && (
-                  <>
-                    <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-4">Administração</p>
-                    {adminNavigation.map((item) => {
-                      const Icon = item.icon;
-                      const active = isActive(item.href);
-                      return (
-                        <Link
-                          key={item.name}
-                          to={item.href}
-                          onClick={() => setIsSidebarOpen(false)}
-                          className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
-                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                            }`}
-                        >
-                          <Icon className="w-5 h-5" />
-                          {item.name}
-                        </Link>
-                      );
-                    })}
-                  </>
-                )}
-              </div>
+              {/* Administration Menu - only show if user has any admin permissions */}
+              {adminNavigation.length > 0 && (
+                <div className="pt-4">
+                  <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Administração</p>
+                  {adminNavigation.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                          }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </nav>
 
+            {/* Bottom user section */}
             <div className="p-4 border-t border-slate-800">
-              <Link to="/profile" onClick={() => setIsSidebarOpen(false)}>
-                <div className="flex items-center gap-3 px-4 py-3 mb-2 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold">
-                    {user?.email?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{user?.email || 'Usuário'}</p>
-                    <p className="text-xs text-slate-500 truncate">Ver Perfil</p>
-                  </div>
-                </div>
-              </Link>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-slate-400 hover:text-red-400 hover:bg-slate-800"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-start gap-3 p-2 h-auto text-left text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl">
+                    <Avatar className="w-10 h-10 border-2 border-slate-700">
+                      <AvatarImage src={user?.avatar_url} />
+                      <AvatarFallback className="bg-slate-700 text-white">
+                        {user?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col flex-1 overflow-hidden">
+                      <span className="font-medium text-white text-sm truncate">{user?.full_name || 'Usuário'}</span>
+                      <span className="text-xs text-slate-500 truncate">{user?.email}</span>
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-50 w-full print:overflow-visible print:h-auto print:block">
-          <div className="p-4 lg:p-8 max-w-7xl mx-auto print:p-0 print:max-w-none print:mx-0">
-            <Outlet />
-          </div>
-        </main>
-
-        {/* Overlay for mobile sidebar */}
+        {/* Overlay for mobile */}
         {isSidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+            className="fixed inset-0 z-30 bg-black/50 lg:hidden print:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto bg-slate-50 print:overflow-visible">
+          <div className="p-4 md:p-8 max-w-7xl mx-auto print:p-0 print:max-w-none">
+            <Outlet />
+          </div>
+        </main>
       </div>
     </div>
   );

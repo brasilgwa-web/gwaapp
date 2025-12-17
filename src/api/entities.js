@@ -128,6 +128,10 @@ export const LocationEquipment = createAdapter('location_equipments', 'created_a
 export const ClientProduct = createAdapter('client_products', 'created_at');
 export const EquipmentDosageParams = createAdapter('equipment_dosage_params', 'created_at');
 
+// V1.3 RBAC Entities
+export const Role = createAdapter('roles', 'created_at');
+export const RolePermission = createAdapter('role_permissions', 'created_at');
+
 // Helper to get formatted Report Number
 export const getNextReportNumber = async () => {
     // This would likely be a server-side function or an RPC, 
