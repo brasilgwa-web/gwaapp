@@ -14,7 +14,8 @@ import {
   UserCircle,
   Construction,
   Beaker,
-  FileText
+  FileText,
+  Bot
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ export default function Layout() {
 
   const adminNavigation = [
     { name: 'Gestão de Usuários', href: '/users', icon: Users },
+    { name: 'Configurações IA', href: '/setup/ai', icon: Bot },
   ];
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
