@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product } from "@/api/entities";
+import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product, EquipmentDosageParams } from "@/api/entities";
 
 export function useReportData(id) {
     return useQuery({
@@ -35,7 +35,7 @@ export function useReportData(id) {
             const locationEquipmentsResults = await Promise.all(locationEquipmentPromises);
             const allLocationEquipments = locationEquipmentsResults.flat();
 
-            // 4. Fetch remaining data (Results, Definitions, Equipment, Tests, Photos, Users, Dosages, Samples, Products)
+            // 4. Fetch remaining data (Results, Definitions, Equipment, Tests, Photos, Users, Dosages, Samples, Products, DosageParams)
             const [
                 allResults,
                 allDefinitions,
@@ -45,7 +45,8 @@ export function useReportData(id) {
                 allUsers,
                 allDosages,
                 allSamples,
-                allProducts
+                allProducts,
+                allDosageParams
             ] = await Promise.all([
                 TestResult.filter({ visit_id: id }, undefined, 2000),
                 TestDefinition.list(undefined, 1000),
@@ -55,7 +56,8 @@ export function useReportData(id) {
                 User.list(undefined, 1000),
                 VisitDosage.filter({ visit_id: id }, undefined, 1000),
                 VisitEquipmentSample.filter({ visit_id: id }, undefined, 1000),
-                Product.list(undefined, 1000)
+                Product.list(undefined, 1000),
+                EquipmentDosageParams.list(undefined, 1000)
             ]);
 
             // Attempt to find technician
@@ -92,11 +94,26 @@ export function useReportData(id) {
                         // Attach Sample Info (Time, Complementary)
                         const sampleInfo = allSamples.find(s => s.location_equipment_id === le.id);
 
-                        // Attach Dosages (Product + Dosage Record)
-                        const dosages = allProducts.map(prod => {
-                            const record = allDosages.find(d => d.location_equipment_id === le.id && d.product_id === prod.id);
-                            return { product: prod, record };
-                        });
+                        // Attach Dosages - Only products CONFIGURED for this equipment
+                        // Get configured products from equipment_dosage_params
+                        const configuredParams = allDosageParams.filter(dp => dp.location_equipment_id === le.id);
+
+                        const dosages = configuredParams.map(param => {
+                            const product = allProducts.find(p => p.id === param.product_id);
+                            if (!product) return null;
+
+                            // Check if there's a visit-specific record (user modified value)
+                            const visitRecord = allDosages.find(d => d.location_equipment_id === le.id && d.product_id === param.product_id);
+
+                            // Use visit record if exists, otherwise use defaults from params
+                            const record = visitRecord || {
+                                current_stock: null, // Will show '-' in report
+                                dosage_applied: param.recommended_dosage, // Use recommended as default
+                                isDefault: true // Flag to identify it's a default value
+                            };
+
+                            return { product, record, recommended_dosage: param.recommended_dosage };
+                        }).filter(Boolean);
 
                         return {
                             equipment: { ...catalogItem, id: le.id }, // id is LocationEquipment ID
