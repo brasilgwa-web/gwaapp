@@ -129,9 +129,12 @@ export default function RoleManager() {
     const handleSubmit = (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
+
+        // For system roles, the name input is disabled so FormData won't include it
+        // Fallback to editingRole.name for system roles
         const data = {
-            name: formData.get('name'),
-            description: formData.get('description'),
+            name: formData.get('name') || editingRole?.name,
+            description: formData.get('description') || '',
             permissions: selectedPermissions
         };
 
