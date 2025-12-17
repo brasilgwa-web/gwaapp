@@ -124,6 +124,8 @@ export default function ClientEquipmentManager({ client }) {
 
 function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }) {
     const queryClient = useQueryClient();
+    // Local state for selected group - needed because prop is snapshot when dialog opens
+    const [selectedGroupId, setSelectedGroupId] = React.useState(locationEquipment?.default_analysis_group_id || null);
 
     // --- Tests Logic ---
     const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list() });
@@ -160,8 +162,12 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                 .update({ default_analysis_group_id: groupId || null })
                 .eq('id', locationEquipment.id);
             if (error) throw error;
+            return groupId;
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locationEquipments'] })
+        onSuccess: (groupId) => {
+            setSelectedGroupId(groupId); // Update local state immediately
+            queryClient.invalidateQueries({ queryKey: ['locationEquipments'] });
+        }
     });
 
     const addProduct = useMutation({
@@ -202,8 +208,12 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                         )}
                     </div>
                     <Select
-                        value={locationEquipment.default_analysis_group_id || "none"}
-                        onValueChange={(val) => updateDefaultGroup.mutate(val === "none" ? null : val)}
+                        value={selectedGroupId || "none"}
+                        onValueChange={(val) => {
+                            const newGroupId = val === "none" ? null : val;
+                            setSelectedGroupId(newGroupId); // Update local state immediately for UI
+                            updateDefaultGroup.mutate(newGroupId);
+                        }}
                     >
                         <SelectTrigger className="bg-white">
                             <SelectValue placeholder="Selecione um grupo..." />
