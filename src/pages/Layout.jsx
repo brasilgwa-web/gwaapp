@@ -45,8 +45,9 @@ export default function Layout() {
     }
   };
 
-  // Check if status is explicitly active (treat undefined as inactive for safety, though we try to set it above)
-  if (user && user.user_metadata?.status !== 'active' && user.user_metadata?.status !== undefined) {
+  // Check if status is explicitly active (profile.status is merged into user in AuthContext)
+  // The admin updates profiles.status, so we check user.status (NOT user_metadata.status)
+  if (user && user.status !== 'active' && user.status !== undefined) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
         <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center space-y-4">
