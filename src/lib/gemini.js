@@ -1,16 +1,51 @@
 // Gemini AI Service for WGA Brasil
-// Uses Google's Gemini API
+// Uses Google's Gemini API - Settings loaded from database
+
+import { supabase } from './supabase';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-// gemini-2.5-flash - user confirmed available (20 RPD free)
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+// Default values if DB settings not available
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MAX_TOKENS = 2048;
+
+// Fetch AI settings from database
+async function getAISettings() {
+    try {
+        const { data, error } = await supabase
+            .from('ai_settings')
+            .select('setting_key, setting_value');
+
+        if (error) {
+            console.warn('Could not load AI settings from DB, using defaults:', error);
+            return { model: DEFAULT_MODEL, maxTokens: DEFAULT_MAX_TOKENS, prompt: null };
+        }
+
+        const settings = {};
+        data?.forEach(s => {
+            settings[s.setting_key] = s.setting_value;
+        });
+
+        return {
+            model: settings.gemini_model || DEFAULT_MODEL,
+            maxTokens: parseInt(settings.max_output_tokens) || DEFAULT_MAX_TOKENS,
+            prompt: settings.technical_analysis_prompt || null
+        };
+    } catch (e) {
+        console.warn('Error fetching AI settings:', e);
+        return { model: DEFAULT_MODEL, maxTokens: DEFAULT_MAX_TOKENS, prompt: null };
+    }
+}
 
 export async function generateTechnicalAnalysis(visitData) {
     if (!GEMINI_API_KEY) {
         console.error('VITE_GEMINI_API_KEY not configured');
         throw new Error('API key não configurada. Configure VITE_GEMINI_API_KEY no .env');
     }
+
+    // Load settings from DB
+    const aiSettings = await getAISettings();
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model}:generateContent`;
 
     const { client, results, dosages, observations } = visitData;
 
@@ -26,7 +61,19 @@ export async function generateTechnicalAnalysis(visitData) {
         `- ${d.product_name}: Estoque ${d.current_stock || '-'}, Aplicado ${d.dosage_applied || '-'}`
     ).join('\n') || 'Nenhuma dosagem registrada';
 
-    const prompt = `
+    // Use custom prompt from DB if available, otherwise use default
+    let prompt;
+    if (aiSettings.prompt) {
+        // Replace variables in custom prompt
+        prompt = aiSettings.prompt
+            .replace('{{client_name}}', client?.name || 'N/A')
+            .replace('{{client_address}}', client?.address || 'N/A')
+            .replace('{{results}}', resultsText)
+            .replace('{{dosages}}', dosagesText)
+            .replace('{{observations}}', observations || 'Nenhuma observação prévia');
+    } else {
+        // Default prompt
+        prompt = `
 Você é um engenheiro químico sênior especializado em tratamento de água e efluentes da WGA Brasil.
 
 DADOS DA VISITA TÉCNICA:
@@ -56,6 +103,7 @@ FORMATO:
 - Finalize com recomendações práticas
 
 Responda em português brasileiro:`;
+    }
 
     try {
         const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -71,7 +119,7 @@ Responda em português brasileiro:`;
                     temperature: 0.7,
                     topK: 40,
                     topP: 0.95,
-                    maxOutputTokens: 500,
+                    maxOutputTokens: aiSettings.maxTokens,
                 }
             })
         });

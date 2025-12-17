@@ -4,12 +4,23 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bot, Save, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+
+const AVAILABLE_MODELS = [
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Rápido)' },
+    { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (Mais Rápido)' },
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemma-3-27b', label: 'Gemma 3 27B (Open Source)' },
+];
 
 export default function SetupAI() {
     const queryClient = useQueryClient();
     const [prompt, setPrompt] = useState('');
+    const [model, setModel] = useState('gemini-2.5-flash');
+    const [maxTokens, setMaxTokens] = useState('2048');
     const [isSaved, setIsSaved] = useState(false);
 
     // Fetch current AI settings
@@ -18,34 +29,38 @@ export default function SetupAI() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('ai_settings')
-                .select('*')
-                .eq('setting_key', 'technical_analysis_prompt')
-                .single();
+                .select('*');
 
             if (error && error.code !== 'PGRST116') {
                 console.error('Error fetching AI settings:', error);
-                return null;
+                return [];
             }
-            return data;
+            return data || [];
         }
     });
 
-    // Initialize prompt from settings
+    // Initialize form from settings
     useEffect(() => {
-        if (settings?.setting_value) {
-            setPrompt(settings.setting_value);
+        if (settings?.length) {
+            const promptSetting = settings.find(s => s.setting_key === 'technical_analysis_prompt');
+            const modelSetting = settings.find(s => s.setting_key === 'gemini_model');
+            const tokensSetting = settings.find(s => s.setting_key === 'max_output_tokens');
+
+            if (promptSetting?.setting_value) setPrompt(promptSetting.setting_value);
+            if (modelSetting?.setting_value) setModel(modelSetting.setting_value);
+            if (tokensSetting?.setting_value) setMaxTokens(tokensSetting.setting_value);
         }
     }, [settings]);
 
     // Save mutation
     const saveMutation = useMutation({
-        mutationFn: async (newPrompt) => {
+        mutationFn: async ({ key, value, description }) => {
             const { error } = await supabase
                 .from('ai_settings')
                 .upsert({
-                    setting_key: 'technical_analysis_prompt',
-                    setting_value: newPrompt,
-                    description: 'Prompt usado para gerar análise técnica automática via Gemini AI',
+                    setting_key: key,
+                    setting_value: value,
+                    description: description,
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'setting_key' });
 
@@ -53,20 +68,40 @@ export default function SetupAI() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['aiSettings'] });
-            setIsSaved(true);
-            setTimeout(() => setIsSaved(false), 2000);
         },
         onError: (err) => {
             alert('Erro ao salvar: ' + err.message);
         }
     });
 
-    const handleSave = () => {
-        saveMutation.mutate(prompt);
+    const handleSaveAll = async () => {
+        try {
+            await saveMutation.mutateAsync({
+                key: 'gemini_model',
+                value: model,
+                description: 'Nome do modelo Gemini a ser usado'
+            });
+            await saveMutation.mutateAsync({
+                key: 'max_output_tokens',
+                value: maxTokens,
+                description: 'Número máximo de tokens na resposta'
+            });
+            await saveMutation.mutateAsync({
+                key: 'technical_analysis_prompt',
+                value: prompt,
+                description: 'Prompt usado para gerar análise técnica automática via Gemini AI'
+            });
+            setIsSaved(true);
+            setTimeout(() => setIsSaved(false), 2000);
+        } catch (err) {
+            // Error handled in mutation
+        }
     };
 
     const handleReset = () => {
-        const defaultPrompt = `Você é um engenheiro químico sênior especializado em tratamento de água e efluentes da WGA Brasil.
+        setModel('gemini-2.5-flash');
+        setMaxTokens('2048');
+        setPrompt(`Você é um engenheiro químico sênior especializado em tratamento de água e efluentes da WGA Brasil.
 
 DADOS DA VISITA TÉCNICA:
 Cliente: {{client_name}}
@@ -94,8 +129,7 @@ FORMATO:
 - Liste anomalias encontradas se houver
 - Finalize com recomendações práticas
 
-Responda em português brasileiro:`;
-        setPrompt(defaultPrompt);
+Responda em português brasileiro:`);
     };
 
     if (isLoading) {
@@ -113,15 +147,55 @@ Responda em português brasileiro:`;
                     <Bot className="w-6 h-6 text-purple-600" />
                     Configurações de IA
                 </h1>
-                <p className="text-slate-500">Configure o prompt usado pela IA para gerar análises técnicas.</p>
+                <p className="text-slate-500">Configure o modelo e prompt usados pela IA para gerar análises técnicas.</p>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Configurações do Modelo</CardTitle>
+                    <CardDescription>Escolha o modelo Gemini e limite de tokens.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Model Selection */}
+                        <div className="space-y-2">
+                            <Label htmlFor="model">Modelo Gemini</Label>
+                            <Select value={model} onValueChange={setModel}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o modelo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {AVAILABLE_MODELS.map(m => (
+                                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-500">Modelos disponíveis variam conforme sua API key.</p>
+                        </div>
+
+                        {/* Max Tokens */}
+                        <div className="space-y-2">
+                            <Label htmlFor="maxTokens">Máximo de Tokens</Label>
+                            <Input
+                                id="maxTokens"
+                                type="number"
+                                value={maxTokens}
+                                onChange={(e) => setMaxTokens(e.target.value)}
+                                min="256"
+                                max="8192"
+                                step="256"
+                            />
+                            <p className="text-xs text-slate-500">Controla o tamanho da resposta (recomendado: 2048).</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Prompt de Análise Técnica</CardTitle>
                     <CardDescription>
-                        Este texto é enviado ao Gemini AI junto com os dados da visita.
-                        Use as variáveis abaixo para inserir dados dinâmicos:
+                        Este texto é enviado ao Gemini junto com os dados da visita.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -144,7 +218,7 @@ Responda em português brasileiro:`;
                             id="prompt"
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
-                            rows={20}
+                            rows={16}
                             className="font-mono text-sm"
                             placeholder="Digite o prompt para a IA..."
                         />
@@ -156,7 +230,7 @@ Responda em português brasileiro:`;
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Restaurar Padrão
                         </Button>
-                        <Button onClick={handleSave} disabled={saveMutation.isPending}>
+                        <Button onClick={handleSaveAll} disabled={saveMutation.isPending}>
                             {saveMutation.isPending ? (
                                 <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                             ) : isSaved ? (
@@ -164,7 +238,7 @@ Responda em português brasileiro:`;
                             ) : (
                                 <Save className="w-4 h-4 mr-2" />
                             )}
-                            {isSaved ? 'Salvo!' : 'Salvar Alterações'}
+                            {isSaved ? 'Salvo!' : 'Salvar Tudo'}
                         </Button>
                     </div>
 
@@ -172,9 +246,9 @@ Responda em português brasileiro:`;
                     <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                         <div className="text-xs text-amber-700">
-                            <strong>Atenção:</strong> Alterações no prompt afetam todas as futuras análises de IA.
-                            O prompt atual usa o modelo <code className="bg-amber-100 px-1 rounded">gemini-2.0-flash-exp</code>.
-                            Mantenha as variáveis entre chaves duplas para inserção correta dos dados.
+                            <strong>Atenção:</strong> Alterações afetam todas as futuras análises de IA.
+                            Modelo atual: <code className="bg-amber-100 px-1 rounded">{model}</code> |
+                            Tokens: <code className="bg-amber-100 px-1 rounded">{maxTokens}</code>
                         </div>
                     </div>
                 </CardContent>
