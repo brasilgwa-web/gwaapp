@@ -27,9 +27,9 @@ export default function DosageBoardTab({ visit, readOnly }) {
         queryFn: () => VisitDosage.filter({ visit_id: visit.id }, undefined, 1000)
     });
 
-    // Save Mutation
+    // Save Mutation - handles both dosage_applied and current_stock
     const saveDosageMutation = useMutation({
-        mutationFn: async ({ locationEquipmentId, productId, value }) => {
+        mutationFn: async ({ locationEquipmentId, productId, field, value }) => {
             setIsSaving(true);
             const numValue = value === '' ? null : parseFloat(value);
 
@@ -40,13 +40,13 @@ export default function DosageBoardTab({ visit, readOnly }) {
             );
 
             if (existing) {
-                return VisitDosage.update(existing.id, { dosage_applied: numValue });
+                return VisitDosage.update(existing.id, { [field]: numValue });
             } else {
                 return VisitDosage.create({
                     visit_id: visit.id,
                     location_equipment_id: locationEquipmentId,
                     product_id: productId,
-                    dosage_applied: numValue
+                    [field]: numValue
                 });
             }
         },
@@ -66,8 +66,8 @@ export default function DosageBoardTab({ visit, readOnly }) {
         }
     });
 
-    const handleBlur = (locationEquipmentId, productId, value) => {
-        saveDosageMutation.mutate({ locationEquipmentId, productId, value });
+    const handleBlur = (locationEquipmentId, productId, field, value) => {
+        saveDosageMutation.mutate({ locationEquipmentId, productId, field, value });
     };
 
     const getDosageRecord = (locEqId, prodId) => dosages?.find(d => d.location_equipment_id === locEqId && d.product_id === prodId);
@@ -205,9 +205,14 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                             {recommended || '-'}
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
-                                                            <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600 block w-full text-center">
-                                                                {currentStock}
-                                                            </span>
+                                                            <Input
+                                                                type="number" step="0.1"
+                                                                className="h-8 w-20 text-center font-mono border-slate-200"
+                                                                placeholder="0"
+                                                                defaultValue={record?.current_stock ?? currentStock}
+                                                                onBlur={(e) => handleBlur(eq.id, prod.id, 'current_stock', e.target.value)}
+                                                                disabled={readOnly}
+                                                            />
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
                                                             <div className="flex items-center justify-center gap-2">
@@ -217,7 +222,7 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                     className="h-8 w-20 text-center font-bold text-blue-600 border-blue-200 focus:border-blue-500"
                                                                     placeholder="0"
                                                                     defaultValue={applied}
-                                                                    onBlur={(e) => handleBlur(eq.id, prod.id, e.target.value)}
+                                                                    onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
                                                                     disabled={readOnly}
                                                                 />
                                                             </div>
