@@ -205,14 +205,9 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                             {recommended || '-'}
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
-                                                            <Input
-                                                                type="number" step="0.1"
-                                                                className="h-8 w-20 text-center font-mono border-slate-200"
-                                                                placeholder="0"
-                                                                defaultValue={record?.current_stock ?? currentStock}
-                                                                onBlur={(e) => handleBlur(eq.id, prod.id, 'current_stock', e.target.value)}
-                                                                disabled={readOnly}
-                                                            />
+                                                            <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600 block w-full text-center">
+                                                                {currentStock || '-'}
+                                                            </span>
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
                                                             <div className="flex items-center justify-center gap-2">

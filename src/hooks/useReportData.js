@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product, EquipmentDosageParams } from "@/api/entities";
+import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product, EquipmentDosageParams, ClientProduct } from "@/api/entities";
 
 export function useReportData(id) {
     return useQuery({
@@ -35,7 +35,7 @@ export function useReportData(id) {
             const locationEquipmentsResults = await Promise.all(locationEquipmentPromises);
             const allLocationEquipments = locationEquipmentsResults.flat();
 
-            // 4. Fetch remaining data (Results, Definitions, Equipment, Tests, Photos, Users, Dosages, Samples, Products, DosageParams)
+            // 4. Fetch remaining data (Results, Definitions, Equipment, Tests, Photos, Users, Dosages, Samples, Products, DosageParams, ClientProducts)
             const [
                 allResults,
                 allDefinitions,
@@ -46,7 +46,8 @@ export function useReportData(id) {
                 allDosages,
                 allSamples,
                 allProducts,
-                allDosageParams
+                allDosageParams,
+                clientProducts
             ] = await Promise.all([
                 TestResult.filter({ visit_id: id }, undefined, 2000),
                 TestDefinition.list(undefined, 1000),
@@ -57,7 +58,8 @@ export function useReportData(id) {
                 VisitDosage.filter({ visit_id: id }, undefined, 1000),
                 VisitEquipmentSample.filter({ visit_id: id }, undefined, 1000),
                 Product.list(undefined, 1000),
-                EquipmentDosageParams.list(undefined, 1000)
+                EquipmentDosageParams.list(undefined, 1000),
+                visit.client_id ? ClientProduct.filter({ client_id: visit.client_id }, undefined, 1000) : Promise.resolve([])
             ]);
 
             // Attempt to find technician
@@ -105,12 +107,21 @@ export function useReportData(id) {
                             // Check if there's a visit-specific record (user modified value)
                             const visitRecord = allDosages.find(d => d.location_equipment_id === le.id && d.product_id === param.product_id);
 
+                            // Get stock from client_products
+                            const clientInventory = clientProducts?.find(cp => cp.product_id === param.product_id);
+                            const stockValue = clientInventory?.current_stock;
+
                             // Use visit record if exists, otherwise use defaults from params
                             const record = visitRecord || {
-                                current_stock: null, // Will show '-' in report
+                                current_stock: stockValue ?? null, // Use client inventory stock
                                 dosage_applied: param.recommended_dosage, // Use recommended as default
                                 isDefault: true // Flag to identify it's a default value
                             };
+
+                            // If visit record exists but doesn't have stock, use client inventory
+                            if (record && !record.current_stock && stockValue) {
+                                record.current_stock = stockValue;
+                            }
 
                             return { product, record, recommended_dosage: param.recommended_dosage };
                         }).filter(Boolean);
