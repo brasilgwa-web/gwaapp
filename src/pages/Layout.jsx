@@ -152,7 +152,15 @@ export default function Layout() {
   }, [userPermissions, location.pathname]);
 
   // Show Access Denied if user tries to access route via URL without permission
+  // Special case: redirect from dashboard to visits if user has visits permission
   if (userPermissions && !currentRouteAllowed) {
+    // If trying to access dashboard but has visits permission, redirect there
+    if ((location.pathname === '/dashboard' || location.pathname === '/') &&
+      userPermissions.includes('visits')) {
+      window.location.replace('/visits');
+      return null;
+    }
+
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
         <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center space-y-4">
