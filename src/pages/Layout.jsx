@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { filterNavigation, ROUTE_PERMISSIONS } from "@/lib/permissions";
+import { filterNavigation, ROUTE_PERMISSIONS, canAccessRoute } from "@/lib/permissions";
 
 export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
@@ -144,6 +144,34 @@ export default function Layout() {
     if (path !== '/' && location.pathname.startsWith(path)) return true;
     return false;
   }
+
+  // Check if current route is allowed
+  const currentRouteAllowed = React.useMemo(() => {
+    if (!userPermissions) return true; // Still loading, allow
+    return canAccessRoute(userPermissions, location.pathname);
+  }, [userPermissions, location.pathname]);
+
+  // Show Access Denied if user tries to access route via URL without permission
+  if (userPermissions && !currentRouteAllowed) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center space-y-4">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+            <Shield className="w-8 h-8 text-red-600" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">Acesso Negado</h1>
+          <p className="text-slate-600">
+            Você não tem permissão para acessar esta página.
+            Entre em contato com o administrador para solicitar acesso.
+          </p>
+          <Button onClick={() => window.history.back()} variant="outline" className="w-full">
+            Voltar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
