@@ -1,9 +1,9 @@
 // Gemini AI Service for WGA Brasil
-// Uses Google's Gemini API (free tier available)
+// Uses Google's Gemini API (free tier: 1500 requests/day for 1.5-flash)
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-// Use gemini-2.0-flash-exp for best results, or gemini-1.5-flash for stable
-const GEMINI_MODEL = 'gemini-2.0-flash-exp';
+// gemini-1.5-flash has 1500 req/day free tier
+const GEMINI_MODEL = 'gemini-1.5-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 export async function generateTechnicalAnalysis(visitData) {
