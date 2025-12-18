@@ -239,13 +239,24 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
     // PDF & Email Logic
     const handleOpenPreview = async () => {
+        // Simple confirmation instead of preview
+        const actionLabel = readOnly ? "reenviar e salvar" : "finalizar, enviar e salvar";
+        if (!confirm(`Tem certeza que deseja ${actionLabel} o relatório?`)) return;
+
         const { data } = await refetchReport();
 
         if (!data) {
             alert("Aguarde o carregamento completo dos dados do relatório.");
             return;
         }
+
+        // Set previewing to true to render the hidden PDF template
         setIsPreviewing(true);
+
+        // Wait for React to render the offscreen template, then generate PDF
+        setTimeout(() => {
+            handleConfirmSend();
+        }, 500);
     };
 
     const handleConfirmSend = async () => {
@@ -341,28 +352,27 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     return (
         <div className="space-y-6 pb-20 relative">
 
-            {/* Preview Dialog */}
-            <Dialog open={isPreviewing} onOpenChange={setIsPreviewing}>
-                <DialogContent className="max-w-[230mm] h-[90vh] overflow-y-auto bg-slate-100 p-8 flex flex-col items-center">
-                    <DialogHeader className="w-full max-w-[210mm] mb-4">
-                        <DialogTitle>Pré-visualização do PDF</DialogTitle>
-                        <DialogDescription>
-                            Verifique como o relatório ficará antes de enviar.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div id="report-preview-content" className="bg-white shadow-xl w-[210mm] min-h-[297mm] origin-top scale-95">
+            {/* Hidden Offscreen Container for PDF Generation - Not visible to user */}
+            {isPreviewing && (
+                <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
+                    <div id="report-preview-content" className="bg-white w-[210mm] min-h-[297mm]">
                         {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
                     </div>
+                </div>
+            )}
 
-                    {/* Buttons at the end of the preview content */}
-                    <div className="sticky bottom-0 bg-slate-100 pt-4 pb-2 w-full flex justify-center gap-4 border-t border-slate-200 mt-6">
-                        <Button variant="outline" onClick={() => setIsPreviewing(false)} disabled={isSending} className="px-6">Cancelar</Button>
-                        <Button onClick={handleConfirmSend} disabled={isSending} className="bg-green-600 hover:bg-green-700 text-lg px-8">
-                            {isSending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Send className="w-5 h-5 mr-2" />}
-                            {isSending ? uploadStatus : "Confirmar e Enviar"}
-                        </Button>
-                    </div>
+            {/* Loading Dialog - Shows progress during PDF generation/send */}
+            <Dialog open={isSending} onOpenChange={() => { }}>
+                <DialogContent className="max-w-sm text-center">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                            Processando...
+                        </DialogTitle>
+                        <DialogDescription className="text-center pt-2">
+                            {uploadStatus || "Gerando relatório..."}
+                        </DialogDescription>
+                    </DialogHeader>
                 </DialogContent>
             </Dialog>
 
