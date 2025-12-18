@@ -340,7 +340,7 @@ export default function Dashboard() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Todos Técnicos</SelectItem>
-                        {technicians?.map(t => <SelectItem key={t.id} value={t.id}>{t.name || t.email?.split('@')[0] || 'Técnico'}</SelectItem>)}
+                        {technicians?.map(t => <SelectItem key={t.id} value={t.id}>{t.full_name || t.email?.split('@')[0] || 'Técnico'}</SelectItem>)}
                     </SelectContent>
                 </Select>
                 <div className="h-4 w-px bg-slate-200 mx-1 hidden md:block"></div>

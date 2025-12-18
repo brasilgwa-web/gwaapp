@@ -301,6 +301,12 @@ export default function Layout() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <a href="/profile">
+                      <Users className="w-4 h-4 mr-2" />
+                      Meu Perfil
+                    </a>
+                  </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Sair
