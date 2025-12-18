@@ -211,6 +211,41 @@ export default function VisitDetailPage() {
                         isAdmin={isAdmin}
                     />
                 </TabsContent>
+
+                {/* Bottom Navigation Buttons */}
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report'];
+                            const currentIdx = tabs.indexOf(activeTab);
+                            if (currentIdx > 0) setActiveTab(tabs[currentIdx - 1]);
+                        }}
+                        disabled={activeTab === 'readings'}
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Anterior
+                    </Button>
+                    <span className="text-sm text-slate-500">
+                        {activeTab === 'readings' && 'Leituras'}
+                        {activeTab === 'dosages' && 'Dosagens'}
+                        {activeTab === 'photos' && 'Fotos'}
+                        {activeTab === 'details' && 'Detalhes'}
+                        {activeTab === 'report' && 'Relatório'}
+                    </span>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report'];
+                            const currentIdx = tabs.indexOf(activeTab);
+                            if (currentIdx < tabs.length - 1) setActiveTab(tabs[currentIdx + 1]);
+                        }}
+                        disabled={activeTab === 'report'}
+                    >
+                        Próximo
+                        <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
+                    </Button>
+                </div>
             </Tabs>
         </div>
     );

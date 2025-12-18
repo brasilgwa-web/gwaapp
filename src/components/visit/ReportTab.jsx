@@ -355,8 +355,9 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
                     </div>
 
-                    <div className="fixed bottom-6 right-6 flex gap-4 z-50">
-                        <Button variant="outline" onClick={() => setIsPreviewing(false)} disabled={isSending}>Cancelar</Button>
+                    {/* Buttons at the end of the preview content */}
+                    <div className="sticky bottom-0 bg-slate-100 pt-4 pb-2 w-full flex justify-center gap-4 border-t border-slate-200 mt-6">
+                        <Button variant="outline" onClick={() => setIsPreviewing(false)} disabled={isSending} className="px-6">Cancelar</Button>
                         <Button onClick={handleConfirmSend} disabled={isSending} className="bg-green-600 hover:bg-green-700 text-lg px-8">
                             {isSending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Send className="w-5 h-5 mr-2" />}
                             {isSending ? uploadStatus : "Confirmar e Enviar"}
