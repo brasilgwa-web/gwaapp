@@ -45,6 +45,8 @@ O **WGA Brasil** é um sistema completo para gerenciamento de visitas técnicas 
 2. Digite seu **Email** e **Senha**
 3. Clique em **Entrar**
 
+![Tela de Login](docs/images/login.png)
+
 > 💡 Se esqueceu a senha, entre em contato com o administrador.
 
 ### Primeiro Acesso
@@ -56,6 +58,8 @@ Novos usuários precisam ser aprovados por um administrador antes de acessar o s
 ## 📊 Dashboard
 
 O Dashboard exibe indicadores e estatísticas das visitas.
+
+![Dashboard Executivo](docs/images/dashboard.png)
 
 ### Filtros Disponíveis
 
@@ -102,6 +106,8 @@ Clique no ícone ⚙️ para:
 2. Use os filtros de data e técnico
 3. Clique em uma visita para ver detalhes
 
+![Lista de Visitas](docs/images/visitas.png)
+
 ### Criar Nova Visita
 
 1. Clique no botão **+ Nova Visita**
@@ -136,6 +142,8 @@ Registre os resultados dos testes/ensaios por equipamento:
    - 🟡 Amarelo = Atenção
    - 🔴 Vermelho = Crítico
 
+![Aba Leituras](docs/images/visita_leituras.png)
+
 > 💡 Os valores são salvos automaticamente ao sair do campo.
 
 ### Aba: Dosagens
@@ -145,6 +153,8 @@ Controle os produtos químicos aplicados:
 1. Veja os produtos configurados para cada equipamento
 2. Digite a **dosagem aplicada** (em ml, g, etc.)
 3. O sistema calcula automaticamente o débito no estoque
+
+![Aba Dosagens](docs/images/visita_dosagens.png)
 
 **Funcionalidades:**
 - Ver estoque atual do cliente
@@ -159,6 +169,8 @@ Registre fotos da visita:
 2. Tire a foto ou selecione da galeria
 3. As fotos ficam anexadas à visita
 
+![Aba Fotos](docs/images/visita_fotos.png)
+
 Para excluir: clique no ícone 🗑️ sobre a foto.
 
 ### Aba: Detalhes
@@ -170,7 +182,11 @@ Informações gerais da visita:
 - Status
 - Técnico responsável
 
+![Aba Detalhes](docs/images/visita_detalhes.png)
+
 ### Aba: Relatório
+
+![Aba Relatório](docs/images/visita_relatorio.png)
 
 #### Observações
 
@@ -237,6 +253,8 @@ Use os botões **< Anterior** e **Próximo >** no final da página para navegar 
    - **ID da Pasta do Drive** (para salvar PDFs)
    - **Descargas Padrão** (texto automático no relatório)
 
+![Cadastro de Clientes](docs/images/clientes.png)
+
 ### Gerenciar Locais
 
 Cada cliente pode ter múltiplos locais (filiais, torres, etc.):
@@ -267,6 +285,8 @@ Cada cliente pode ter múltiplos locais (filiais, torres, etc.):
    - ETA/ETE
    - etc.
 
+![Cadastro de Equipamentos](docs/images/equipamentos.png)
+
 ### Configuração
 
 Para cada tipo de equipamento, defina:
@@ -291,6 +311,8 @@ Para cada tipo de equipamento, defina:
    - **Limite Crítico Inferior** (abaixo = vermelho)
    - **Limite Crítico Superior** (acima = vermelho)
 
+![Cadastro de Testes](docs/images/testes.png)
+
 ### Indicadores de Cor
 
 | Resultado | Condição |
@@ -312,6 +334,8 @@ Para cada tipo de equipamento, defina:
    - **Unidade** (ex: litros, kg)
    - **Descrição**
 
+![Cadastro de Produtos](docs/images/produtos.png)
+
 ### Estoque por Cliente
 
 O estoque é gerenciado por cliente:
@@ -331,6 +355,8 @@ O estoque é gerenciado por cliente:
    - **Nome** (como aparece na lista)
    - **Conteúdo** (texto que será inserido)
 
+![Templates de Observação](docs/images/templates.png)
+
 ### Usar Template
 
 Na aba Relatório da visita:
@@ -345,6 +371,8 @@ Na aba Relatório da visita:
 ### Acessar
 
 1. Vá em **Cadastros** > **IA**
+
+![Configuração de IA](docs/images/ia_config.png)
 
 ### Configurações
 
@@ -381,6 +409,8 @@ Clique em **Restaurar Padrão** para usar o prompt original.
 1. Vá em **Usuários** no menu
 2. Veja a lista de todos os usuários
 
+![Gerenciamento de Usuários](docs/images/usuarios.png)
+
 ### Alterar Perfil de Acesso
 
 1. Encontre o usuário
@@ -411,6 +441,8 @@ Na aba **Perfis de Acesso**:
 
 1. Clique no seu nome no canto inferior da sidebar
 2. Clique em **Meu Perfil**
+
+![Meu Perfil](docs/images/perfil.png)
 
 ### Alterar Nome
 
