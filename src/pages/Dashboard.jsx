@@ -202,16 +202,23 @@ export default function Dashboard() {
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 8);
 
-                // Time per visit
-                const timePerVisit = filteredVisits
+                // Time per visit - with chart data
+                const timePerVisitData = filteredVisits
                     .filter(v => v.service_start_time && v.service_end_time)
                     .map(v => {
                         const s = new Date(v.service_start_time);
                         const e = new Date(v.service_end_time);
-                        return Math.round((e - s) / (1000 * 60));
-                    });
-                const avgTimeMinutes = timePerVisit.length > 0
-                    ? Math.round(timePerVisit.reduce((a, b) => a + b, 0) / timePerVisit.length)
+                        const minutes = Math.round((e - s) / (1000 * 60));
+                        return {
+                            clientName: clientMap.get(v.client_id) || 'Desconhecido',
+                            date: format(parseISO(v.visit_date), 'dd/MM'),
+                            minutes,
+                            hours: parseFloat((minutes / 60).toFixed(1))
+                        };
+                    })
+                    .slice(-15); // Last 15 visits
+                const avgTimeMinutes = timePerVisitData.length > 0
+                    ? Math.round(timePerVisitData.reduce((sum, v) => sum + v.minutes, 0) / timePerVisitData.length)
                     : 0;
 
                 // Monthly evolution (last 6 months)
@@ -248,6 +255,7 @@ export default function Dashboard() {
                     visitsByClient,
                     criticalityRanking,
                     avgTimeMinutes,
+                    timePerVisitData,
                     evolutionData
                 };
             } catch (error) {
@@ -256,7 +264,7 @@ export default function Dashboard() {
                     totalVisits: 0, completedVisits: 0, pendingVisits: 0, unsyncedVisits: 0,
                     redCount: 0, complianceRate: 0, trendDiff: 0, chartData: [],
                     criticalVisits: [], criticalClientsCount: 0, visitsByClient: [],
-                    criticalityRanking: [], avgTimeMinutes: 0, evolutionData: []
+                    criticalityRanking: [], avgTimeMinutes: 0, timePerVisitData: [], evolutionData: []
                 };
             }
         }
@@ -332,7 +340,7 @@ export default function Dashboard() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Todos Técnicos</SelectItem>
-                        {technicians?.map(t => <SelectItem key={t.id} value={t.id}>{t.name || t.email}</SelectItem>)}
+                        {technicians?.map(t => <SelectItem key={t.id} value={t.id}>{t.name || t.email?.split('@')[0] || 'Técnico'}</SelectItem>)}
                     </SelectContent>
                 </Select>
                 <div className="h-4 w-px bg-slate-200 mx-1 hidden md:block"></div>
@@ -492,6 +500,53 @@ export default function Dashboard() {
                 {/* Attention Box */}
                 {isWidgetVisible('box-atencao') && (
                     <AttentionBox stats={stats} />
+                )}
+
+                {/* Time Per Visit Chart */}
+                {isWidgetVisible('chart-tempo') && (
+                    <Card className="md:col-span-2">
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-purple-600" />
+                                Tempo por Visita
+                                {stats?.avgTimeMinutes > 0 && (
+                                    <span className="text-sm font-normal text-slate-500 ml-auto">
+                                        Média: {Math.floor(stats.avgTimeMinutes / 60)}h {stats.avgTimeMinutes % 60}min
+                                    </span>
+                                )}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[300px]">
+                            {stats?.timePerVisitData?.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stats.timePerVisitData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis
+                                            dataKey="clientName"
+                                            tick={{ fontSize: 10 }}
+                                            angle={-45}
+                                            textAnchor="end"
+                                            interval={0}
+                                        />
+                                        <YAxis
+                                            label={{ value: 'Minutos', angle: -90, position: 'insideLeft', fontSize: 11 }}
+                                            tick={{ fontSize: 11 }}
+                                        />
+                                        <Tooltip
+                                            formatter={(value, name) => [`${value} min`, 'Tempo']}
+                                            labelFormatter={(label) => `Cliente: ${label}`}
+                                        />
+                                        <Bar dataKey="minutes" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={24} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                                    <Clock className="w-5 h-5 mr-2" />
+                                    Sem dados de tempo no período
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
                 )}
             </div>
 

@@ -15,7 +15,7 @@ export const DASHBOARD_WIDGETS = [
     { id: 'chart-clientes', title: 'Top Clientes', type: 'chart', size: 'half', default: true },
     { id: 'chart-criticidade', title: 'Ranking de Criticidade', type: 'chart', size: 'half', default: true },
     { id: 'chart-status', title: 'Status dos Relatórios', type: 'chart', size: 'half', default: true },
-    { id: 'chart-tempo', title: 'Tempo por Visita', type: 'chart', size: 'full', default: false },
+    { id: 'chart-tempo', title: 'Tempo por Visita', type: 'chart', size: 'full', default: true },
 
     // Alerts & Tables
     { id: 'box-atencao', title: 'Atenção Necessária', type: 'alert', size: 'half', default: true },
