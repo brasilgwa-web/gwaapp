@@ -89,9 +89,16 @@ export default function Dashboard() {
         queryKey: ['technicians'],
         queryFn: async () => {
             try {
-                const { data } = await supabase.from('profiles').select('id, name, email');
+                const { data, error } = await supabase.from('profiles').select('*');
+                if (error) {
+                    console.warn('Error fetching technicians:', error.message);
+                    return [];
+                }
                 return data || [];
-            } catch (e) { return []; }
+            } catch (e) {
+                console.warn('Error fetching technicians:', e);
+                return [];
+            }
         }
     });
 
