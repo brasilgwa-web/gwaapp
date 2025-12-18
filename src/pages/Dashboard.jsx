@@ -33,7 +33,7 @@ export default function Dashboard() {
     // Filters
     const [filters, setFilters] = useState({
         clientId: "all",
-        technicianId: "all",
+        technicianEmail: "all",
         datePreset: dashConfig.datePreset || '30d',
         startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
         endDate: format(new Date(), 'yyyy-MM-dd')
@@ -115,7 +115,8 @@ export default function Dashboard() {
                     const visitDate = parseISO(v.visit_date);
                     const dateMatch = isWithinInterval(visitDate, { start, end });
                     const clientMatch = filters.clientId === "all" || v.client_id === filters.clientId;
-                    const techMatch = filters.technicianId === "all" || v.technician_id === filters.technicianId;
+                    // Visits use technician_email, so we filter by email
+                    const techMatch = filters.technicianEmail === "all" || v.technician_email === filters.technicianEmail;
                     return dateMatch && clientMatch && techMatch;
                 });
 
@@ -334,13 +335,13 @@ export default function Dashboard() {
                         {clients?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                <Select value={filters.technicianId} onValueChange={val => setFilters(prev => ({ ...prev, technicianId: val }))}>
+                <Select value={filters.technicianEmail} onValueChange={val => setFilters(prev => ({ ...prev, technicianEmail: val }))}>
                     <SelectTrigger className="w-[160px] h-9 text-xs">
                         <SelectValue placeholder="Técnico" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Todos Técnicos</SelectItem>
-                        {technicians?.map(t => <SelectItem key={t.id} value={t.id}>{t.full_name || t.email?.split('@')[0] || 'Técnico'}</SelectItem>)}
+                        {technicians?.map(t => <SelectItem key={t.id} value={t.email}>{t.full_name || t.email?.split('@')[0] || 'Técnico'}</SelectItem>)}
                     </SelectContent>
                 </Select>
                 <div className="h-4 w-px bg-slate-200 mx-1 hidden md:block"></div>
