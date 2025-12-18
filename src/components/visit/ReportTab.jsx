@@ -5,6 +5,7 @@ import { generateTechnicalAnalysis } from "@/lib/gemini";
 import { Visit, ObservationTemplate } from "@/api/entities";
 import { Core } from "@/api/integrations";
 import { useAuth } from "@/context/AuthContext";
+import { useConfirm } from "@/context/ConfirmContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +25,7 @@ import { formatDateAsLocal } from "@/lib/utils";
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
     if (!visit) return null;
     const queryClient = useQueryClient();
+    const { confirm, alert } = useConfirm();
 
     // Form States
     const [observations, setObservations] = useState(visit.observations || '');
@@ -198,7 +200,12 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     };
 
     const handleFinalize = async () => {
-        if (!confirm("Tem certeza que deseja finalizar? O estoque será debitado e a visita será concluída.")) return;
+        const confirmed = await confirm({
+            title: 'Finalizar Visita',
+            message: 'Tem certeza que deseja finalizar? O estoque será debitado e a visita será concluída.',
+            type: 'warning'
+        });
+        if (!confirmed) return;
 
         try {
             // Deduct Stock if not already deducted
@@ -213,12 +220,17 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
         } catch (error) {
             console.error("Finalize Error:", error);
-            alert("Erro ao finalizar visita (Estoque): " + error.message);
+            await alert({ title: 'Erro', message: "Erro ao finalizar visita (Estoque): " + error.message, type: 'error' });
         }
     };
 
     const handleReopen = async () => {
-        if (!confirm("Reabrir esta visita? O estoque será estornado para permitir edição.")) return;
+        const confirmed = await confirm({
+            title: 'Reabrir Visita',
+            message: 'Reabrir esta visita? O estoque será estornado para permitir edição.',
+            type: 'warning'
+        });
+        if (!confirmed) return;
 
         try {
             // Restore Stock if it was deducted
@@ -233,7 +245,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
         } catch (error) {
             console.error("Reopen Error:", error);
-            alert("Erro ao reabrir visita (Estoque): " + error.message);
+            await alert({ title: 'Erro', message: "Erro ao reabrir visita (Estoque): " + error.message, type: 'error' });
         }
     };
 
@@ -241,12 +253,19 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const handleOpenPreview = async () => {
         // Simple confirmation instead of preview
         const actionLabel = readOnly ? "reenviar e salvar" : "finalizar, enviar e salvar";
-        if (!confirm(`Tem certeza que deseja ${actionLabel} o relatório?`)) return;
+        const confirmed = await confirm({
+            title: 'Confirmar Envio',
+            message: `Tem certeza que deseja ${actionLabel} o relatório?`,
+            confirmLabel: 'Sim, enviar',
+            cancelLabel: 'Cancelar',
+            type: 'confirm'
+        });
+        if (!confirmed) return;
 
         const { data } = await refetchReport();
 
         if (!data) {
-            alert("Aguarde o carregamento completo dos dados do relatório.");
+            await alert({ title: 'Aguarde', message: 'Aguarde o carregamento completo dos dados do relatório.', type: 'info' });
             return;
         }
 
@@ -336,13 +355,13 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 body: emailBody,
             });
 
-            alert("Sucesso! Relatório enviado e salvo.");
+            await alert({ title: 'Sucesso!', message: 'Relatório enviado e salvo com sucesso.', type: 'success' });
             updateMutation.mutate({ status: 'synced' });
             setIsPreviewing(false);
 
         } catch (error) {
             console.error("Process Error:", error);
-            alert("Erro no processo: " + error.message);
+            await alert({ title: 'Erro', message: 'Erro no processo: ' + error.message, type: 'error' });
         } finally {
             setIsSending(false);
             setUploadStatus('');
