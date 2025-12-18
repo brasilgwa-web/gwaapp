@@ -208,8 +208,9 @@ export default function Dashboard() {
                     : 0;
 
                 // Monthly evolution (last 6 months)
-                const sixMonthsAgo = subMonths(today, 6);
-                const months = eachMonthOfInterval({ start: sixMonthsAgo, end: today });
+                const now = new Date();
+                const sixMonthsAgo = subMonths(now, 6);
+                const months = eachMonthOfInterval({ start: sixMonthsAgo, end: now });
                 const evolutionData = months.map(month => {
                     const monthStart = startOfMonth(month);
                     const monthEnd = endOfDay(new Date(month.getFullYear(), month.getMonth() + 1, 0));
