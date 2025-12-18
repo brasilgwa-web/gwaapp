@@ -337,9 +337,9 @@ export default function Dashboard() {
                 </Select>
                 <div className="h-4 w-px bg-slate-200 mx-1 hidden md:block"></div>
                 <CalendarIcon className="w-4 h-4 text-slate-400" />
-                <Input type="date" className="h-9 w-32 text-xs" value={filters.startDate} onChange={e => setFilters(prev => ({ ...prev, startDate: e.target.value, datePreset: 'custom' }))} />
+                <Input type="date" className="h-9 w-36 text-xs" value={filters.startDate} onChange={e => setFilters(prev => ({ ...prev, startDate: e.target.value, datePreset: 'custom' }))} />
                 <span className="text-slate-400 text-xs">até</span>
-                <Input type="date" className="h-9 w-32 text-xs" value={filters.endDate} onChange={e => setFilters(prev => ({ ...prev, endDate: e.target.value, datePreset: 'custom' }))} />
+                <Input type="date" className="h-9 w-36 text-xs" value={filters.endDate} onChange={e => setFilters(prev => ({ ...prev, endDate: e.target.value, datePreset: 'custom' }))} />
             </div>
 
             {/* KPI Cards */}
