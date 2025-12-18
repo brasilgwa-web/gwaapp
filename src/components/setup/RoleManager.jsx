@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Role, RolePermission } from "@/api/entities";
 import { supabase } from "@/lib/supabase";
+import { useConfirm } from "@/context/ConfirmContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { ALL_PERMISSIONS } from "@/lib/permissions";
 
 export default function RoleManager() {
     const queryClient = useQueryClient();
+    const { confirm } = useConfirm();
     const [editingRole, setEditingRole] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedPermissions, setSelectedPermissions] = useState([]);
@@ -215,8 +217,13 @@ export default function RoleManager() {
                                         variant="ghost"
                                         size="icon"
                                         className="text-red-500 hover:text-red-700"
-                                        onClick={() => {
-                                            if (confirm(`Excluir perfil "${role.name}"?`)) {
+                                        onClick={async () => {
+                                            const confirmed = await confirm({
+                                                title: 'Excluir Perfil',
+                                                message: `Excluir perfil "${role.name}"?`,
+                                                type: 'warning'
+                                            });
+                                            if (confirmed) {
                                                 deleteRole.mutate(role.id);
                                             }
                                         }}

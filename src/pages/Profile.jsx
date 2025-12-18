@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useConfirm } from "@/context/ConfirmContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,6 +13,7 @@ export default function ProfilePage() {
     const queryClient = useQueryClient();
     const [isSaving, setIsSaving] = useState(false);
     const { user } = useAuth();
+    const { alert } = useConfirm();
 
     // Data is now from context, but if we need to ensure we have the signature_url which might technically check profile
     // The AuthContext seems to fetch profile and merge it.
@@ -24,10 +26,10 @@ export default function ProfilePage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['me'] });
-            alert("Perfil atualizado com sucesso!");
+            alert({ title: 'Sucesso!', message: 'Perfil atualizado com sucesso!', type: 'success' });
         },
         onError: (err) => {
-            alert("Erro ao atualizar perfil: " + err.message);
+            alert({ title: 'Erro', message: 'Erro ao atualizar perfil: ' + err.message, type: 'error' });
         },
         onSettled: () => setIsSaving(false)
     });
@@ -51,10 +53,10 @@ export default function ProfilePage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['me'] });
-            alert("Nome atualizado com sucesso!");
+            alert({ title: 'Sucesso!', message: 'Nome atualizado com sucesso!', type: 'success' });
         },
         onError: (err) => {
-            alert("Erro ao atualizar nome: " + err.message);
+            alert({ title: 'Erro', message: 'Erro ao atualizar nome: ' + err.message, type: 'error' });
         },
         onSettled: () => setIsSavingName(false)
     });

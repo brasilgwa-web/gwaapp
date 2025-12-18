@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Role } from "@/api/entities";
 import { useAuth } from "@/context/AuthContext";
+import { useConfirm } from "@/context/ConfirmContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ import RoleManager from "@/components/setup/RoleManager";
 export default function UserManagement() {
     const queryClient = useQueryClient();
     const { user: currentUser } = useAuth();
+    const { confirm, alert } = useConfirm();
 
     // Fetch roles for dropdown
     const { data: roles } = useQuery({
@@ -83,13 +85,18 @@ export default function UserManagement() {
             queryClient.invalidateQueries({ queryKey: ['users'] });
         },
         onError: (error) => {
-            alert("Erro ao atualizar usuário: " + error.message);
+            alert({ title: 'Erro', message: 'Erro ao atualizar usuário: ' + error.message, type: 'error' });
         }
     });
 
-    const handleRoleChange = (user, newRoleId) => {
+    const handleRoleChange = async (user, newRoleId) => {
         const roleName = roles?.find(r => r.id === newRoleId)?.name || 'novo perfil';
-        if (confirm(`Alterar perfil de ${user.email} para "${roleName}"?`)) {
+        const confirmed = await confirm({
+            title: 'Alterar Perfil',
+            message: `Alterar perfil de ${user.email} para "${roleName}"?`,
+            type: 'confirm'
+        });
+        if (confirmed) {
             updateUserMutation.mutate({
                 id: user.id,
                 data: { role_id: newRoleId }
@@ -97,9 +104,14 @@ export default function UserManagement() {
         }
     };
 
-    const handleStatusChange = (user, newStatus) => {
+    const handleStatusChange = async (user, newStatus) => {
         const action = newStatus === 'active' ? 'ativar' : 'desativar';
-        if (confirm(`${action} o usuário ${user.email}?`)) {
+        const confirmed = await confirm({
+            title: newStatus === 'active' ? 'Ativar Usuário' : 'Desativar Usuário',
+            message: `${action} o usuário ${user.email}?`,
+            type: 'warning'
+        });
+        if (confirmed) {
             updateUserMutation.mutate({ id: user.id, data: { status: newStatus } });
         }
     };

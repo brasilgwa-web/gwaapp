@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useConfirm } from "@/context/ConfirmContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +19,7 @@ const AVAILABLE_MODELS = [
 
 export default function SetupAI() {
     const queryClient = useQueryClient();
+    const { alert } = useConfirm();
     const [prompt, setPrompt] = useState('');
     const [model, setModel] = useState('gemini-2.5-flash');
     const [maxTokens, setMaxTokens] = useState('2048');
@@ -70,7 +72,7 @@ export default function SetupAI() {
             queryClient.invalidateQueries({ queryKey: ['aiSettings'] });
         },
         onError: (err) => {
-            alert('Erro ao salvar: ' + err.message);
+            alert({ title: 'Erro', message: 'Erro ao salvar: ' + err.message, type: 'error' });
         }
     });
 
