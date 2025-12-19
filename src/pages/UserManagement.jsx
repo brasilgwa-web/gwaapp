@@ -31,7 +31,17 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { MoreHorizontal, Shield, ShieldAlert, UserCog, Ban, CheckCircle, Info, Users } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MoreHorizontal, Shield, ShieldAlert, UserCog, Ban, CheckCircle, Info, Users, Key, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -41,6 +51,12 @@ export default function UserManagement() {
     const queryClient = useQueryClient();
     const { user: currentUser } = useAuth();
     const { confirm, alert } = useConfirm();
+
+    // Password reset state
+    const [resetPasswordUser, setResetPasswordUser] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isResetting, setIsResetting] = useState(false);
 
     // Fetch roles for dropdown
     const { data: roles } = useQuery({
@@ -113,6 +129,65 @@ export default function UserManagement() {
         });
         if (confirmed) {
             updateUserMutation.mutate({ id: user.id, data: { status: newStatus } });
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!resetPasswordUser) return;
+
+        if (newPassword.length < 6) {
+            alert({
+                title: 'Erro',
+                message: 'A senha deve ter pelo menos 6 caracteres.',
+                type: 'error'
+            });
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            alert({
+                title: 'Erro',
+                message: 'As senhas não coincidem.',
+                type: 'error'
+            });
+            return;
+        }
+
+        setIsResetting(true);
+        try {
+            const response = await fetch('/api/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: resetPasswordUser.id,
+                    newPassword: newPassword
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Erro ao redefinir senha');
+            }
+
+            alert({
+                title: 'Sucesso',
+                message: `Senha de ${resetPasswordUser.email} redefinida com sucesso!`,
+                type: 'success'
+            });
+
+            // Close modal and reset state
+            setResetPasswordUser(null);
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error) {
+            alert({
+                title: 'Erro',
+                message: error.message || 'Erro ao redefinir senha',
+                type: 'error'
+            });
+        } finally {
+            setIsResetting(false);
         }
     };
 
@@ -231,6 +306,18 @@ export default function UserManagement() {
                                                         <DropdownMenuLabel>Ações</DropdownMenuLabel>
                                                         <DropdownMenuSeparator />
 
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                setResetPasswordUser(user);
+                                                                setNewPassword('');
+                                                                setConfirmPassword('');
+                                                            }}
+                                                            className="text-blue-600 focus:text-blue-600 focus:bg-blue-50"
+                                                        >
+                                                            <Key className="w-4 h-4 mr-2" />
+                                                            Redefinir Senha
+                                                        </DropdownMenuItem>
+
                                                         {getStatus(user) === 'active' ? (
                                                             <DropdownMenuItem
                                                                 onClick={() => handleStatusChange(user, 'inactive')}
@@ -265,6 +352,74 @@ export default function UserManagement() {
                     <RoleManager />
                 </TabsContent>
             </Tabs>
+
+            {/* Password Reset Modal */}
+            <Dialog open={!!resetPasswordUser} onOpenChange={(open) => !open && setResetPasswordUser(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Key className="w-5 h-5 text-blue-600" />
+                            Redefinir Senha
+                        </DialogTitle>
+                        <DialogDescription>
+                            Defina uma nova senha para <strong>{resetPasswordUser?.email}</strong>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="newPassword">Nova Senha</Label>
+                            <Input
+                                id="newPassword"
+                                type="password"
+                                placeholder="Mínimo 6 caracteres"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                autoComplete="new-password"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                            <Input
+                                id="confirmPassword"
+                                type="password"
+                                placeholder="Confirme a senha"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                autoComplete="new-password"
+                            />
+                        </div>
+
+                        {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                            <p className="text-sm text-red-500">As senhas não coincidem</p>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setResetPasswordUser(null)}
+                            disabled={isResetting}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleResetPassword}
+                            disabled={isResetting || !newPassword || newPassword !== confirmPassword}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            {isResetting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Redefinindo...
+                                </>
+                            ) : (
+                                'Redefinir Senha'
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
