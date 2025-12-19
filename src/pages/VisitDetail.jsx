@@ -29,7 +29,7 @@ export default function VisitDetailPage() {
     const [isEditOpen, setIsEditOpen] = useState(false); // Edit Modal State
 
     React.useEffect(() => {
-        console.log("VisitDetail v2 loaded");
+        // Component loaded
     }, []);
 
     // Fetch Visit Data
