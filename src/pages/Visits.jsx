@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Visit, Client, Location, User } from "@/api/entities";
 import { useAuth } from "@/context/AuthContext";
+import { useConfirm } from "@/context/ConfirmContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import { createPageUrl, formatDateAsLocal } from '@/lib/utils';
 
 export default function VisitsPage() {
     const queryClient = useQueryClient();
+    const { confirm } = useConfirm();
     const [search, setSearch] = React.useState('');
 
     // Date Range Filters (Default: Current Month)
@@ -97,7 +99,14 @@ export default function VisitsPage() {
     const handleDeleteVisit = async (e, visit) => {
         e.preventDefault();
         e.stopPropagation();
-        if (confirm(`Excluir visita de ${visit.client?.name || 'cliente'}?`)) {
+        const confirmed = await confirm({
+            title: 'Excluir Visita',
+            message: `Tem certeza que deseja excluir a visita de "${visit.client?.name || 'cliente'}"? Esta ação não pode ser desfeita.`,
+            confirmLabel: 'Excluir',
+            cancelLabel: 'Cancelar',
+            type: 'warning'
+        });
+        if (confirmed) {
             deleteMutation.mutate(visit.id);
         }
     };
