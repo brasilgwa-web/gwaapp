@@ -24,6 +24,7 @@ export default function VisitsPage() {
     });
 
     const [techFilter, setTechFilter] = React.useState('all');
+    const [statusFilter, setStatusFilter] = React.useState('all');
 
     // Fetch Current User and Users List
     const { user: currentUser } = useAuth();
@@ -80,8 +81,9 @@ export default function VisitsPage() {
 
         const matchesDate = isWithinInterval(visitDate, { start, end });
         const matchesTech = techFilter === 'all' || v.technician_email === techFilter;
+        const matchesStatus = statusFilter === 'all' || v.status === statusFilter;
 
-        return matchesSearch && matchesDate && matchesTech;
+        return matchesSearch && matchesDate && matchesTech && matchesStatus;
     });
 
     return (
@@ -114,6 +116,19 @@ export default function VisitsPage() {
                             {allUsers?.map(u => (
                                 <SelectItem key={u.id} value={u.email}>{u.full_name || u.email}</SelectItem>
                             ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[160px]">
+                            <SelectValue placeholder="Filtrar por Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos os Status</SelectItem>
+                            <SelectItem value="scheduled">Agendada</SelectItem>
+                            <SelectItem value="in_progress">Em Andamento</SelectItem>
+                            <SelectItem value="completed">Concluída</SelectItem>
+                            <SelectItem value="synced">Enviada</SelectItem>
                         </SelectContent>
                     </Select>
 
