@@ -111,8 +111,19 @@ export default function VisitsPage() {
         }
     };
 
-    const canDeleteVisit = (status) => {
-        return status === 'scheduled' || status === 'in_progress';
+    const canDeleteVisit = (visit) => {
+        // Only allow deletion of unfinished visits
+        const isNotFinished = visit.status === 'scheduled' || visit.status === 'in_progress';
+        if (!isNotFinished) return false;
+
+        // Check if user is admin
+        const isAdmin = currentUser?.role?.name === 'admin' ||
+            currentUser?.email === 'andre.lsarruda@gmail.com';
+
+        // Check if user is the technician who created the visit
+        const isOwner = visit.technician_email === currentUser?.email;
+
+        return isAdmin || isOwner;
     };
 
     return (
@@ -213,7 +224,7 @@ export default function VisitsPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {canDeleteVisit(visit.status) && (
+                                        {canDeleteVisit(visit) && (
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
