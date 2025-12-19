@@ -7,14 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { CalendarIcon, Search, Plus, ChevronRight, Calendar, CheckCircle2, Clock } from "lucide-react";
+import { Search, Plus, ChevronRight, Calendar, Clock, Trash2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl, formatDateAsLocal } from '@/lib/utils';
 
 export default function VisitsPage() {
-    const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [search, setSearch] = React.useState('');
 
     // Date Range Filters (Default: Current Month)
@@ -85,6 +85,26 @@ export default function VisitsPage() {
 
         return matchesSearch && matchesDate && matchesTech && matchesStatus;
     });
+
+    // Delete Visit Mutation
+    const deleteMutation = useMutation({
+        mutationFn: (visitId) => Visit.delete(visitId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['visits'] });
+        }
+    });
+
+    const handleDeleteVisit = async (e, visit) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (confirm(`Excluir visita de ${visit.client?.name || 'cliente'}?`)) {
+            deleteMutation.mutate(visit.id);
+        }
+    };
+
+    const canDeleteVisit = (status) => {
+        return status === 'scheduled' || status === 'in_progress';
+    };
 
     return (
         <div className="space-y-6 pb-20">
@@ -183,7 +203,20 @@ export default function VisitsPage() {
                                             {formatDateAsLocal(visit.visit_date)}
                                         </div>
                                     </div>
-                                    <ChevronRight className="text-slate-300 w-5 h-5" />
+                                    <div className="flex items-center gap-2">
+                                        {canDeleteVisit(visit.status) && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                onClick={(e) => handleDeleteVisit(e, visit)}
+                                                title="Excluir visita"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                        <ChevronRight className="text-slate-300 w-5 h-5" />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </Link>
