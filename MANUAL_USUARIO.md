@@ -8,18 +8,19 @@
 ## 📑 Índice
 
 1. [Introdução](#introdução)
-2. [Acesso ao Sistema](#acesso-ao-sistema)
-3. [Dashboard](#dashboard)
-4. [Visitas Técnicas](#visitas-técnicas)
-5. [Detalhes da Visita](#detalhes-da-visita)
-6. [Clientes](#clientes)
-7. [Equipamentos](#equipamentos)
-8. [Testes/Ensaios](#testesensaios)
-9. [Produtos](#produtos)
-10. [Templates de Observação](#templates-de-observação)
-11. [Configuração de IA](#configuração-de-ia)
-12. [Gerenciamento de Usuários](#gerenciamento-de-usuários)
-13. [Meu Perfil](#meu-perfil)
+2. [Primeiro Uso e Configuração Inicial](#primeiro-uso-e-configuração-inicial)
+3. [Acesso ao Sistema](#acesso-ao-sistema)
+4. [Dashboard](#dashboard)
+5. [Visitas Técnicas](#visitas-técnicas)
+6. [Detalhes da Visita](#detalhes-da-visita)
+7. [Clientes](#clientes)
+8. [Equipamentos](#equipamentos)
+9. [Testes/Ensaios](#testesensaios)
+10. [Produtos](#produtos)
+11. [Templates de Observação](#templates-de-observação)
+12. [Configuração de IA](#configuração-de-ia)
+13. [Gerenciamento de Usuários](#gerenciamento-de-usuários)
+14. [Meu Perfil](#meu-perfil)
 
 ---
 
@@ -34,6 +35,87 @@ O **WGA Brasil** é um sistema completo para gerenciamento de visitas técnicas 
 - ✅ Enviar relatórios por email
 - ✅ Salvar relatórios no Google Drive
 - ✅ Gerenciar estoque de produtos por cliente
+
+---
+
+## 🚀 Primeiro Uso e Configuração Inicial
+
+> ⚠️ **Importante:** O sistema possui dependências funcionais entre os cadastros. Siga a ordem abaixo para evitar problemas.
+
+### Ordem de Configuração
+
+Para que o sistema funcione corretamente, os cadastros devem ser feitos **nesta ordem**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. TESTES          →  Definir os ensaios/análises que serão    │
+│                        realizados (pH, Cloro, Condutividade...) │
+├─────────────────────────────────────────────────────────────────┤
+│  2. PRODUTOS        →  Cadastrar produtos químicos que serão    │
+│                        dosados (Biocida, Antiincrustante...)    │
+├─────────────────────────────────────────────────────────────────┤
+│  3. EQUIPAMENTOS    →  Criar tipos de equipamentos e associar   │
+│                        os testes e produtos padrão              │
+├─────────────────────────────────────────────────────────────────┤
+│  4. CLIENTES        →  Cadastrar os clientes                    │
+├─────────────────────────────────────────────────────────────────┤
+│  5. LOCAIS          →  Criar locais/unidades dentro do cliente  │
+├─────────────────────────────────────────────────────────────────┤
+│  6. EQUIPAMENTOS    →  Adicionar equipamentos em cada local     │
+│     NO LOCAL           do cliente                               │
+├─────────────────────────────────────────────────────────────────┤
+│  7. VISITAS         →  Agora você pode criar visitas técnicas!  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Dependências Funcionais
+
+| Para fazer...  | Você precisa antes ter... |
+|----------------|---------------------------|
+| Registrar **leituras** em uma visita | Equipamentos com testes associados no local |
+| Registrar **dosagens** em uma visita | Equipamentos com produtos associados no local |
+| Criar **visita** para um cliente | Cliente com pelo menos um local cadastrado |
+| Adicionar **equipamento** no local | Tipo de equipamento cadastrado |
+| Associar **teste** a equipamento | Teste cadastrado em Cadastros > Testes |
+| Associar **produto** a equipamento | Produto cadastrado em Cadastros > Produtos |
+| Controlar **estoque** do cliente | Produto cadastrado e adicionado ao estoque do cliente |
+
+### Guia Rápido: Primeira Configuração
+
+**Passo 1:** Cadastrar Testes
+1. Vá em **Cadastros** > **Testes**
+2. Cadastre os testes que você realiza (ex: pH, Condutividade, Cloro Livre)
+3. Defina as faixas ideais e limites críticos
+
+**Passo 2:** Cadastrar Produtos
+1. Vá em **Cadastros** > **Produtos**
+2. Cadastre os produtos químicos (ex: Biocida, Antiincrustante)
+
+**Passo 3:** Criar Tipos de Equipamentos
+1. Vá em **Cadastros** > **Equipamentos**
+2. Crie tipos como "Torre de Resfriamento", "Caldeira"
+3. Associe os testes e produtos padrão a cada tipo
+
+**Passo 4:** Cadastrar Cliente
+1. Vá em **Cadastros** > **Clientes**
+2. Adicione o cliente com nome, email, telefone
+
+**Passo 5:** Criar Local no Cliente
+1. Dentro do cliente, clique em **+ Adicionar Local**
+2. Dê um nome (ex: "Matriz", "Torre 1")
+
+**Passo 6:** Adicionar Equipamentos no Local
+1. Selecione o local do cliente
+2. Clique em **+ Adicionar Equipamento**
+3. Escolha o tipo (os testes/produtos serão herdados)
+4. Personalize os testes/produtos se necessário
+
+**Passo 7:** Pronto! Criar Visita
+1. Vá em **Visitas** > **+ Nova Visita**
+2. Selecione o cliente e data
+3. Os equipamentos e testes aparecerão automaticamente
+
+> 💡 **Dica:** Se os testes ou dosagens não aparecem em uma visita, verifique se o equipamento do local tem testes/produtos associados.
 
 ---
 
