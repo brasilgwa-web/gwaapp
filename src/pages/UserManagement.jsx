@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Role } from "@/api/entities";
@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Shield, ShieldAlert, UserCog, Ban, CheckCircle, Info, Users, Key, Loader2 } from "lucide-react";
+import { MoreHorizontal, Shield, ShieldAlert, Ban, CheckCircle, Info, Users, Key, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -65,7 +65,7 @@ export default function UserManagement() {
     });
 
     // Fetch users with their role information
-    const { data: users, isLoading, error } = useQuery({
+    const { data: users, isLoading } = useQuery({
         queryKey: ['users'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -192,7 +192,6 @@ export default function UserManagement() {
     };
 
     const getStatus = (u) => u.status || 'inactive';
-    const getRoleName = (u) => u.role?.name || 'Sem perfil';
     const getRoleId = (u) => u.role_id || u.role?.id;
 
     if (isLoading) return <div className="p-8 text-center">Carregando usuários...</div>;
