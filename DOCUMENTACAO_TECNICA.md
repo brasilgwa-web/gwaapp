@@ -55,8 +55,8 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 | Item | Valor |
 |------|-------|
 | **Dashboard** | https://vercel.com/dashboard |
-| **Projeto** | `gwaapp` |
-| **URL de Produção** | `https://gwaapp.vercel.app` |
+| **Projeto** | `gwabrasilapp` |
+| **URL de Produção** | `https://wgabrasilapp.vercel.app/` |
 | **Repositório** | Conectado ao GitHub |
 
 ---
@@ -206,18 +206,68 @@ wga-brasil/
 
 ## 🚀 Deploy e CI/CD
 
+### Ambientes
+
+| Ambiente | Branch | URL |
+|----------|--------|-----|
+| **Produção** | `main` | `https://wgabrasilapp.vercel.app/` |
+| **Homologação** | `staging` | `https://gwabrasilapp-git-staging-*.vercel.app` |
+
 ### Fluxo de Deploy
 
-1. **Push para `main`** no GitHub
-2. **Vercel detecta** automaticamente
-3. **Build** é executado (`npm run build`)
-4. **Deploy** para produção
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Desenvolve    │────▶│   Push para     │────▶│   Testa em      │
+│   localmente    │     │   staging       │     │   Homologação   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                                                        │
+                                                        ▼
+                        ┌─────────────────┐     ┌─────────────────┐
+                        │   Deploy em     │◀────│   Merge para    │
+                        │   Produção      │     │   main          │
+                        └─────────────────┘     └─────────────────┘
+```
 
-### Comandos Úteis
+### Comandos Git - Staging (Homologação)
 
 ```bash
-# Desenvolvimento local
+# Mudar para branch staging
+git checkout staging
+
+# Fazer alterações e commit
+git add .
+git commit -m "feat: descrição da alteração"
+
+# Enviar para homologação (gera deploy de preview automaticamente)
+git push origin staging
+```
+
+### Comandos Git - Produção
+
+```bash
+# Mudar para branch main
+git checkout main
+
+# Atualizar main (por segurança)
+git pull origin main
+
+# Fazer merge da staging na main
+git merge staging
+
+# Enviar para produção
+git push origin main
+
+# Voltar para staging para continuar desenvolvendo
+git checkout staging
+```
+
+### Comandos Úteis - Desenvolvimento Local
+
+```bash
+# Instalar dependências
 npm install
+
+# Desenvolvimento local
 npm run dev
 
 # Build de produção
@@ -253,5 +303,6 @@ npm run preview
 
 ---
 
-*Documento gerado em: Dezembro 2024*
-*Versão do Sistema: 1.3.0*
+*Documento criado em: Dezembro 2024*
+*Atualizado em: Janeiro 2025*
+*Versão do Sistema: 1.4.0*
