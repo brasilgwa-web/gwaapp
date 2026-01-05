@@ -246,7 +246,7 @@ npm run preview
 
 | Item | Contato |
 |------|---------|
-| **Desenvolvedor** | [Seu nome/email] |
+| **Desenvolvedor** | andre.lsarruda@gmail.com  41-99840-4811 |
 | **Documentação Supabase** | https://supabase.com/docs |
 | **Documentação Vercel** | https://vercel.com/docs |
 | **Suporte Brevo** | https://help.brevo.com |
