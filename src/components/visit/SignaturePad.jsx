@@ -12,14 +12,14 @@ export default function SignaturePad({ onSave, savedUrl }) {
         const canvas = canvasRef.current;
         const container = containerRef.current;
         if (!canvas || !container) return;
-        
+
         const setCanvasSize = () => {
             if (container.offsetWidth > 0 && container.offsetHeight > 0) {
                 // Only resize if dimensions actually changed to avoid unnecessary clears
                 if (canvas.width !== container.offsetWidth || canvas.height !== container.offsetHeight) {
                     canvas.width = container.offsetWidth;
                     canvas.height = container.offsetHeight;
-                    
+
                     const ctx = canvas.getContext('2d');
                     ctx.lineWidth = 2;
                     ctx.lineCap = 'round';
@@ -35,7 +35,7 @@ export default function SignaturePad({ onSave, savedUrl }) {
         const resizeObserver = new ResizeObserver(() => {
             setCanvasSize();
         });
-        
+
         resizeObserver.observe(container);
 
         return () => resizeObserver.disconnect();
@@ -44,10 +44,10 @@ export default function SignaturePad({ onSave, savedUrl }) {
     const startDrawing = (e) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
         const { offsetX, offsetY } = getCoordinates(e, canvas);
-        
+
         ctx.beginPath();
         ctx.moveTo(offsetX, offsetY);
         setIsDrawing(true);
@@ -60,7 +60,7 @@ export default function SignaturePad({ onSave, savedUrl }) {
 
         const ctx = canvas.getContext('2d');
         const { offsetX, offsetY } = getCoordinates(e, canvas);
-        
+
         ctx.lineTo(offsetX, offsetY);
         ctx.stroke();
         setHasDrawing(true);
@@ -90,11 +90,15 @@ export default function SignaturePad({ onSave, savedUrl }) {
     const clear = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         setHasDrawing(false);
-        onSave(null); 
+    };
+
+    // Delete saved signature
+    const handleDelete = () => {
+        onSave(null);
     };
 
     const handleSave = () => {
@@ -109,14 +113,14 @@ export default function SignaturePad({ onSave, savedUrl }) {
     return (
         <div className="space-y-2">
             <div ref={containerRef} className="border-2 border-dashed border-slate-300 rounded-lg bg-white touch-none relative h-48 w-full">
-                 {savedUrl ? (
+                {savedUrl ? (
                     <div className="relative w-full h-full flex items-center justify-center bg-slate-50 rounded-lg">
                         <img src={savedUrl} alt="Assinatura" className="max-h-full max-w-full object-contain" />
-                        <Button 
-                            variant="destructive" 
-                            size="sm" 
+                        <Button
+                            variant="destructive"
+                            size="sm"
                             className="absolute top-2 right-2"
-                            onClick={clear}
+                            onClick={handleDelete}
                         >
                             <Eraser className="w-4 h-4" />
                         </Button>
@@ -140,7 +144,7 @@ export default function SignaturePad({ onSave, savedUrl }) {
                     </div>
                 )}
             </div>
-            
+
             {!savedUrl && (
                 <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={clear} size="sm">
