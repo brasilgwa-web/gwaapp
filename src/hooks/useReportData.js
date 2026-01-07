@@ -141,7 +141,14 @@ export function useReportData(id) {
                 };
             }).filter(loc => loc.equipments.length > 0);
 
-            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser };
+            // Fetch Report Settings (logo, sequential number)
+            const { data: reportSettings } = await supabase
+                .from('report_settings')
+                .select('*')
+                .limit(1)
+                .single();
+
+            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings };
         },
         // Cache for 5 minutes
         staleTime: 1000 * 60 * 5

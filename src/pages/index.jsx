@@ -8,6 +8,7 @@ import SetupTests from "./SetupTests";
 import SetupProducts from "./SetupProducts";
 import SetupTemplates from "./SetupTemplates";
 import SetupAI from "./SetupAI";
+import SetupReport from "./SetupReport";
 import Dashboard from "./Dashboard";
 import Visits from "./Visits";
 import VisitDetail from "./VisitDetail";
@@ -38,6 +39,7 @@ export default function Pages() {
                 <Route path="setup/products" element={<SetupProducts />} />
                 <Route path="setup/templates" element={<SetupTemplates />} />
                 <Route path="setup/ai" element={<SetupAI />} />
+                <Route path="setup/report" element={<SetupReport />} />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="*" element={<div>Página não encontrada</div>} />

@@ -122,6 +122,7 @@ export default function Layout() {
   const allAdminNavigation = [
     { name: 'Gestão de Usuários', href: '/users', icon: Users, permKey: 'admin_users' },
     { name: 'Configurações IA', href: '/setup/ai', icon: Bot, permKey: 'admin_ai' },
+    { name: 'Configurações de Relatório', href: '/setup/report', icon: FileText, permKey: 'admin_report' },
   ];
 
   // Filter navigation based on user permissions

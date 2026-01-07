@@ -4,7 +4,7 @@ import { formatDateAsLocal } from '@/lib/utils';
 import { format } from "date-fns";
 
 export function ReportTemplate({ data, isPdfGeneration = false }) {
-    const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser } = data;
+    const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings } = data;
 
     // Technician and Visit Metadata
     const techName = technicianUser?.name || visit.technician_email || 'Técnico Responsável';
@@ -12,9 +12,14 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
 
     // Custom formatted dates
     const visitDate = visit.visit_date ? new Date(visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date) : new Date();
-    // Fix timezone offset manually for display if needed, but 'formatDateAsLocal' handles it.
-    // For the custom report number: E-YY-MM-XXXX
-    const reportNumber = visit.report_number || `E-${format(visitDate, 'yy-MM')}-${visit.id.slice(0, 4).toUpperCase()}`;
+
+    // Report number: Use saved number from visit, or generate from settings
+    // Format: YY-MM-NNNNNN (e.g., 26-01-000001)
+    const reportNumber = visit.report_number ||
+        `${format(visitDate, 'yy')}-${format(visitDate, 'MM')}-${String(reportSettings?.current_report_number || 1).padStart(6, '0')}`;
+
+    // Logo from settings or default
+    const logoUrl = reportSettings?.logo_url;
 
     return (
         <div className={`bg-white text-slate-900 font-sans text-sm leading-tight ${isPdfGeneration ? 'p-0' : 'p-8 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
@@ -22,10 +27,14 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
             {/* Header */}
             <header className="border-b-2 border-blue-600 pb-4 mb-6 flex justify-between items-start">
                 <div className="flex items-center gap-4">
-                    {/* Logo WGA */}
-                    <div className="bg-blue-600 text-white p-3 rounded-lg w-12 h-12 flex items-center justify-center font-bold text-xl">
-                        W
-                    </div>
+                    {/* Logo - from settings or default */}
+                    {logoUrl ? (
+                        <img src={logoUrl} alt="Logo" className="h-12 w-auto object-contain" />
+                    ) : (
+                        <div className="bg-blue-600 text-white p-3 rounded-lg w-12 h-12 flex items-center justify-center font-bold text-xl">
+                            W
+                        </div>
+                    )}
 
                     <div>
                         <h1 className="text-xl font-bold uppercase tracking-tight text-slate-900 leading-none">Relatório de Atendimento Técnico</h1>
