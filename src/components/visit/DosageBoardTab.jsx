@@ -190,9 +190,17 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                         <div className="font-medium text-slate-700">{prod.name}</div>
                                                         <div className="text-sm text-slate-500">Estoque: <span className="font-mono font-bold">{currentStock || '-'}</span></div>
                                                     </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <label className="text-xs text-slate-500">Dosagem:</label>
-                                                        <div className="flex-1">
+                                                    <div className="grid grid-cols-3 gap-2 items-start">
+                                                        <div className="text-center">
+                                                            <label className="text-xs text-slate-500 block">Dosagem</label>
+                                                            <div className="font-bold text-slate-700">{recommended || '-'}</div>
+                                                            <div className="text-xs text-slate-400">{prod.unit}</div>
+                                                            {prod.doseParams?.complementary_info && (
+                                                                <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <label className="text-xs text-slate-500 block">Aplicado</label>
                                                             <Input
                                                                 type="number" step="0.1"
                                                                 className="h-9 w-full text-center font-bold text-blue-600"
@@ -201,14 +209,17 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                 onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
                                                                 disabled={readOnly}
                                                             />
-                                                            <div className="text-xs text-slate-400 text-center mt-1">{prod.unit}</div>
+                                                            <div className="text-xs text-slate-400">{prod.unit}</div>
                                                             {prod.doseParams?.complementary_info && (
-                                                                <div className="text-xs text-blue-600 text-center">{prod.doseParams.complementary_info}</div>
+                                                                <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
                                                             )}
                                                         </div>
-                                                        <div className={`text-sm font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
-                                                            → {finalStock.toFixed(1)}
-                                                            {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline text-red-500" />}
+                                                        <div className="text-center">
+                                                            <label className="text-xs text-slate-500 block">Est. Final</label>
+                                                            <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
+                                                                {finalStock.toFixed(1)}
+                                                                {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline text-red-500" />}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -224,6 +235,7 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                     <th className="px-4 py-3 text-left">Produto</th>
                                                     <th className="px-4 py-3 text-center">Estoque</th>
                                                     <th className="px-4 py-3 text-center">Dosagem</th>
+                                                    <th className="px-4 py-3 text-center">Aplicado</th>
                                                     <th className="px-4 py-3 text-center">Est. Final</th>
                                                 </tr>
                                             </thead>
@@ -243,6 +255,15 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                 <div className="font-medium text-slate-700">{prod.name}</div>
                                                             </td>
                                                             <td className="px-4 py-3 text-center font-mono text-slate-600">{currentStock || '-'}</td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <div className="flex flex-col items-center">
+                                                                    <div className="font-bold text-slate-700">{recommended || '-'}</div>
+                                                                    <div className="text-xs text-slate-400">{prod.unit}</div>
+                                                                    {prod.doseParams?.complementary_info && (
+                                                                        <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
+                                                                    )}
+                                                                </div>
+                                                            </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className="flex flex-col items-center gap-1">
                                                                     <Input
