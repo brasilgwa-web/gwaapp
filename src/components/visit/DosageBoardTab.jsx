@@ -11,14 +11,34 @@ export default function DosageBoardTab({ visit, readOnly }) {
     const queryClient = useQueryClient();
     const [isSaving, setIsSaving] = useState(false);
 
-    // Queries
-    const { data: locations } = useQuery({ queryKey: ['locations', visit.client_id], queryFn: () => Location.filter({ client_id: visit.client_id }, undefined, 200) });
-    const { data: allLocationEquipments } = useQuery({ queryKey: ['locationEquipments'], queryFn: () => LocationEquipment.list(undefined, 1000) });
+    // Queries - with refetch to pick up newly added equipment
+    const { data: locations } = useQuery({
+        queryKey: ['locations', visit.client_id],
+        queryFn: () => Location.filter({ client_id: visit.client_id }, undefined, 200),
+        staleTime: 0,
+        refetchOnMount: 'always'
+    });
+    const { data: allLocationEquipments } = useQuery({
+        queryKey: ['locationEquipments'],
+        queryFn: () => LocationEquipment.list(undefined, 1000),
+        staleTime: 0,
+        refetchOnMount: 'always'
+    });
     const { data: allEquipments } = useQuery({ queryKey: ['equipments'], queryFn: () => Equipment.list(undefined, 1000) });
 
-    // Setup Data
-    const { data: clientProducts } = useQuery({ queryKey: ['clientProducts', visit.client_id], queryFn: () => ClientProduct.filter({ client_id: visit.client_id }) });
-    const { data: dosageParams } = useQuery({ queryKey: ['dosageParams'], queryFn: () => EquipmentDosageParams.list() }); // We filter in memory or per equipment loop
+    // Setup Data - with refetch for fresh dosage params
+    const { data: clientProducts } = useQuery({
+        queryKey: ['clientProducts', visit.client_id],
+        queryFn: () => ClientProduct.filter({ client_id: visit.client_id }),
+        staleTime: 0,
+        refetchOnMount: 'always'
+    });
+    const { data: dosageParams } = useQuery({
+        queryKey: ['dosageParams'],
+        queryFn: () => EquipmentDosageParams.list(),
+        staleTime: 0,
+        refetchOnMount: 'always'
+    });
     const { data: allProducts } = useQuery({ queryKey: ['products'], queryFn: () => Product.list() });
 
     // Visit Data
