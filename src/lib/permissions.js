@@ -11,6 +11,7 @@ export const ROUTE_PERMISSIONS = {
     '/setup/templates': 'setup_templates',
     '/users': 'admin_users',
     '/setup/ai': 'admin_ai',
+    '/setup/report': 'admin_report',
     '/setup/roles': 'admin_roles',
 };
 
@@ -25,6 +26,7 @@ export const ALL_PERMISSIONS = [
     { key: 'setup_templates', label: 'Modelos de Relatório', group: 'Cadastros' },
     { key: 'admin_users', label: 'Gestão de Usuários', group: 'Administração' },
     { key: 'admin_ai', label: 'Configurações IA', group: 'Administração' },
+    { key: 'admin_report', label: 'Configurações de Relatório', group: 'Administração' },
     { key: 'admin_roles', label: 'Gerenciar Perfis', group: 'Administração' },
 ];
 
