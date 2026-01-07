@@ -36,14 +36,17 @@ export default function ProfilePage() {
 
     const handleSaveSignature = (url) => {
         setIsSaving(true);
+        setSignatureUrl(url);
         updateMutation.mutate({ signature_url: url });
     };
 
     const [name, setName] = useState(user?.full_name || '');
+    const [signatureUrl, setSignatureUrl] = useState(user?.signature_url || null);
     const [isSavingName, setIsSavingName] = useState(false);
 
     React.useEffect(() => {
         if (user?.full_name) setName(user.full_name);
+        if (user?.signature_url !== undefined) setSignatureUrl(user.signature_url);
     }, [user]);
 
     const updateNameMutation = useMutation({
@@ -120,7 +123,7 @@ export default function ProfilePage() {
                 <CardContent>
                     <div className="space-y-4">
                         <SignaturePad
-                            savedUrl={user?.signature_url}
+                            savedUrl={signatureUrl}
                             onSave={handleSaveSignature}
                         />
                         {isSaving && (
