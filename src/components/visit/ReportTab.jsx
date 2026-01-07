@@ -114,7 +114,10 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] });
             if (onUpdateVisit) onUpdateVisit();
             if (variables.client_signature_url) {
-                alert("Assinatura salva com sucesso!");
+                // Only show success message when saving, not when clearing
+                if (variables.client_signature_url !== null) {
+                    // Could use toast here instead
+                }
             }
         },
         onError: (err) => {
@@ -170,11 +173,17 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     };
 
     const handleSaveSignature = (url) => {
-        // Capture service_end_time when client signs
-        updateMutation.mutate({
-            client_signature_url: url,
-            service_end_time: new Date().toISOString()
-        });
+        // url can be null (clearing) or a data URL (saving)
+        const updates = {
+            client_signature_url: url
+        };
+
+        // Only capture service_end_time when actually signing (not clearing)
+        if (url) {
+            updates.service_end_time = new Date().toISOString();
+        }
+
+        updateMutation.mutate(updates);
     };
 
     // --- Stock Management Logic ---
