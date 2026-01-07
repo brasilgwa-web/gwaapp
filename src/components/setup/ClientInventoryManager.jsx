@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Pencil, Package, AlertTriangle, ArrowLeft } from "lucide-react";
 
-export default function ClientInventoryManager({ client, onBack }) {
+export default function ClientInventoryManager({ client }) {
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
@@ -87,9 +87,6 @@ export default function ClientInventoryManager({ client, onBack }) {
         <Card className="w-full">
             <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-slate-500 text-sm mb-1 cursor-pointer hover:text-blue-600" onClick={onBack}>
-                        <ArrowLeft className="w-4 h-4" /> Voltar para Clientes
-                    </div>
                     <CardTitle>Estoque do Cliente: {client.name}</CardTitle>
                     <CardDescription>Gerencie o estoque atual e o estoque mínimo para alertas.</CardDescription>
                 </div>

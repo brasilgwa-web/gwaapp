@@ -80,16 +80,21 @@ export default function ClientLocationManager() {
     if (view === 'details' && selectedClient) {
         return (
             <div className="space-y-6">
-                {/* Inventory Section (Full Width) */}
-                <ClientInventoryManager
+                {/* Discharges/Drainages Section */}
+                <ClientDischargesSection
                     client={selectedClient}
                     onBack={() => { setView('clients'); setSelectedClient(null); }}
+                    onUpdate={(updatedClient) => {
+                        setSelectedClient(updatedClient);
+                        queryClient.invalidateQueries({ queryKey: ['clients'] });
+                    }}
                 />
 
+                {/* Inventory Section (Full Width) */}
+                <ClientInventoryManager client={selectedClient} />
+
                 {/* Equipments Section (Full Width) */}
-                <ClientEquipmentManager
-                    client={selectedClient}
-                />
+                <ClientEquipmentManager client={selectedClient} />
             </div>
         );
     }
@@ -160,6 +165,68 @@ export default function ClientLocationManager() {
                         </div>
                     ))}
                 </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+// Component for editing Discharges/Drainages field
+function ClientDischargesSection({ client, onBack, onUpdate }) {
+    const [text, setText] = React.useState(client.default_discharges_drainages || '');
+    const [isSaving, setIsSaving] = React.useState(false);
+    const [hasChanges, setHasChanges] = React.useState(false);
+
+    const handleTextChange = (e) => {
+        setText(e.target.value);
+        setHasChanges(e.target.value !== (client.default_discharges_drainages || ''));
+    };
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const updated = await Client.update(client.id, { default_discharges_drainages: text });
+            setHasChanges(false);
+            onUpdate({ ...client, default_discharges_drainages: text });
+        } catch (error) {
+            console.error('Erro ao salvar:', error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <Card className="w-full">
+            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-slate-500 text-sm mb-1 cursor-pointer hover:text-blue-600" onClick={onBack}>
+                        <ChevronRight className="w-4 h-4 rotate-180" /> Voltar para Clientes
+                    </div>
+                    <CardTitle>Gestão do Cliente: {client.name}</CardTitle>
+                    <CardDescription>Configure as informações padrão para relatórios deste cliente.</CardDescription>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label className="text-base font-semibold">Descargas e Drenagens (Padrão)</Label>
+                    <p className="text-sm text-slate-500">
+                        Este texto será inserido automaticamente nos relatórios deste cliente.
+                    </p>
+                    <textarea
+                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]"
+                        value={text}
+                        onChange={handleTextChange}
+                        placeholder="Texto padrão para aparecer no relatório..."
+                    />
+                </div>
+                {hasChanges && (
+                    <Button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="bg-blue-600 hover:bg-blue-700"
+                    >
+                        {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                    </Button>
+                )}
             </CardContent>
         </Card>
     );
