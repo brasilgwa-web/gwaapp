@@ -112,18 +112,21 @@ export default function VisitsPage() {
     };
 
     const canDeleteVisit = (visit) => {
-        // Only allow deletion of unfinished visits
-        const isNotFinished = visit.status === 'scheduled' || visit.status === 'in_progress';
-        if (!isNotFinished) return false;
-
         // Check if user is admin
         const isAdmin = currentUser?.role?.name === 'admin' ||
             currentUser?.email === 'andre.lsarruda@gmail.com';
 
+        // Admins can delete any visit regardless of status
+        if (isAdmin) return true;
+
+        // Non-admins: only allow deletion of unfinished visits they own
+        const isNotFinished = visit.status === 'scheduled' || visit.status === 'in_progress';
+        if (!isNotFinished) return false;
+
         // Check if user is the technician who created the visit
         const isOwner = visit.technician_email === currentUser?.email;
 
-        return isAdmin || isOwner;
+        return isOwner;
     };
 
     return (
