@@ -186,24 +186,26 @@ export default function DosageBoardTab({ visit, readOnly }) {
 
                                             return (
                                                 <div key={prod.id} className="p-3 space-y-2">
-                                                    <div className="font-medium text-slate-700">{prod.name}</div>
-                                                    {prod.doseParams?.complementary_info && (
-                                                        <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">{prod.doseParams.complementary_info}</div>
-                                                    )}
-                                                    <div className="grid grid-cols-2 gap-2 text-sm">
-                                                        <div className="text-slate-500">Recomendado: <span className="font-mono">{recommended || '-'}</span></div>
-                                                        <div className="text-slate-500">Estoque: <span className="font-mono">{currentStock || '-'}</span></div>
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="font-medium text-slate-700">{prod.name}</div>
+                                                        <div className="text-sm text-slate-500">Estoque: <span className="font-mono font-bold">{currentStock || '-'}</span></div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <label className="text-xs text-slate-500">Aplicado:</label>
-                                                        <Input
-                                                            type="number" step="0.1"
-                                                            className="h-9 flex-1 text-center font-bold text-blue-600"
-                                                            placeholder="0"
-                                                            defaultValue={applied}
-                                                            onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
-                                                            disabled={readOnly}
-                                                        />
+                                                        <label className="text-xs text-slate-500">Dosagem:</label>
+                                                        <div className="flex-1">
+                                                            <Input
+                                                                type="number" step="0.1"
+                                                                className="h-9 w-full text-center font-bold text-blue-600"
+                                                                placeholder="0"
+                                                                defaultValue={applied}
+                                                                onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
+                                                                disabled={readOnly}
+                                                            />
+                                                            <div className="text-xs text-slate-400 text-center mt-1">{prod.unit}</div>
+                                                            {prod.doseParams?.complementary_info && (
+                                                                <div className="text-xs text-blue-600 text-center">{prod.doseParams.complementary_info}</div>
+                                                            )}
+                                                        </div>
                                                         <div className={`text-sm font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
                                                             → {finalStock.toFixed(1)}
                                                             {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline text-red-500" />}
@@ -220,9 +222,8 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                             <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-xs border-b">
                                                 <tr>
                                                     <th className="px-4 py-3 text-left">Produto</th>
-                                                    <th className="px-4 py-3 text-center">Recomendado</th>
                                                     <th className="px-4 py-3 text-center">Estoque</th>
-                                                    <th className="px-4 py-3 text-center">Aplicado</th>
+                                                    <th className="px-4 py-3 text-center">Dosagem</th>
                                                     <th className="px-4 py-3 text-center">Est. Final</th>
                                                 </tr>
                                             </thead>
@@ -240,22 +241,23 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                         <tr key={prod.id} className="hover:bg-slate-50">
                                                             <td className="px-4 py-3">
                                                                 <div className="font-medium text-slate-700">{prod.name}</div>
-                                                                <div className="text-xs text-slate-400">{prod.unit}</div>
-                                                                {prod.doseParams?.complementary_info && (
-                                                                    <div className="text-xs text-blue-600 mt-1">{prod.doseParams.complementary_info}</div>
-                                                                )}
                                                             </td>
-                                                            <td className="px-4 py-3 text-center text-xs text-slate-500">{recommended || '-'}</td>
                                                             <td className="px-4 py-3 text-center font-mono text-slate-600">{currentStock || '-'}</td>
                                                             <td className="px-4 py-3 text-center">
-                                                                <Input
-                                                                    type="number" step="0.1"
-                                                                    className="h-8 w-20 mx-auto text-center font-bold text-blue-600"
-                                                                    placeholder="0"
-                                                                    defaultValue={applied}
-                                                                    onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
-                                                                    disabled={readOnly}
-                                                                />
+                                                                <div className="flex flex-col items-center gap-1">
+                                                                    <Input
+                                                                        type="number" step="0.1"
+                                                                        className="h-8 w-20 text-center font-bold text-blue-600"
+                                                                        placeholder="0"
+                                                                        defaultValue={applied}
+                                                                        onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
+                                                                        disabled={readOnly}
+                                                                    />
+                                                                    <div className="text-xs text-slate-400">{prod.unit}</div>
+                                                                    {prod.doseParams?.complementary_info && (
+                                                                        <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
+                                                                    )}
+                                                                </div>
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
