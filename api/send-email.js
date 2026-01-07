@@ -39,7 +39,7 @@ export default async function handler(request, response) {
         });
 
         const info = await transporter.sendMail({
-            from: '"WGA App" <brasilgwa@gmail.com>', // Verified sender
+            from: '"WGA App" <wgabrasilapp@gmail.com>', // Verified sender
             to: to,
             subject: subject,
             text: text,
