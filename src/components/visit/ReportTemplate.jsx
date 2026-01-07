@@ -55,27 +55,27 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                             <div className="font-medium">{techName}</div>
                             <div className="text-slate-500 text-right">Código Cliente:</div>
                             <div className="font-medium">{client?.client_code || '-'}</div>
-                            {visit.service_start_time && (
+                            {visit.arrival_time && (
                                 <>
                                     <div className="text-slate-500 text-right">Chegada:</div>
-                                    <div className="font-medium">{new Date(visit.service_start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                                    <div className="font-medium">{visit.arrival_time}</div>
                                 </>
                             )}
-                            {visit.service_end_time && (
+                            {visit.departure_time && (
                                 <>
                                     <div className="text-slate-500 text-right">Saída:</div>
-                                    <div className="font-medium">{new Date(visit.service_end_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                                    <div className="font-medium">{visit.departure_time}</div>
                                 </>
                             )}
-                            {visit.service_start_time && visit.service_end_time && (
+                            {visit.arrival_time && visit.departure_time && (
                                 <>
                                     <div className="text-slate-500 text-right">Tempo Dedicado:</div>
                                     <div className="font-medium text-blue-600">
                                         {(() => {
-                                            const start = new Date(visit.service_start_time);
-                                            const end = new Date(visit.service_end_time);
-                                            const diffMs = end - start;
-                                            const totalMinutes = Math.ceil(diffMs / (1000 * 60));
+                                            const [startH, startM] = visit.arrival_time.split(':').map(Number);
+                                            const [endH, endM] = visit.departure_time.split(':').map(Number);
+                                            const totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+                                            if (totalMinutes <= 0) return '-';
                                             const hours = Math.floor(totalMinutes / 60);
                                             const minutes = totalMinutes % 60;
                                             return `${hours}h ${minutes}min`;

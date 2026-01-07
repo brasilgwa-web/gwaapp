@@ -203,20 +203,24 @@ export default function Dashboard() {
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 8);
 
-                // Time per visit - with chart data
+                // Time per visit - using manual arrival/departure time fields
                 const timePerVisitData = filteredVisits
-                    .filter(v => v.service_start_time && v.service_end_time)
+                    .filter(v => v.arrival_time && v.departure_time)
                     .map(v => {
-                        const s = new Date(v.service_start_time);
-                        const e = new Date(v.service_end_time);
-                        const minutes = Math.round((e - s) / (1000 * 60));
+                        // Parse HH:MM format
+                        const [startH, startM] = v.arrival_time.split(':').map(Number);
+                        const [endH, endM] = v.departure_time.split(':').map(Number);
+                        const startMinutes = startH * 60 + startM;
+                        const endMinutes = endH * 60 + endM;
+                        const minutes = endMinutes - startMinutes;
                         return {
                             clientName: clientMap.get(v.client_id) || 'Desconhecido',
                             date: format(parseISO(v.visit_date), 'dd/MM'),
-                            minutes,
+                            minutes: minutes > 0 ? minutes : 0,
                             hours: parseFloat((minutes / 60).toFixed(1))
                         };
                     })
+                    .filter(v => v.minutes > 0)
                     .slice(-15); // Last 15 visits
                 const avgTimeMinutes = timePerVisitData.length > 0
                     ? Math.round(timePerVisitData.reduce((sum, v) => sum + v.minutes, 0) / timePerVisitData.length)
