@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TestDefinition } from "@/api/entities";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function TestCatalog() {
     const queryClient = useQueryClient();
     const [editingTest, setEditingTest] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [sortOrder, setSortOrder] = useState('manual'); // 'manual', 'asc', 'desc'
 
     const { data: tests } = useQuery({
         queryKey: ['testDefinitions'],
@@ -76,6 +78,43 @@ export default function TestCatalog() {
         setIsDialogOpen(true);
     };
 
+    // Sorted tests based on sortOrder
+    const sortedTests = useMemo(() => {
+        if (!tests) return [];
+
+        let sorted = [...tests];
+
+        if (sortOrder === 'asc') {
+            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+        } else if (sortOrder === 'desc') {
+            sorted.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
+        } else {
+            // Manual: sort by display_order if exists
+            sorted.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        }
+
+        return sorted;
+    }, [tests, sortOrder]);
+
+    // Move test up/down for manual ordering
+    const moveTest = async (test, direction) => {
+        const currentIndex = sortedTests.findIndex(t => t.id === test.id);
+        const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+        if (newIndex < 0 || newIndex >= sortedTests.length) return;
+
+        const otherTest = sortedTests[newIndex];
+
+        // Swap display_order values
+        const currentOrder = test.display_order ?? currentIndex;
+        const otherOrder = otherTest.display_order ?? newIndex;
+
+        await TestDefinition.update(test.id, { display_order: otherOrder });
+        await TestDefinition.update(otherTest.id, { display_order: currentOrder });
+
+        queryClient.invalidateQueries({ queryKey: ['testDefinitions'] });
+    };
+
     return (
         <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between">
@@ -83,47 +122,61 @@ export default function TestCatalog() {
                     <CardTitle>Catálogo de Testes</CardTitle>
                     <CardDescription>Defina os parâmetros analisados e seus dados laboratoriais (LD, LQ, Metodologia)</CardDescription>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Teste</Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader><DialogTitle>{editingTest ? 'Editar Teste' : 'Novo Teste'}</DialogTitle></DialogHeader>
-                        <form onSubmit={handleSubmit} className="grid gap-4">
-                            <div className="grid gap-2"><Label>Nome do Teste</Label><Input name="name" defaultValue={editingTest?.name} placeholder="Ex: pH, Condutividade" required /></div>
+                <div className="flex items-center gap-2">
+                    <Select value={sortOrder} onValueChange={setSortOrder}>
+                        <SelectTrigger className="w-[160px]">
+                            <ArrowUpDown className="w-4 h-4 mr-2" />
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="manual">Ordem Manual</SelectItem>
+                            <SelectItem value="asc">A → Z</SelectItem>
+                            <SelectItem value="desc">Z → A</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Teste</Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader><DialogTitle>{editingTest ? 'Editar Teste' : 'Novo Teste'}</DialogTitle></DialogHeader>
+                            <form onSubmit={handleSubmit} className="grid gap-4">
+                                <div className="grid gap-2"><Label>Nome do Teste</Label><Input name="name" defaultValue={editingTest?.name} placeholder="Ex: pH, Condutividade" required /></div>
 
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-3 rounded-lg border">
-                                <div className="grid gap-2"><Label>Unidade</Label><Input name="unit" defaultValue={editingTest?.unit} placeholder="Ex: uS/cm" required /></div>
-                                <div className="grid gap-2"><Label>Mínimo</Label><Input name="min_value" defaultValue={editingTest?.min_value} type="number" step="0.01" required /></div>
-                                <div className="grid gap-2"><Label>Máximo</Label><Input name="max_value" defaultValue={editingTest?.max_value} type="number" step="0.01" required /></div>
-                                <div className="grid gap-2"><Label>Tolerância (%)</Label><Input name="tolerance_percent" defaultValue={editingTest?.tolerance_percent || 10} type="number" step="1" required /></div>
-                            </div>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-3 rounded-lg border">
+                                    <div className="grid gap-2"><Label>Unidade</Label><Input name="unit" defaultValue={editingTest?.unit} placeholder="Ex: uS/cm" required /></div>
+                                    <div className="grid gap-2"><Label>Mínimo</Label><Input name="min_value" defaultValue={editingTest?.min_value} type="number" step="0.01" required /></div>
+                                    <div className="grid gap-2"><Label>Máximo</Label><Input name="max_value" defaultValue={editingTest?.max_value} type="number" step="0.01" required /></div>
+                                    <div className="grid gap-2"><Label>Tolerância (%)</Label><Input name="tolerance_percent" defaultValue={editingTest?.tolerance_percent || 10} type="number" step="1" required /></div>
+                                </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="grid gap-2"><Label>LD (Lim. Detecção)</Label><Input name="ld" defaultValue={editingTest?.ld} placeholder="Ex: 0.1" /></div>
-                                <div className="grid gap-2"><Label>LQ (Lim. Quantificação)</Label><Input name="lq" defaultValue={editingTest?.lq} placeholder="Ex: 0.5" /></div>
-                                <div className="grid gap-2"><Label>Incerteza do Método</Label><Input name="method_uncertainty" defaultValue={editingTest?.method_uncertainty} placeholder="Ex: 1.19" /></div>
-                            </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="grid gap-2"><Label>LD (Lim. Detecção)</Label><Input name="ld" defaultValue={editingTest?.ld} placeholder="Ex: 0.1" /></div>
+                                    <div className="grid gap-2"><Label>LQ (Lim. Quantificação)</Label><Input name="lq" defaultValue={editingTest?.lq} placeholder="Ex: 0.5" /></div>
+                                    <div className="grid gap-2"><Label>Incerteza do Método</Label><Input name="method_uncertainty" defaultValue={editingTest?.method_uncertainty} placeholder="Ex: 1.19" /></div>
+                                </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="grid gap-2"><Label>Fator Diluição (Padrão)</Label><Input name="dilution_factor" defaultValue={editingTest?.dilution_factor || 1} type="number" step="0.1" /></div>
-                                <div className="grid gap-2"><Label>Metodologia (ISO/SMEWW)</Label><Input name="methodology" defaultValue={editingTest?.methodology} placeholder="Ex: SMEWW 2510 B" /></div>
-                            </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid gap-2"><Label>Fator Diluição (Padrão)</Label><Input name="dilution_factor" defaultValue={editingTest?.dilution_factor || 1} type="number" step="0.1" /></div>
+                                    <div className="grid gap-2"><Label>Metodologia (ISO/SMEWW)</Label><Input name="methodology" defaultValue={editingTest?.methodology} placeholder="Ex: SMEWW 2510 B" /></div>
+                                </div>
 
-                            <div className="grid gap-2"><Label>Observação Padrão</Label><Input name="observation" defaultValue={editingTest?.observation} /></div>
+                                <div className="grid gap-2"><Label>Observação Padrão</Label><Input name="observation" defaultValue={editingTest?.observation} /></div>
 
-                            <DialogFooter>
-                                <Button type="submit">{editingTest ? 'Salvar Alterações' : 'Criar Teste'}</Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                                <DialogFooter>
+                                    <Button type="submit">{editingTest ? 'Salvar Alterações' : 'Criar Teste'}</Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="rounded-md border overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                {sortOrder === 'manual' && <TableHead className="w-16"></TableHead>}
                                 <TableHead>Nome</TableHead>
                                 <TableHead>Unidade</TableHead>
                                 <TableHead>Faixa</TableHead>
@@ -132,8 +185,32 @@ export default function TestCatalog() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {tests?.map(test => (
+                            {sortedTests.map((test, index) => (
                                 <TableRow key={test.id}>
+                                    {sortOrder === 'manual' && (
+                                        <TableCell>
+                                            <div className="flex flex-col gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-5 w-5 text-slate-400 hover:text-slate-600"
+                                                    onClick={() => moveTest(test, 'up')}
+                                                    disabled={index === 0}
+                                                >
+                                                    <ArrowUp className="w-3 h-3" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-5 w-5 text-slate-400 hover:text-slate-600"
+                                                    onClick={() => moveTest(test, 'down')}
+                                                    disabled={index === sortedTests.length - 1}
+                                                >
+                                                    <ArrowDown className="w-3 h-3" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    )}
                                     <TableCell className="font-medium">{test.name}</TableCell>
                                     <TableCell>{test.unit}</TableCell>
                                     <TableCell><span className="font-mono bg-slate-100 px-2 py-1 rounded text-xs">{test.min_value} - {test.max_value}</span></TableCell>
@@ -150,7 +227,7 @@ export default function TestCatalog() {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {tests?.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-4">Nenhum teste cadastrado.</TableCell></TableRow>}
+                            {sortedTests.length === 0 && <TableRow><TableCell colSpan={sortOrder === 'manual' ? 6 : 5} className="text-center text-slate-500 py-4">Nenhum teste cadastrado.</TableCell></TableRow>}
                         </TableBody>
                     </Table>
                 </div>
