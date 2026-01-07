@@ -71,6 +71,31 @@ export default function Layout() {
     staleTime: 60000, // Cache for 1 minute
   });
 
+  // Fetch report settings for logo
+  const { data: reportSettings } = useQuery({
+    queryKey: ['reportSettings'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('report_settings')
+        .select('logo_url')
+        .limit(1)
+        .single();
+      return data;
+    },
+    staleTime: 300000, // Cache for 5 minutes
+  });
+
+  // Update favicon dynamically when logo changes
+  React.useEffect(() => {
+    if (reportSettings?.logo_url) {
+      const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+      link.type = 'image/png';
+      link.rel = 'icon';
+      link.href = reportSettings.logo_url;
+      document.head.appendChild(link);
+    }
+  }, [reportSettings?.logo_url]);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -190,9 +215,13 @@ export default function Layout() {
           {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </Button>
         <div className="flex items-center gap-2">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <LayoutDashboard className="w-5 h-5 text-white" />
-          </div>
+          {reportSettings?.logo_url ? (
+            <img src={reportSettings.logo_url} alt="Logo" className="h-8 w-auto" />
+          ) : (
+            <div className="bg-blue-600 p-2 rounded-lg">
+              <LayoutDashboard className="w-5 h-5 text-white" />
+            </div>
+          )}
           <span className="font-bold text-lg text-slate-800">WGA Brasil</span>
         </div>
       </div>
@@ -205,9 +234,13 @@ export default function Layout() {
         `}>
           <div className="flex flex-col h-full">
             <div className="p-6 border-b border-slate-800 hidden lg:flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <LayoutDashboard className="w-6 h-6 text-white" />
-              </div>
+              {reportSettings?.logo_url ? (
+                <img src={reportSettings.logo_url} alt="Logo" className="h-10 w-auto" />
+              ) : (
+                <div className="bg-blue-600 p-2 rounded-lg">
+                  <LayoutDashboard className="w-6 h-6 text-white" />
+                </div>
+              )}
               <span className="font-bold text-xl">WGA Brasil</span>
             </div>
 
