@@ -147,8 +147,8 @@ export default function DosageBoardTab({ visit, readOnly }) {
                         catalogName: catalogItem?.name || 'Equipamento',
                         products: productsToDisplay
                     };
-                })
-                .filter(e => e.products.length > 0); // Hide if no products configured
+                });
+            // Removed filter to show ALL equipment, even without products configured
 
             return {
                 ...loc,
@@ -193,73 +193,16 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                     <span className="font-semibold text-sm uppercase">{eq.catalogName}</span>
                                 </div>
                                 <div className="p-0">
-                                    {/* Mobile card layout */}
-                                    <div className="md:hidden divide-y divide-slate-100">
-                                        {eq.products.map(prod => {
-                                            const record = getDosageRecord(eq.id, prod.id);
-                                            const recommended = prod.doseParams?.recommended_dosage || 0;
-                                            const applied = record?.dosage_applied ?? recommended;
-                                            const currentStock = prod.clientStock?.current_stock || 0;
-                                            const minStock = prod.clientStock?.min_stock || 0;
-                                            const finalStock = currentStock - applied;
-                                            const isLowStock = finalStock < minStock;
-
-                                            return (
-                                                <div key={prod.id} className="p-3 space-y-2">
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="font-medium text-slate-700">{prod.name}</div>
-                                                        <div className="text-sm text-slate-500">Estoque: <span className="font-mono font-bold">{currentStock || '-'}</span></div>
-                                                    </div>
-                                                    <div className="grid grid-cols-3 gap-2 items-start">
-                                                        <div className="text-center">
-                                                            <label className="text-xs text-slate-500 block">Dosagem</label>
-                                                            <div className="font-bold text-slate-700">{recommended || '-'}</div>
-                                                            <div className="text-xs text-slate-400">{prod.unit}</div>
-                                                            {prod.doseParams?.complementary_info && (
-                                                                <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <label className="text-xs text-slate-500 block">Aplicado</label>
-                                                            <Input
-                                                                type="number" step="0.1"
-                                                                className="h-9 w-full text-center font-bold text-blue-600"
-                                                                placeholder="0"
-                                                                defaultValue={applied}
-                                                                onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
-                                                                disabled={readOnly}
-                                                            />
-                                                            <div className="text-xs text-slate-400">{prod.unit}</div>
-                                                            {prod.doseParams?.complementary_info && (
-                                                                <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <label className="text-xs text-slate-500 block">Est. Final</label>
-                                                            <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
-                                                                {finalStock.toFixed(1)}
-                                                                {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline text-red-500" />}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* Desktop table layout */}
-                                    <div className="hidden md:block overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-xs border-b">
-                                                <tr>
-                                                    <th className="px-4 py-3 text-left">Produto</th>
-                                                    <th className="px-4 py-3 text-center">Estoque</th>
-                                                    <th className="px-4 py-3 text-center">Dosagem</th>
-                                                    <th className="px-4 py-3 text-center">Aplicado</th>
-                                                    <th className="px-4 py-3 text-center">Est. Final</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
+                                    {eq.products.length === 0 ? (
+                                        <div className="p-6 text-center text-slate-500">
+                                            <Package className="w-6 h-6 mx-auto mb-2 text-slate-300" />
+                                            <p className="text-sm">Nenhum produto configurado para este equipamento.</p>
+                                            <p className="text-xs mt-1">Configure em Clientes → Configurar Equipamento</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Mobile card layout */}
+                                            <div className="md:hidden divide-y divide-slate-100">
                                                 {eq.products.map(prod => {
                                                     const record = getDosageRecord(eq.id, prod.id);
                                                     const recommended = prod.doseParams?.recommended_dosage || 0;
@@ -270,25 +213,25 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                     const isLowStock = finalStock < minStock;
 
                                                     return (
-                                                        <tr key={prod.id} className="hover:bg-slate-50">
-                                                            <td className="px-4 py-3">
+                                                        <div key={prod.id} className="p-3 space-y-2">
+                                                            <div className="flex justify-between items-center">
                                                                 <div className="font-medium text-slate-700">{prod.name}</div>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-center font-mono text-slate-600">{currentStock || '-'}</td>
-                                                            <td className="px-4 py-3 text-center">
-                                                                <div className="flex flex-col items-center">
+                                                                <div className="text-sm text-slate-500">Estoque: <span className="font-mono font-bold">{currentStock || '-'}</span></div>
+                                                            </div>
+                                                            <div className="grid grid-cols-3 gap-2 items-start">
+                                                                <div className="text-center">
+                                                                    <label className="text-xs text-slate-500 block">Dosagem</label>
                                                                     <div className="font-bold text-slate-700">{recommended || '-'}</div>
                                                                     <div className="text-xs text-slate-400">{prod.unit}</div>
                                                                     {prod.doseParams?.complementary_info && (
                                                                         <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
                                                                     )}
                                                                 </div>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-center">
-                                                                <div className="flex flex-col items-center gap-1">
+                                                                <div className="text-center">
+                                                                    <label className="text-xs text-slate-500 block">Aplicado</label>
                                                                     <Input
                                                                         type="number" step="0.1"
-                                                                        className="h-8 w-20 text-center font-bold text-blue-600"
+                                                                        className="h-9 w-full text-center font-bold text-blue-600"
                                                                         placeholder="0"
                                                                         defaultValue={applied}
                                                                         onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
@@ -299,19 +242,86 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                         <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
                                                                     )}
                                                                 </div>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-center">
-                                                                <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
-                                                                    {finalStock.toFixed(1)}
-                                                                    {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline" />}
+                                                                <div className="text-center">
+                                                                    <label className="text-xs text-slate-500 block">Est. Final</label>
+                                                                    <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
+                                                                        {finalStock.toFixed(1)}
+                                                                        {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline text-red-500" />}
+                                                                    </div>
                                                                 </div>
-                                                            </td>
-                                                        </tr>
+                                                            </div>
+                                                        </div>
                                                     );
                                                 })}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                            </div>
+
+                                            {/* Desktop table layout */}
+                                            <div className="hidden md:block overflow-x-auto">
+                                                <table className="w-full text-sm">
+                                                    <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-xs border-b">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left">Produto</th>
+                                                            <th className="px-4 py-3 text-center">Estoque</th>
+                                                            <th className="px-4 py-3 text-center">Dosagem</th>
+                                                            <th className="px-4 py-3 text-center">Aplicado</th>
+                                                            <th className="px-4 py-3 text-center">Est. Final</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {eq.products.map(prod => {
+                                                            const record = getDosageRecord(eq.id, prod.id);
+                                                            const recommended = prod.doseParams?.recommended_dosage || 0;
+                                                            const applied = record?.dosage_applied ?? recommended;
+                                                            const currentStock = prod.clientStock?.current_stock || 0;
+                                                            const minStock = prod.clientStock?.min_stock || 0;
+                                                            const finalStock = currentStock - applied;
+                                                            const isLowStock = finalStock < minStock;
+
+                                                            return (
+                                                                <tr key={prod.id} className="hover:bg-slate-50">
+                                                                    <td className="px-4 py-3">
+                                                                        <div className="font-medium text-slate-700">{prod.name}</div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-center font-mono text-slate-600">{currentStock || '-'}</td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <div className="flex flex-col items-center">
+                                                                            <div className="font-bold text-slate-700">{recommended || '-'}</div>
+                                                                            <div className="text-xs text-slate-400">{prod.unit}</div>
+                                                                            {prod.doseParams?.complementary_info && (
+                                                                                <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <div className="flex flex-col items-center gap-1">
+                                                                            <Input
+                                                                                type="number" step="0.1"
+                                                                                className="h-8 w-20 text-center font-bold text-blue-600"
+                                                                                placeholder="0"
+                                                                                defaultValue={applied}
+                                                                                onBlur={(e) => handleBlur(eq.id, prod.id, 'dosage_applied', e.target.value)}
+                                                                                disabled={readOnly}
+                                                                            />
+                                                                            <div className="text-xs text-slate-400">{prod.unit}</div>
+                                                                            {prod.doseParams?.complementary_info && (
+                                                                                <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
+                                                                            {finalStock.toFixed(1)}
+                                                                            {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline" />}
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </Card>
                         ))}
