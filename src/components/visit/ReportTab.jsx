@@ -339,6 +339,39 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             // Send Email
             setUploadStatus('Enviando email...');
+
+            // Generate and save report number if not already set
+            let reportNumber = visit.report_number;
+            if (!reportNumber && !readOnly) {
+                // Fetch report settings
+                const { data: reportSettings } = await supabase
+                    .from('report_settings')
+                    .select('*')
+                    .limit(1)
+                    .single();
+
+                if (reportSettings) {
+                    const currentNum = reportSettings.current_report_number || 1;
+                    reportNumber = `${format(safeDate, 'yy')}-${format(safeDate, 'MM')}-${String(currentNum).padStart(6, '0')}`;
+
+                    // Update visit with report number
+                    await supabase
+                        .from('visits')
+                        .update({ report_number: reportNumber })
+                        .eq('id', visit.id);
+
+                    // Increment counter and update highest emitted
+                    await supabase
+                        .from('report_settings')
+                        .update({
+                            current_report_number: currentNum + 1,
+                            highest_emitted_number: currentNum,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', reportSettings.id);
+                }
+            }
+
             if (!readOnly) {
                 await Visit.update(visit.id, { status: 'completed' });
             }
