@@ -123,7 +123,7 @@ export function useReportData(id) {
                                 record.current_stock = stockValue;
                             }
 
-                            return { product, record, recommended_dosage: param.recommended_dosage };
+                            return { product, record, recommended_dosage: param.recommended_dosage, complementary_info: param.complementary_info };
                         }).filter(Boolean);
 
                         return {

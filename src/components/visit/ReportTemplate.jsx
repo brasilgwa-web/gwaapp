@@ -199,8 +199,8 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                                         <tr key={dIdx} className="hover:bg-slate-50">
                                                             <td className="px-3 py-1.5">
                                                                 <div className="font-medium text-slate-700">{item.product.name}</div>
-                                                                {item.product.complementary_info && (
-                                                                    <div className="text-[10px] text-blue-600 mt-0.5">{item.product.complementary_info}</div>
+                                                                {item.complementary_info && (
+                                                                    <div className="text-[10px] text-blue-600 mt-0.5">{item.complementary_info}</div>
                                                                 )}
                                                             </td>
                                                             <td className="px-3 py-1.5 text-center text-slate-500">{item.product.unit}</td>

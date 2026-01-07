@@ -46,8 +46,7 @@ export default function ProductCatalog() {
         const formData = new FormData(e.target);
         const data = {
             name: formData.get('name'),
-            unit: formData.get('unit'),
-            complementary_info: formData.get('complementary_info')
+            unit: formData.get('unit')
         };
 
         if (editingProduct) {
@@ -83,15 +82,6 @@ export default function ProductCatalog() {
                         <form onSubmit={handleSubmit} className="grid gap-4">
                             <div className="grid gap-2"><Label>Nome do Produto</Label><Input name="name" defaultValue={editingProduct?.name} placeholder="Ex: Nalco 7330" required /></div>
                             <div className="grid gap-2"><Label>Unidade de Dosagem (Padrão)</Label><Input name="unit" defaultValue={editingProduct?.unit} placeholder="Ex: kg, Litros, ppm" required /></div>
-                            <div className="grid gap-2">
-                                <Label>Informação Complementar</Label>
-                                <textarea
-                                    name="complementary_info"
-                                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
-                                    defaultValue={editingProduct?.complementary_info}
-                                    placeholder="Informações adicionais que aparecerão no relatório..."
-                                />
-                            </div>
                             <DialogFooter>
                                 <Button type="submit">{editingProduct ? 'Salvar' : 'Criar'}</Button>
                             </DialogFooter>
