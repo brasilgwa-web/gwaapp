@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Shield, ShieldAlert, Ban, CheckCircle, Info, Users, Key, Loader2 } from "lucide-react";
+import { MoreHorizontal, Shield, ShieldAlert, Ban, CheckCircle, Info, Users, Key, Loader2, Trash2, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -57,6 +57,9 @@ export default function UserManagement() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isResetting, setIsResetting] = useState(false);
+
+    // Show deleted users toggle
+    const [showDeleted, setShowDeleted] = useState(false);
 
     // Fetch roles for dropdown
     const { data: roles } = useQuery({
@@ -129,6 +132,28 @@ export default function UserManagement() {
         });
         if (confirmed) {
             updateUserMutation.mutate({ id: user.id, data: { status: newStatus } });
+        }
+    };
+
+    const handleDeleteUser = async (user) => {
+        const confirmed = await confirm({
+            title: 'Excluir Usuário',
+            message: `Tem certeza que deseja excluir o usuário ${user.email}? O usuário poderá ser restaurado posteriormente.`,
+            type: 'warning'
+        });
+        if (confirmed) {
+            updateUserMutation.mutate({ id: user.id, data: { is_deleted: true } });
+        }
+    };
+
+    const handleRestoreUser = async (user) => {
+        const confirmed = await confirm({
+            title: 'Restaurar Usuário',
+            message: `Restaurar o usuário ${user.email}?`,
+            type: 'confirm'
+        });
+        if (confirmed) {
+            updateUserMutation.mutate({ id: user.id, data: { is_deleted: false } });
         }
     };
 
@@ -240,8 +265,19 @@ export default function UserManagement() {
                     )}
 
                     <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Usuários Cadastrados ({users?.length || 0})</CardTitle>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle className="text-base">
+                                {showDeleted ? 'Usuários Excluídos' : 'Usuários Cadastrados'} ({(showDeleted ? users?.filter(u => u.is_deleted) : users?.filter(u => !u.is_deleted))?.length || 0})
+                            </CardTitle>
+                            <Button
+                                variant={showDeleted ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setShowDeleted(!showDeleted)}
+                                className="gap-2"
+                            >
+                                {showDeleted ? <Users className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                                {showDeleted ? 'Ver Ativos' : 'Ver Excluídos'}
+                            </Button>
                         </CardHeader>
                         <CardContent>
                             <Table>
@@ -255,12 +291,15 @@ export default function UserManagement() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {users?.map((user) => (
-                                        <TableRow key={user.id}>
+                                    {users?.filter(u => showDeleted ? u.is_deleted : !u.is_deleted).map((user) => (
+                                        <TableRow key={user.id} className={user.is_deleted ? 'bg-red-50/50' : ''}>
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <span className="font-medium">{user.full_name || 'Sem nome'}</span>
                                                     <span className="text-xs text-slate-500">{user.email}</span>
+                                                    {user.is_deleted && (
+                                                        <span className="text-xs text-red-500 mt-1">Excluído</span>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -334,6 +373,27 @@ export default function UserManagement() {
                                                             >
                                                                 <CheckCircle className="w-4 h-4 mr-2" />
                                                                 Ativar Acesso
+                                                            </DropdownMenuItem>
+                                                        )}
+
+                                                        <DropdownMenuSeparator />
+
+                                                        {user.is_deleted ? (
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleRestoreUser(user)}
+                                                                className="text-green-600 focus:text-green-600 focus:bg-green-50"
+                                                            >
+                                                                <RotateCcw className="w-4 h-4 mr-2" />
+                                                                Restaurar Usuário
+                                                            </DropdownMenuItem>
+                                                        ) : (
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleDeleteUser(user)}
+                                                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                                disabled={user.id === currentUser?.id}
+                                                            >
+                                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                                Excluir Usuário
                                                             </DropdownMenuItem>
                                                         )}
                                                     </DropdownMenuContent>
