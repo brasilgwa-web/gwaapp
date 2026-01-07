@@ -54,8 +54,7 @@ export default function ClientLocationManager() {
             client_code: formData.get('client_code'),
             address: formData.get('address'),
             city_state: formData.get('city_state'),
-            google_drive_folder_id: formData.get('google_drive_folder_id'),
-            default_discharges_drainages: formData.get('default_discharges_drainages')
+            google_drive_folder_id: formData.get('google_drive_folder_id')
         };
 
         if (editingClient) {
@@ -127,16 +126,6 @@ export default function ClientLocationManager() {
 
                             <div className="space-y-2"><Label>ID Pasta Drive</Label><Input name="google_drive_folder_id" defaultValue={editingClient?.google_drive_folder_id} placeholder="ID da pasta do Google Drive" /></div>
 
-                            <div className="space-y-2">
-                                <Label>Descargas e Drenagens (Padrão)</Label>
-                                <textarea
-                                    name="default_discharges_drainages"
-                                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
-                                    defaultValue={editingClient?.default_discharges_drainages}
-                                    placeholder="Texto padrão para aparecer no relatório..."
-                                />
-                            </div>
-
                             <DialogFooter><Button type="submit">{editingClient ? 'Salvar' : 'Criar'}</Button></DialogFooter>
                         </form>
                     </DialogContent>
@@ -201,8 +190,6 @@ function ClientDischargesSection({ client, onBack, onUpdate }) {
                     <div className="flex items-center gap-2 text-slate-500 text-sm mb-1 cursor-pointer hover:text-blue-600" onClick={onBack}>
                         <ChevronRight className="w-4 h-4 rotate-180" /> Voltar para Clientes
                     </div>
-                    <CardTitle>Gestão do Cliente: {client.name}</CardTitle>
-                    <CardDescription>Configure as informações padrão para relatórios deste cliente.</CardDescription>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
