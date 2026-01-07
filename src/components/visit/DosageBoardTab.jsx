@@ -187,6 +187,9 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                             return (
                                                 <div key={prod.id} className="p-3 space-y-2">
                                                     <div className="font-medium text-slate-700">{prod.name}</div>
+                                                    {prod.complementary_info && (
+                                                        <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">{prod.complementary_info}</div>
+                                                    )}
                                                     <div className="grid grid-cols-2 gap-2 text-sm">
                                                         <div className="text-slate-500">Recomendado: <span className="font-mono">{recommended || '-'}</span></div>
                                                         <div className="text-slate-500">Estoque: <span className="font-mono">{currentStock || '-'}</span></div>
@@ -238,6 +241,9 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                             <td className="px-4 py-3">
                                                                 <div className="font-medium text-slate-700">{prod.name}</div>
                                                                 <div className="text-xs text-slate-400">{prod.unit}</div>
+                                                                {prod.complementary_info && (
+                                                                    <div className="text-xs text-blue-600 mt-1">{prod.complementary_info}</div>
+                                                                )}
                                                             </td>
                                                             <td className="px-4 py-3 text-center text-xs text-slate-500">{recommended || '-'}</td>
                                                             <td className="px-4 py-3 text-center font-mono text-slate-600">{currentStock || '-'}</td>
