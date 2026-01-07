@@ -144,6 +144,11 @@ export default function SetupReport() {
     const now = new Date();
     const previewNumber = `${format(now, 'yy')}-${format(now, 'MM')}-${String(parseInt(initialNumber) || 1).padStart(6, '0')}`;
 
+    // Validation: cannot set number lower than highest emitted
+    const highestEmitted = settings?.highest_emitted_number || 0;
+    const currentValue = parseInt(initialNumber) || 0;
+    const isInvalidNumber = currentValue < highestEmitted && highestEmitted > 0;
+
     if (isLoading) {
         return (
             <div className="p-8 text-center">
@@ -176,12 +181,22 @@ export default function SetupReport() {
                         <Input
                             id="initialNumber"
                             type="number"
-                            min="1"
+                            min={highestEmitted > 0 ? highestEmitted : 1}
                             value={initialNumber}
                             onChange={(e) => setInitialNumber(e.target.value)}
                             placeholder="Ex: 1"
-                            className="max-w-[200px]"
+                            className={`max-w-[200px] ${isInvalidNumber ? 'border-red-500' : ''}`}
                         />
+                        {isInvalidNumber && (
+                            <p className="text-sm text-red-600 flex items-center gap-1">
+                                ⚠️ Não é possível definir um número menor que {highestEmitted} (já emitido)
+                            </p>
+                        )}
+                        {highestEmitted > 0 && (
+                            <p className="text-xs text-slate-500">
+                                Último número emitido: {String(highestEmitted).padStart(6, '0')}
+                            </p>
+                        )}
                     </div>
 
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -261,7 +276,7 @@ export default function SetupReport() {
             <div className="flex justify-end">
                 <Button
                     onClick={handleSave}
-                    disabled={isUploading || saveMutation.isPending}
+                    disabled={isUploading || saveMutation.isPending || isInvalidNumber}
                     className="bg-blue-600 hover:bg-blue-700"
                 >
                     {(isUploading || saveMutation.isPending) ? (
