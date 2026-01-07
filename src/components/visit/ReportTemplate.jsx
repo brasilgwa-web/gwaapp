@@ -22,10 +22,10 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
     const logoUrl = reportSettings?.logo_url;
 
     return (
-        <div className={`bg-white text-slate-900 font-sans text-sm leading-tight ${isPdfGeneration ? 'p-0' : 'p-8 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
+        <div className={`bg-white text-slate-900 font-sans text-sm leading-tight ${isPdfGeneration ? 'p-0' : 'p-4 md:p-8 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
             {/* Header */}
-            <header className="border-b-2 border-blue-600 pb-4 mb-6 flex justify-between items-start">
+            <header className="border-b-2 border-blue-600 pb-4 mb-6 flex flex-col md:flex-row md:justify-between md:items-start gap-4">
                 <div className="flex items-center gap-4">
                     {/* Logo - from settings or default */}
                     {logoUrl ? (
@@ -50,16 +50,16 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
 
             {/* Client & Visit Info Grid */}
             <section className="bg-slate-50 p-4 rounded-sm border border-slate-200 mb-6 text-xs">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-x-8 md:gap-y-2">
                     <div className="col-span-1">
                         <span className="font-bold text-slate-700 uppercase block mb-0.5">Cliente</span>
                         <div className="font-medium text-slate-900 text-sm">{client?.name}</div>
                         <div className="text-slate-500">{client?.address}</div>
                         <div className="text-slate-500">{primaryLocation?.city} - {primaryLocation?.state}</div>
                     </div>
-                    <div className="col-span-1 text-right">
+                    <div className="md:text-right">
                         <span className="font-bold text-slate-700 uppercase block mb-0.5">Detalhes do Serviço</span>
-                        <div className="grid grid-cols-2 gap-2 text-left ml-auto w-fit">
+                        <div className="grid grid-cols-2 gap-2 text-left md:ml-auto md:w-fit">
                             <div className="text-slate-500 text-right">Técnico:</div>
                             <div className="font-medium">{techName}</div>
                             <div className="text-slate-500 text-right">Código Cliente:</div>
@@ -129,42 +129,44 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                         </div>
 
                                         {/* Readings Table */}
-                                        <table className="w-full text-xs border-x border-b border-slate-200">
-                                            <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
-                                                <tr>
-                                                    <th className="px-2 py-1.5">Parâmetro</th>
-                                                    <th className="px-2 py-1.5 text-center">Und.</th>
-                                                    <th className="px-2 py-1.5 text-center">VMP</th>
-                                                    <th className="px-2 py-1.5 text-center">LD</th>
-                                                    <th className="px-2 py-1.5 text-center">LQ</th>
-                                                    <th className="px-2 py-1.5 text-center">Incerteza</th>
-                                                    <th className="px-2 py-1.5 text-center">Resultado</th>
-                                                    <th className="px-2 py-1.5 text-right">Metodologia</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {eq.tests.map((test, tIdx) => (
-                                                    <tr key={tIdx} className={tIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
-                                                        <td className="px-2 py-1 font-medium text-slate-700">{test.name}</td>
-                                                        <td className="px-2 py-1 text-center text-slate-500">{test.unit || '-'}</td>
-                                                        <td className="px-2 py-1 text-center font-mono text-slate-500 text-[10px]">{test.min_value} - {test.max_value}</td>
-                                                        <td className="px-2 py-1 text-center text-slate-400">{test.ld || '-'}</td>
-                                                        <td className="px-2 py-1 text-center text-slate-400">{test.lq || '-'}</td>
-                                                        <td className="px-2 py-1 text-center text-slate-400 text-[10px]">{test.method_uncertainty || '-'}</td>
-                                                        <td className="px-2 py-1 text-center font-bold">
-                                                            {test.result ? (
-                                                                <span className={test.result.status_light === 'red' ? 'text-red-600' : test.result.status_light === 'green' ? 'text-green-600' : 'text-yellow-600'}>
-                                                                    {test.result.measured_value}
-                                                                </span>
-                                                            ) : '-'}
-                                                        </td>
-                                                        <td className="px-2 py-1 text-right text-[9px] text-slate-400 truncate max-w-[80px]" title={test.methodology}>
-                                                            {test.methodology || '-'}
-                                                        </td>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-xs border-x border-b border-slate-200 min-w-[600px]">
+                                                <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
+                                                    <tr>
+                                                        <th className="px-2 py-1.5">Parâmetro</th>
+                                                        <th className="px-2 py-1.5 text-center">Und.</th>
+                                                        <th className="px-2 py-1.5 text-center">VMP</th>
+                                                        <th className="px-2 py-1.5 text-center">LD</th>
+                                                        <th className="px-2 py-1.5 text-center">LQ</th>
+                                                        <th className="px-2 py-1.5 text-center">Incerteza</th>
+                                                        <th className="px-2 py-1.5 text-center">Resultado</th>
+                                                        <th className="px-2 py-1.5 text-right">Metodologia</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {eq.tests.map((test, tIdx) => (
+                                                        <tr key={tIdx} className={tIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
+                                                            <td className="px-2 py-1 font-medium text-slate-700">{test.name}</td>
+                                                            <td className="px-2 py-1 text-center text-slate-500">{test.unit || '-'}</td>
+                                                            <td className="px-2 py-1 text-center font-mono text-slate-500 text-[10px]">{test.min_value} - {test.max_value}</td>
+                                                            <td className="px-2 py-1 text-center text-slate-400">{test.ld || '-'}</td>
+                                                            <td className="px-2 py-1 text-center text-slate-400">{test.lq || '-'}</td>
+                                                            <td className="px-2 py-1 text-center text-slate-400 text-[10px]">{test.method_uncertainty || '-'}</td>
+                                                            <td className="px-2 py-1 text-center font-bold">
+                                                                {test.result ? (
+                                                                    <span className={test.result.status_light === 'red' ? 'text-red-600' : test.result.status_light === 'green' ? 'text-green-600' : 'text-yellow-600'}>
+                                                                        {test.result.measured_value}
+                                                                    </span>
+                                                                ) : '-'}
+                                                            </td>
+                                                            <td className="px-2 py-1 text-right text-[9px] text-slate-400 truncate max-w-[80px]" title={test.methodology}>
+                                                                {test.methodology || '-'}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -194,31 +196,33 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                             <div className="bg-green-50 px-3 py-2 border-b border-green-100 font-bold text-green-900 border-l-4 border-l-green-600">
                                                 {loc.location.name} - {eq.equipment.name}
                                             </div>
-                                            <table className="w-full">
-                                                <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
-                                                    <tr>
-                                                        <th className="px-3 py-1.5 w-1/3">Produto Químico</th>
-                                                        <th className="px-3 py-1.5 text-center">Unidade</th>
-                                                        <th className="px-3 py-1.5 text-center">Estoque Local (Kg/L)</th>
-                                                        <th className="px-3 py-1.5 text-center">Dosagem Aplicada</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {activeDosages.map((item, dIdx) => (
-                                                        <tr key={dIdx} className="hover:bg-slate-50">
-                                                            <td className="px-3 py-1.5">
-                                                                <div className="font-medium text-slate-700">{item.product.name}</div>
-                                                                {item.complementary_info && (
-                                                                    <div className="text-[10px] text-blue-600 mt-0.5">{item.complementary_info}</div>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-3 py-1.5 text-center text-slate-500">{item.product.unit}</td>
-                                                            <td className="px-3 py-1.5 text-center font-bold text-slate-700">{item.record?.current_stock ?? '-'}</td>
-                                                            <td className="px-3 py-1.5 text-center font-bold text-slate-700">{item.record?.dosage_applied ?? '-'}</td>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full min-w-[400px]">
+                                                    <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
+                                                        <tr>
+                                                            <th className="px-3 py-1.5 w-1/3">Produto Químico</th>
+                                                            <th className="px-3 py-1.5 text-center">Unidade</th>
+                                                            <th className="px-3 py-1.5 text-center">Estoque Local (Kg/L)</th>
+                                                            <th className="px-3 py-1.5 text-center">Dosagem Aplicada</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {activeDosages.map((item, dIdx) => (
+                                                            <tr key={dIdx} className="hover:bg-slate-50">
+                                                                <td className="px-3 py-1.5">
+                                                                    <div className="font-medium text-slate-700">{item.product.name}</div>
+                                                                    {item.complementary_info && (
+                                                                        <div className="text-[10px] text-blue-600 mt-0.5">{item.complementary_info}</div>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-3 py-1.5 text-center text-slate-500">{item.product.unit}</td>
+                                                                <td className="px-3 py-1.5 text-center font-bold text-slate-700">{item.record?.current_stock ?? '-'}</td>
+                                                                <td className="px-3 py-1.5 text-center font-bold text-slate-700">{item.record?.dosage_applied ?? '-'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     );
                                 })}
