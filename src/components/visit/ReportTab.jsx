@@ -14,7 +14,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SignaturePad from "./SignaturePad";
-import { Bot, Send, FileText, Loader2, ExternalLink, Mail, AlertTriangle, CheckCircle, Lock, MonitorUp, Plus, Droplets, quote } from "lucide-react";
+import { Bot, Send, FileText, Loader2, ExternalLink, Mail, AlertTriangle, CheckCircle, Lock, MonitorUp, Plus, Droplets, Clock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useReportData } from '@/hooks/useReportData';
 import { ReportTemplate } from '@/components/visit/ReportTemplate';
 import html2pdf from 'html2pdf.js';
@@ -31,6 +33,9 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [observations, setObservations] = useState(visit.observations || '');
     const [generalObservations, setGeneralObservations] = useState(visit.general_observations || '');
     const [discharges, setDischarges] = useState(visit.discharges_drainages || '');
+    const [arrivalTime, setArrivalTime] = useState(visit.arrival_time || '');
+    const [departureTime, setDepartureTime] = useState(visit.departure_time || '');
+    const [clientAbsent, setClientAbsent] = useState(visit.client_absent || false);
 
     // Fetch Client Details (to get default discharges) - Direct Supabase Call
     const { data: clientDetails } = useQuery({
@@ -429,6 +434,40 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </div>
             )}
 
+            {/* 0. Horários */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Horários da Visita</CardTitle>
+                    <CardDescription>Informe os horários de chegada e saída.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="arrivalTime">Hora de Chegada</Label>
+                            <Input
+                                id="arrivalTime"
+                                type="time"
+                                value={arrivalTime}
+                                onChange={(e) => setArrivalTime(e.target.value)}
+                                onBlur={() => handleBlur('arrival_time', arrivalTime)}
+                                disabled={readOnly}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="departureTime">Hora de Saída</Label>
+                            <Input
+                                id="departureTime"
+                                type="time"
+                                value={departureTime}
+                                onChange={(e) => setDepartureTime(e.target.value)}
+                                onBlur={() => handleBlur('departure_time', departureTime)}
+                                disabled={readOnly}
+                            />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* 1. Descargas e Drenagens */}
             <Card>
                 <CardHeader>
@@ -506,12 +545,32 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             {/* 4. Client Signature */}
             <Card>
-                <CardHeader><CardTitle className="text-base">Assinatura do Cliente</CardTitle></CardHeader>
+                <CardHeader>
+                    <CardTitle className="text-base">Assinatura do Cliente</CardTitle>
+                </CardHeader>
                 <CardContent>
-                    {readOnly ? (
-                        visit.client_signature_url ? <img src={visit.client_signature_url} className="h-24 border rounded bg-slate-50" alt="Assinatura" /> : <p className="text-slate-400 italic">Não assinado</p>
+                    <div className="mb-4 flex items-center space-x-2">
+                        <Checkbox
+                            id="clientAbsent"
+                            checked={clientAbsent}
+                            onCheckedChange={(checked) => {
+                                setClientAbsent(checked);
+                                handleBlur('client_absent', checked);
+                            }}
+                            disabled={readOnly}
+                        />
+                        <Label htmlFor="clientAbsent" className="text-sm text-slate-600 cursor-pointer">
+                            Responsável ausente (cliente não disponível para assinatura)
+                        </Label>
+                    </div>
+                    {clientAbsent ? (
+                        <p className="text-slate-400 italic text-sm">Assinatura não necessária - responsável ausente</p>
                     ) : (
-                        <SignaturePad savedUrl={visit.client_signature_url} onSave={handleSaveSignature} />
+                        readOnly ? (
+                            visit.client_signature_url ? <img src={visit.client_signature_url} className="h-24 border rounded bg-slate-50" alt="Assinatura" /> : <p className="text-slate-400 italic">Não assinado</p>
+                        ) : (
+                            <SignaturePad savedUrl={visit.client_signature_url} onSave={handleSaveSignature} />
+                        )
                     )}
                 </CardContent>
             </Card>
