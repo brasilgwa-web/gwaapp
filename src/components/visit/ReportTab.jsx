@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SignaturePad from "./SignaturePad";
-import { Bot, Send, FileText, Loader2, ExternalLink, Mail, AlertTriangle, CheckCircle, Lock, MonitorUp, Plus, Droplets, Clock } from "lucide-react";
+import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useReportData } from '@/hooks/useReportData';
@@ -115,9 +115,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             if (onUpdateVisit) onUpdateVisit();
             if (variables.client_signature_url) {
                 // Only show success message when saving, not when clearing
-                if (variables.client_signature_url !== null) {
-                    // Could use toast here instead
-                }
             }
         },
         onError: (err) => {

@@ -15,9 +15,7 @@ export default function ProfilePage() {
     const { user } = useAuth();
     const { alert } = useConfirm();
 
-    // Data is now from context, but if we need to ensure we have the signature_url which might technically check profile
-    // The AuthContext seems to fetch profile and merge it.
-    // So 'user' should have 'signature_url'.
+
 
     const updateMutation = useMutation({
         mutationFn: async (data) => {

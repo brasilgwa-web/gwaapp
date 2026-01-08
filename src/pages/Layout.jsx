@@ -13,8 +13,6 @@ import {
   X,
   LogOut,
   Settings,
-  UserCircle,
-  Construction,
   Beaker,
   FileText,
   Bot,
