@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { filterNavigation, ROUTE_PERMISSIONS, canAccessRoute } from "@/lib/permissions";
+import { version } from '../../package.json';
 
 export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
@@ -314,7 +315,7 @@ export default function Layout() {
             </nav>
 
             {/* Bottom user section */}
-            <div className="p-4 border-t border-slate-800">
+            <div className="p-4 border-t border-slate-800 space-y-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="w-full justify-start gap-3 p-2 h-auto text-left text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl">
@@ -345,6 +346,12 @@ export default function Layout() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <div className="px-2 text-center">
+                <span className="text-[10px] text-slate-600 font-mono">
+                  v{version}
+                </span>
+              </div>
             </div>
           </div>
         </aside>
