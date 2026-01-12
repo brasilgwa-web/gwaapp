@@ -6,15 +6,7 @@ import '@/index.css'
 
 const queryClient = new QueryClient()
 
-import { registerSW } from 'virtual:pwa-register'
-
-const updateSW = registerSW({
-    onNeedRefresh() {
-        if (confirm('Nova versão disponível. Recarregar?')) {
-            updateSW(true)
-        }
-    },
-})
+// SW registration handled by ReloadPrompt component
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <QueryClientProvider client={queryClient}>
