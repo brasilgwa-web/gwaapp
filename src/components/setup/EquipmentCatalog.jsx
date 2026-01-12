@@ -219,14 +219,14 @@ export default function EquipmentCatalog() {
 
     return (
         <Card className="w-full">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <CardTitle>Catálogo de Equipamentos</CardTitle>
                     <CardDescription>Defina os tipos de equipamentos e seus testes padrão</CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <Select value={sortOrder} onValueChange={setSortOrder}>
-                        <SelectTrigger className="w-[160px]">
+                        <SelectTrigger className="w-full sm:w-[160px]">
                             <ArrowUpDown className="w-4 h-4 mr-2" />
                             <SelectValue />
                         </SelectTrigger>

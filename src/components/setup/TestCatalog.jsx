@@ -117,14 +117,14 @@ export default function TestCatalog() {
 
     return (
         <Card className="w-full">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <CardTitle>Catálogo de Testes</CardTitle>
                     <CardDescription>Defina os parâmetros analisados e seus dados laboratoriais (LD, LQ, Metodologia)</CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <Select value={sortOrder} onValueChange={setSortOrder}>
-                        <SelectTrigger className="w-[160px]">
+                        <SelectTrigger className="w-full sm:w-[160px]">
                             <ArrowUpDown className="w-4 h-4 mr-2" />
                             <SelectValue />
                         </SelectTrigger>
@@ -143,7 +143,7 @@ export default function TestCatalog() {
                             <form onSubmit={handleSubmit} className="grid gap-4">
                                 <div className="grid gap-2"><Label>Nome do Teste</Label><Input name="name" defaultValue={editingTest?.name} placeholder="Ex: pH, Condutividade" required /></div>
 
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-3 rounded-lg border">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-3 rounded-lg border">
                                     <div className="grid gap-2"><Label>Unidade</Label><Input name="unit" defaultValue={editingTest?.unit} placeholder="Ex: uS/cm" required /></div>
                                     <div className="grid gap-2"><Label>Mínimo</Label><Input name="min_value" defaultValue={editingTest?.min_value} type="number" step="0.01" required /></div>
                                     <div className="grid gap-2"><Label>Máximo</Label><Input name="max_value" defaultValue={editingTest?.max_value} type="number" step="0.01" required /></div>
