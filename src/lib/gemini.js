@@ -2,6 +2,7 @@
 // Uses Google's Gemini API - Settings loaded from database
 
 import { supabase } from './supabase';
+import { Logger } from './logger';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -48,6 +49,12 @@ export async function generateTechnicalAnalysis(visitData) {
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model}:generateContent`;
 
     const { client, results, dosages, observations } = visitData;
+
+    Logger.info('AI_GENERATION', 'Starting generation', {
+        clientId: client?.id,
+        resultsCount: results?.length,
+        hasHistory: !!observations
+    });
 
     // Build context from results
     const resultsText = results?.map(r => {
@@ -138,8 +145,10 @@ Responda em português brasileiro:`;
         }
 
         return text.trim();
+        return text.trim();
     } catch (error) {
         console.error('Gemini Service Error:', error);
+        Logger.error('AI_GENERATION', 'Error generating technical analysis', error);
         throw error;
     }
 }

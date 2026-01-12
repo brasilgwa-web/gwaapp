@@ -23,6 +23,7 @@ import html2pdf from 'html2pdf.js';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from "@/lib/utils";
+import { Logger } from "@/lib/logger";
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
     if (!visit) return null;
@@ -147,6 +148,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             const aiAnalysis = await generateTechnicalAnalysis(visitData);
 
+            Logger.info('USER_ACTION', 'AI generated successfully', { visitId: visit.id });
+
             const newObs = observations
                 ? observations + "\n\n--- Análise IA (Gemini) ---\n" + aiAnalysis
                 : aiAnalysis;
@@ -166,6 +169,9 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             const newValue = currentValue ? currentValue + "\n" + template.content : template.content;
             targetSetter(newValue);
             handleBlur(fieldName, newValue);
+            Logger.info('USER_ACTION', 'Template inserted', { templateId, fieldName, visitId: visit.id });
+        } else {
+            Logger.warn('USER_ACTION', 'Template not found', { templateId, visitId: visit.id });
         }
     };
 
@@ -231,6 +237,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
         } catch (error) {
             console.error("Finalize Error:", error);
+            Logger.error('USER_ACTION', 'Error finalizing visit', error);
             await alert({ title: 'Erro', message: "Erro ao finalizar visita (Estoque): " + error.message, type: 'error' });
         }
     };
@@ -400,11 +407,13 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             });
 
             await alert({ title: 'Sucesso!', message: 'Relatório enviado e salvo com sucesso.', type: 'success' });
+            Logger.info('USER_ACTION', 'Report sent successfully', { visitId: visit.id, email: visit.client?.email });
             updateMutation.mutate({ status: 'synced' });
             setIsPreviewing(false);
 
         } catch (error) {
             console.error("Process Error:", error);
+            Logger.error('USER_ACTION', 'Error sending report', error);
             await alert({ title: 'Erro', message: 'Erro no processo: ' + error.message, type: 'error' });
         } finally {
             setIsSending(false);
