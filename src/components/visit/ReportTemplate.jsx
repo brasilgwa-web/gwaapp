@@ -292,6 +292,9 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                         <div className="border-t border-slate-300 w-full pt-1">
                             <p className="font-bold text-xs uppercase">{techName}</p>
                             <p className="text-[9px] text-slate-500">Técnico Responsável - WGA Brasil</p>
+                            {technicianUser?.crq && (
+                                <p className="text-[9px] text-slate-600 font-medium">{technicianUser.crq}</p>
+                            )}
                         </div>
                     </div>
 

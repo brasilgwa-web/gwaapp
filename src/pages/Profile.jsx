@@ -39,11 +39,14 @@ export default function ProfilePage() {
     };
 
     const [name, setName] = useState(user?.full_name || '');
+    const [crq, setCrq] = useState(user?.crq || '');
     const [signatureUrl, setSignatureUrl] = useState(user?.signature_url || null);
     const [isSavingName, setIsSavingName] = useState(false);
+    const [isSavingCrq, setIsSavingCrq] = useState(false);
 
     React.useEffect(() => {
         if (user?.full_name) setName(user.full_name);
+        if (user?.crq !== undefined) setCrq(user.crq || '');
         if (user?.signature_url !== undefined) setSignatureUrl(user.signature_url);
     }, [user]);
 
@@ -65,6 +68,26 @@ export default function ProfilePage() {
     const handleSaveName = () => {
         setIsSavingName(true);
         updateNameMutation.mutate();
+    };
+
+    const updateCrqMutation = useMutation({
+        mutationFn: async () => {
+            const { error } = await supabase.from('profiles').update({ crq: crq }).eq('id', user.id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['me'] });
+            alert({ title: 'Sucesso!', message: 'CRQ atualizado com sucesso!', type: 'success' });
+        },
+        onError: (err) => {
+            alert({ title: 'Erro', message: 'Erro ao atualizar CRQ: ' + err.message, type: 'error' });
+        },
+        onSettled: () => setIsSavingCrq(false)
+    });
+
+    const handleSaveCrq = () => {
+        setIsSavingCrq(true);
+        updateCrqMutation.mutate();
     };
 
     if (!user) return <div className="flex justify-center items-center h-screen">Carregando...</div>;
@@ -97,6 +120,26 @@ export default function ProfilePage() {
                                 size="sm"
                             >
                                 {isSavingName ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            </Button>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-500">CRQ (Conselho Regional de Química)</label>
+                        <div className="flex gap-2 mt-1">
+                            <div className="flex-1">
+                                <Input
+                                    value={crq}
+                                    onChange={(e) => setCrq(e.target.value)}
+                                    placeholder="Ex: CRQ-SP 00000000"
+                                    className="max-w-md"
+                                />
+                            </div>
+                            <Button
+                                onClick={handleSaveCrq}
+                                disabled={isSavingCrq || crq === (user?.crq || '')}
+                                size="sm"
+                            >
+                                {isSavingCrq ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                             </Button>
                         </div>
                     </div>
