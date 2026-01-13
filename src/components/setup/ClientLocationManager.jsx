@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Client } from "@/api/entities";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, ChevronRight, Building, Pencil } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 // V1.2 Managers
 import ClientInventoryManager from "./ClientInventoryManager";
@@ -17,6 +18,7 @@ export default function ClientLocationManager() {
     const [selectedClient, setSelectedClient] = useState(null);
     const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
+    const [sortOrder, setSortOrder] = useState('manual'); // 'manual', 'asc', 'desc'
 
     // Client CRUD
     const queryClient = useQueryClient();
@@ -75,6 +77,43 @@ export default function ClientLocationManager() {
         setIsClientDialogOpen(true);
     };
 
+    // Sorted clients based on sortOrder
+    const sortedClients = useMemo(() => {
+        if (!clients) return [];
+
+        let sorted = [...clients];
+
+        if (sortOrder === 'asc') {
+            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+        } else if (sortOrder === 'desc') {
+            sorted.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
+        } else {
+            // Manual: sort by display_order if exists
+            sorted.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        }
+
+        return sorted;
+    }, [clients, sortOrder]);
+
+    // Move client up/down for manual ordering
+    const moveClient = async (client, direction) => {
+        const currentIndex = sortedClients.findIndex(c => c.id === client.id);
+        const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+        if (newIndex < 0 || newIndex >= sortedClients.length) return;
+
+        const otherClient = sortedClients[newIndex];
+
+        // Swap display_order values
+        const currentOrder = client.display_order ?? currentIndex;
+        const otherOrder = otherClient.display_order ?? newIndex;
+
+        await Client.update(client.id, { display_order: otherOrder });
+        await Client.update(otherClient.id, { display_order: currentOrder });
+
+        queryClient.invalidateQueries({ queryKey: ['clients'] });
+    };
+
     // --- V1.2 Detail View ---
     if (view === 'details' && selectedClient) {
         return (
@@ -100,42 +139,77 @@ export default function ClientLocationManager() {
 
     return (
         <Card className="w-full">
-            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <CardTitle>Gerenciar Clientes</CardTitle>
-                <Dialog open={isClientDialogOpen} onOpenChange={setIsClientDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button onClick={openNewClient} className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Novo Cliente</Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader><DialogTitle>{editingClient ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle></DialogHeader>
-                        <form onSubmit={handleClientSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label>Empresa</Label><Input name="name" defaultValue={editingClient?.name} required /></div>
-                                <div className="space-y-2"><Label>Código do Cliente</Label><Input name="client_code" defaultValue={editingClient?.client_code} placeholder="Ex: C001" /></div>
-                            </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <Select value={sortOrder} onValueChange={setSortOrder}>
+                        <SelectTrigger className="w-full sm:w-[160px]">
+                            <ArrowUpDown className="w-4 h-4 mr-2" />
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="manual">Ordem Manual</SelectItem>
+                            <SelectItem value="asc">A → Z</SelectItem>
+                            <SelectItem value="desc">Z → A</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Dialog open={isClientDialogOpen} onOpenChange={setIsClientDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button onClick={openNewClient} className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Novo Cliente</Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                            <DialogHeader><DialogTitle>{editingClient ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle></DialogHeader>
+                            <form onSubmit={handleClientSubmit} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2"><Label>Empresa</Label><Input name="name" defaultValue={editingClient?.name} required /></div>
+                                    <div className="space-y-2"><Label>Código do Cliente</Label><Input name="client_code" defaultValue={editingClient?.client_code} placeholder="Ex: C001" /></div>
+                                </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label>Email (Relatórios)</Label><Input name="email" type="email" defaultValue={editingClient?.email} required /></div>
-                                <div className="space-y-2"><Label>Contato</Label><Input name="contact_name" defaultValue={editingClient?.contact_name} /></div>
-                            </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2"><Label>Email (Relatórios)</Label><Input name="email" type="email" defaultValue={editingClient?.email} required /></div>
+                                    <div className="space-y-2"><Label>Contato</Label><Input name="contact_name" defaultValue={editingClient?.contact_name} /></div>
+                                </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label>Endereço</Label><Input name="address" defaultValue={editingClient?.address} /></div>
-                                <div className="space-y-2"><Label>Cidade/UF</Label><Input name="city_state" defaultValue={editingClient?.city_state} /></div>
-                            </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2"><Label>Endereço</Label><Input name="address" defaultValue={editingClient?.address} /></div>
+                                    <div className="space-y-2"><Label>Cidade/UF</Label><Input name="city_state" defaultValue={editingClient?.city_state} /></div>
+                                </div>
 
-                            <div className="space-y-2"><Label>ID Pasta Drive</Label><Input name="google_drive_folder_id" defaultValue={editingClient?.google_drive_folder_id} placeholder="ID da pasta do Google Drive" /></div>
+                                <div className="space-y-2"><Label>ID Pasta Drive</Label><Input name="google_drive_folder_id" defaultValue={editingClient?.google_drive_folder_id} placeholder="ID da pasta do Google Drive" /></div>
 
-                            <DialogFooter><Button type="submit">{editingClient ? 'Salvar' : 'Criar'}</Button></DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                                <DialogFooter><Button type="submit">{editingClient ? 'Salvar' : 'Criar'}</Button></DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="grid gap-2 overflow-hidden">
-                    {clients?.map(client => (
+                    {sortedClients.map((client, index) => (
                         <div key={client.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white border rounded-lg hover:shadow-md cursor-pointer transition-all group gap-4 w-full max-w-full overflow-hidden" onClick={() => { setSelectedClient(client); setView('details'); }}>
-                            <div className="flex items-start gap-3 overflow-hidden flex-1 min-w-0 w-full">
+                            <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 w-full">
+                                {sortOrder === 'manual' && (
+                                    <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-5 w-5 text-slate-400 hover:text-slate-600"
+                                            onClick={() => moveClient(client, 'up')}
+                                            disabled={index === 0}
+                                        >
+                                            <ArrowUp className="w-3 h-3" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-5 w-5 text-slate-400 hover:text-slate-600"
+                                            onClick={() => moveClient(client, 'down')}
+                                            disabled={index === sortedClients.length - 1}
+                                        >
+                                            <ArrowDown className="w-3 h-3" />
+                                        </Button>
+                                    </div>
+                                )}
                                 <div className="bg-blue-100 p-2 rounded-lg text-blue-600 shrink-0"><Building className="w-5 h-5" /></div>
                                 <div className="min-w-0 flex-1">
                                     <h3 className="font-semibold truncate pr-2 w-full block">{client.name}</h3>
