@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SignaturePad from "./SignaturePad";
-import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock } from "lucide-react";
+import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useReportData } from '@/hooks/useReportData';
@@ -37,6 +37,18 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [arrivalTime, setArrivalTime] = useState(visit.arrival_time || '');
     const [departureTime, setDepartureTime] = useState(visit.departure_time || '');
     const [clientAbsent, setClientAbsent] = useState(visit.client_absent || false);
+    const [showObsPreview, setShowObsPreview] = useState(false);
+
+    // Helper para converter markdown básico em HTML
+    const renderMarkdown = (text) => {
+        if (!text) return null;
+        let html = text
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/(?<!\*)\*(?!\*)([^*\n]+)\*(?!\*)/g, '<em>$1</em>')
+            .replace(/^- (.+)$/gm, '• $1')
+            .replace(/\n/g, '<br />');
+        return <span dangerouslySetInnerHTML={{ __html: html }} />;
+    };
 
     // Fetch Client Details (to get default discharges) - Direct Supabase Call
     const { data: clientDetails } = useQuery({
@@ -618,22 +630,40 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         <CardTitle className="text-base">Observações (Análise Técnica)</CardTitle>
                         <CardDescription>Análise dos resultados e recomendações.</CardDescription>
                     </div>
-                    {!readOnly && (
-                        <Button variant="outline" size="sm" onClick={handleGenerateAI} disabled={isGenerating} className="bg-purple-50 text-purple-600 border-purple-200">
-                            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Bot className="w-4 h-4 mr-2" />}
-                            Gerar com IA
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowObsPreview(!showObsPreview)}
+                            className="text-slate-500"
+                            title={showObsPreview ? "Editar" : "Pré-visualizar"}
+                        >
+                            {showObsPreview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+                            {showObsPreview ? "Editar" : "Preview"}
                         </Button>
-                    )}
+                        {!readOnly && (
+                            <Button variant="outline" size="sm" onClick={handleGenerateAI} disabled={isGenerating} className="bg-purple-50 text-purple-600 border-purple-200">
+                                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Bot className="w-4 h-4 mr-2" />}
+                                Gerar com IA
+                            </Button>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <Textarea
-                        value={observations}
-                        onChange={(e) => setObservations(e.target.value)}
-                        onBlur={() => handleBlur('observations', observations)}
-                        className="min-h-[150px]"
-                        placeholder="Descreva a análise técnica..."
-                        disabled={readOnly}
-                    />
+                    {showObsPreview ? (
+                        <div className="bg-slate-50 p-4 rounded border border-slate-200 min-h-[150px] text-sm">
+                            {observations ? renderMarkdown(observations) : <span className="text-slate-400 italic">Sem observações técnicas.</span>}
+                        </div>
+                    ) : (
+                        <Textarea
+                            value={observations}
+                            onChange={(e) => setObservations(e.target.value)}
+                            onBlur={() => handleBlur('observations', observations)}
+                            className="min-h-[150px]"
+                            placeholder="Descreva a análise técnica..."
+                            disabled={readOnly}
+                        />
+                    )}
                 </CardContent>
             </Card>
 
