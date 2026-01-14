@@ -24,7 +24,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
     const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings } = data;
 
     // Technician and Visit Metadata
-    const techName = technicianUser?.name || visit.technician_email || 'Técnico Responsável';
+    const techName = technicianUser?.full_name || visit.technician_email || 'Técnico Responsável';
     const techSignature = technicianUser?.signature_url;
 
     // Custom formatted dates
