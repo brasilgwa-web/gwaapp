@@ -310,7 +310,7 @@ export default function SetupReport() {
 
     // Preview do número do relatório
     const now = new Date();
-    const previewNumber = `${format(now, 'yy')}-${format(now, 'MM')}-${String(parseInt(initialNumber) || 1).padStart(6, '0')}`;
+    const previewNumber = `${format(now, 'yy')}${format(now, 'MM')}-${String(parseInt(initialNumber) || 1).padStart(6, '0')}`;
 
     // Validation: cannot set number lower than highest emitted
     const highestEmitted = settings?.highest_emitted_number || 0;
@@ -489,7 +489,7 @@ export default function SetupReport() {
                                     {previewNumber}
                                 </p>
                                 <p className="text-xs text-blue-600 mt-2">
-                                    Formato: AA-MM-NNNNNN (Ano-Mês-Sequencial)
+                                    Formato: AAMM-NNNNNN (AnoMês-Sequencial)
                                 </p>
                             </div>
                         </CardContent>
