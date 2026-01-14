@@ -121,7 +121,8 @@ export default function SetupReport() {
                 const { error } = await supabase.from('technical_responsibles').update(data).eq('id', data.id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('technical_responsibles').insert([data]);
+                const { id, ...insertData } = data; // Ensure ID is not sent as null/undefined
+                const { error } = await supabase.from('technical_responsibles').insert([insertData]);
                 if (error) throw error;
             }
         },
