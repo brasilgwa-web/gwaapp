@@ -7,7 +7,7 @@ import { Logger } from './logger';
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 // Default values if DB settings not available
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-1.5-pro';
 const DEFAULT_MAX_TOKENS = 2048;
 
 // Fetch AI settings from database
