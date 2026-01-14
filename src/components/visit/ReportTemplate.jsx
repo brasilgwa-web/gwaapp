@@ -345,7 +345,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                             </div>
                             <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
                                 <p className="font-bold text-xs uppercase">{techName}</p>
-                                <p className="text-[9px] text-slate-500">Técnico Responsável - WGA Brasil</p>
+                                <p className="text-[9px] text-slate-500">Vistoriador Técnico</p>
                                 {technicianUser?.crq && (
                                     <p className="text-[9px] text-slate-600 font-medium">{technicianUser.crq}</p>
                                 )}
@@ -362,7 +362,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                 </div>
                                 <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
                                     <p className="font-bold text-xs uppercase">{data.selectedTechnicalResponsible.name}</p>
-                                    <p className="text-[9px] text-slate-500">Responsável Técnico</p>
+                                    <p className="text-[9px] text-slate-500">Responsável Técnico - WGA Brasil</p>
                                     <p className="text-[9px] text-slate-600 font-medium">{data.selectedTechnicalResponsible.crq}</p>
                                 </div>
                             </div>
