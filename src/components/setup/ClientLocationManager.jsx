@@ -52,6 +52,7 @@ export default function ClientLocationManager() {
         const data = {
             name: formData.get('name'),
             email: formData.get('email'),
+            phone: formData.get('phone'),
             contact_name: formData.get('contact_name'),
             client_code: formData.get('client_code'),
             address: formData.get('address'),
@@ -168,6 +169,10 @@ export default function ClientLocationManager() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2"><Label>Email (Relatórios)</Label><Input name="email" type="email" defaultValue={editingClient?.email} required /></div>
                                     <div className="space-y-2"><Label>Contato</Label><Input name="contact_name" defaultValue={editingClient?.contact_name} /></div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2"><Label>Cel.</Label><Input name="phone" defaultValue={editingClient?.phone} placeholder="(11) 99999-9999" /></div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

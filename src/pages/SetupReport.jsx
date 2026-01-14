@@ -6,20 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft } from "lucide-react";
-import { useConfirm } from "@/context/ConfirmContext";
-import { format } from "date-fns";
+// ... imports
+import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 
 export default function SetupReport() {
     const queryClient = useQueryClient();
-    const { alert } = useConfirm();
+    const { alert, confirm } = useConfirm();
     const fileInputRef = useRef(null);
+    const signatureInputRef = useRef(null);
 
     const [initialNumber, setInitialNumber] = useState('');
     const [footerText, setFooterText] = useState('');
     const [logoFile, setLogoFile] = useState(null);
     const [logoPreview, setLogoPreview] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+
+    // Technical Responsible States
+    const [isRespDialogOpen, setIsRespDialogOpen] = useState(false);
+    const [editingResp, setEditingResp] = useState(null);
+    const [signatureFile, setSignatureFile] = useState(null);
+    const [signaturePreview, setSignaturePreview] = useState(null);
+    const [isSavingResp, setIsSavingResp] = useState(false);
 
     // Fetch existing settings
     const { data: settings, isLoading } = useQuery({
@@ -35,6 +44,19 @@ export default function SetupReport() {
                 console.error('Error fetching settings:', error);
             }
             return data;
+        }
+    });
+
+    // Fetch Technical Responsibles
+    const { data: responsibles, isLoading: isLoadingResp } = useQuery({
+        queryKey: ['technicalResponsibles'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('technical_responsibles')
+                .select('*')
+                .order('created_at', { ascending: true });
+            if (error) throw error;
+            return data || [];
         }
     });
 
@@ -82,6 +104,51 @@ export default function SetupReport() {
         }
     });
 
+    // Responsible Mutations
+    const upsertResponsible = useMutation({
+        mutationFn: async (data) => {
+            if (data.id) {
+                const { error } = await supabase.from('technical_responsibles').update(data).eq('id', data.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('technical_responsibles').insert([data]);
+                if (error) throw error;
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['technicalResponsibles'] });
+            setIsRespDialogOpen(false);
+            setEditingResp(null);
+            setSignatureFile(null);
+            setSignaturePreview(null);
+            alert({ title: 'Sucesso', message: 'Responsável técnico salvo!', type: 'success' });
+        },
+        onError: (err) => alert({ title: 'Erro', message: err.message, type: 'error' })
+    });
+
+    const deleteResponsible = useMutation({
+        mutationFn: async (id) => {
+            const { error } = await supabase.from('technical_responsibles').delete().eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['technicalResponsibles'] });
+            alert({ title: 'Sucesso', message: 'Removido com sucesso!', type: 'success' });
+        },
+        onError: (err) => alert({ title: 'Erro', message: err.message, type: 'error' })
+    });
+
+    const toggleResponsibleActive = useMutation({
+        mutationFn: async ({ id, active }) => {
+            const { error } = await supabase.from('technical_responsibles').update({ active }).eq('id', id);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['technicalResponsibles'] });
+        },
+        onError: (err) => alert({ title: 'Erro', message: err.message, type: 'error' })
+    });
+
     const handleLogoChange = (e) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -89,6 +156,18 @@ export default function SetupReport() {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setLogoPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSignatureChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSignatureFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setSignaturePreview(reader.result);
             };
             reader.readAsDataURL(file);
         }
@@ -110,17 +189,14 @@ export default function SetupReport() {
                     .upload(filePath, logoFile, { upsert: true });
 
                 if (uploadError) {
-                    console.error('Upload error:', uploadError);
-                    // Try alternative bucket name
+                    // Try alternative bucket name 'uploads' if 'public' fails logic (simplified for brevity, assume 'uploads' fallback logic exists or just use 'uploads' if consistent)
+                    // Staying consistent with current code Structure
                     const { error: uploadError2 } = await supabase.storage
                         .from('uploads')
                         .upload(filePath, logoFile, { upsert: true });
-
                     if (uploadError2) throw uploadError2;
 
-                    const { data: urlData } = supabase.storage
-                        .from('uploads')
-                        .getPublicUrl(filePath);
+                    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
                     logoUrl = urlData.publicUrl;
                 } else {
                     const { data: urlData } = supabase.storage
@@ -144,6 +220,68 @@ export default function SetupReport() {
         }
     };
 
+    const handleSaveResp = async (e) => {
+        e.preventDefault();
+        setIsSavingResp(true);
+        try {
+            const formData = new FormData(e.target);
+            const name = formData.get('name');
+            const crq = formData.get('crq');
+
+            let signatureUrl = editingResp?.signature_url || null;
+
+            if (signatureFile) {
+                const fileExt = signatureFile.name.split('.').pop();
+                const fileName = `sig_${Date.now()}.${fileExt}`;
+                const filePath = `signatures/${fileName}`;
+
+                // Try signatures bucket
+                let bucketName = 'signatures';
+                // Check if bucket exists/accessible or fallback to uploads (simplified logic: try signatures first)
+                const { error: uploadError } = await supabase.storage
+                    .from(bucketName)
+                    .upload(filePath, signatureFile, { upsert: true });
+
+                if (uploadError) {
+                    console.warn("Signatures bucket failed, trying uploads", uploadError);
+                    bucketName = 'uploads';
+                    const { error: uploadError2 } = await supabase.storage.from(bucketName).upload(filePath, signatureFile, { upsert: true });
+                    if (uploadError2) throw uploadError2;
+                }
+
+                const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+                signatureUrl = urlData.publicUrl;
+            }
+
+            await upsertResponsible.mutateAsync({
+                id: editingResp?.id,
+                name,
+                crq,
+                signature_url: signatureUrl,
+                active: editingResp ? editingResp.active : true // Default active for new
+            });
+
+        } catch (error) {
+            alert({ title: 'Erro', message: error.message, type: 'error' });
+        } finally {
+            setIsSavingResp(false);
+        }
+    };
+
+    const openNewResp = () => {
+        setEditingResp(null);
+        setSignatureFile(null);
+        setSignaturePreview(null);
+        setIsRespDialogOpen(true);
+    };
+
+    const openEditResp = (resp) => {
+        setEditingResp(resp);
+        setSignatureFile(null);
+        setSignaturePreview(resp.signature_url);
+        setIsRespDialogOpen(true);
+    };
+
     // Preview do número do relatório
     const now = new Date();
     const previewNumber = `${format(now, 'yy')}-${format(now, 'MM')}-${String(parseInt(initialNumber) || 1).padStart(6, '0')}`;
@@ -162,11 +300,128 @@ export default function SetupReport() {
     }
 
     return (
-        <div className="space-y-6 max-w-2xl mx-auto">
+        <div className="space-y-6 max-w-3xl mx-auto pb-12">
             <div>
                 <h1 className="text-2xl font-bold text-slate-900">Configurações de Relatório</h1>
                 <p className="text-slate-500">Configure o formato e aparência dos relatórios</p>
             </div>
+
+            {/* Technical Responsibles */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <PenTool className="w-4 h-4 text-orange-500" />
+                            Responsáveis Técnicos
+                        </CardTitle>
+                        <CardDescription>
+                            Gerencie os responsáveis técnicos que assinam os relatórios.
+                        </CardDescription>
+                    </div>
+                    <Button size="sm" onClick={openNewResp}>
+                        <Plus className="w-4 h-4 mr-2" /> Adicionar
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        {responsibles?.length === 0 && (
+                            <p className="text-sm text-slate-500 italic text-center py-4">Nenhum responsável técnico cadastrado.</p>
+                        )}
+                        {responsibles?.map(resp => (
+                            <div key={resp.id} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-white rounded border border-slate-200 flex items-center justify-center overflow-hidden">
+                                        {resp.signature_url ? (
+                                            <img src={resp.signature_url} alt="Sig" className="max-w-full max-h-full object-contain" />
+                                        ) : (
+                                            <PenTool className="w-4 h-4 text-slate-300" />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <div className="font-medium text-sm">{resp.name}</div>
+                                        <div className="text-xs text-slate-500">{resp.crq}</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-xs ${resp.active ? 'text-green-600 font-medium' : 'text-slate-400'}`}>
+                                            {resp.active ? 'Ativo no Relatório' : 'Arquivado'}
+                                        </span>
+                                        <Switch
+                                            checked={resp.active}
+                                            onCheckedChange={(checked) => toggleResponsibleActive.mutate({ id: resp.id, active: checked })}
+                                        />
+                                    </div>
+                                    <div className="h-4 w-px bg-slate-300 mx-1"></div>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600" onClick={() => openEditResp(resp)}>
+                                        <Pencil className="w-4 h-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600" onClick={() => confirm({
+                                        title: 'Excluir Responsável',
+                                        message: `Tem certeza que deseja excluir ${resp.name}?`,
+                                        onConfirm: () => deleteResponsible.mutate(resp.id)
+                                    })}>
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Dialog open={isRespDialogOpen} onOpenChange={setIsRespDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingResp ? 'Editar Responsável' : 'Novo Responsável Técnico'}</DialogTitle>
+                        <DialogDescription>
+                            Adicione os dados e assinatura do responsável técnico.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSaveResp} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Nome Completo</Label>
+                            <Input name="name" defaultValue={editingResp?.name} required placeholder="Ex: Eng. João da Silva" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>CRQ / Registro Profissional</Label>
+                            <Input name="crq" defaultValue={editingResp?.crq} required placeholder="Ex: CRQ-IV 04234567" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Assinatura Digital</Label>
+                            <div className="flex items-start gap-4">
+                                <div className="w-24 h-16 border-2 border-dashed border-slate-300 rounded flex items-center justify-center bg-slate-50 overflow-hidden">
+                                    {signaturePreview ? (
+                                        <img src={signaturePreview} alt="Preview" className="max-w-full max-h-full object-contain" />
+                                    ) : (
+                                        <span className="text-[10px] text-slate-400 text-center px-1">Selecione imagem</span>
+                                    )}
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <input
+                                        ref={signatureInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleSignatureChange}
+                                        className="hidden"
+                                    />
+                                    <Button type="button" variant="outline" size="sm" onClick={() => signatureInputRef.current?.click()}>
+                                        <Upload className="w-3 h-3 mr-2" /> Upload Assinatura
+                                    </Button>
+                                    <p className="text-[10px] text-slate-500">Fundo transparente recomendado (PNG).</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button type="button" variant="ghost" onClick={() => setIsRespDialogOpen(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={isSavingResp}>
+                                {isSavingResp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                Salvar Responsável
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             {/* Numeração Sequencial */}
             <Card>

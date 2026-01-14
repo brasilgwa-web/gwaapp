@@ -148,7 +148,13 @@ export function useReportData(id) {
                 .limit(1)
                 .single();
 
-            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings };
+            // Fetch Active Technical Responsibles
+            const { data: technicalResponsibles } = await supabase
+                .from('technical_responsibles')
+                .select('*')
+                .eq('active', true);
+
+            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, technicalResponsibles };
         },
         // Cache for 5 minutes
         staleTime: 1000 * 60 * 5

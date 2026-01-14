@@ -331,7 +331,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
 
             {/* Signatures */}
             <section className="mt-12 pt-8 border-t border-slate-200 break-inside-avoid">
-                <div className="grid grid-cols-2 gap-12 text-center">
+                <div className="grid grid-cols-2 gap-12 text-center mb-8">
                     {/* Technician */}
                     <div className="flex flex-col items-center">
                         <div className="h-16 mb-2 flex items-end justify-center w-full">
@@ -361,6 +361,26 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                         </div>
                     </div>
                 </div>
+
+                {/* Technical Responsibles */}
+                {data.technicalResponsibles && data.technicalResponsibles.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-8 text-center mt-8">
+                        {data.technicalResponsibles.map(resp => (
+                            <div key={resp.id} className="flex flex-col items-center">
+                                <div className="h-16 mb-2 flex items-end justify-center w-full">
+                                    {resp.signature_url ? (
+                                        <img src={resp.signature_url} className="max-h-full" alt={`Assinatura ${resp.name}`} crossOrigin="anonymous" />
+                                    ) : (<div className="w-32 h-px bg-slate-300"></div>)}
+                                </div>
+                                <div className="border-t border-slate-300 w-full pt-1">
+                                    <p className="font-bold text-xs uppercase">{resp.name}</p>
+                                    <p className="text-[9px] text-slate-500">Responsável Técnico</p>
+                                    <p className="text-[9px] text-slate-600 font-medium">{resp.crq}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </section>
 
             {/* Footer */}
