@@ -25,7 +25,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
     const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas\nEste relatório possui validade técnica e foi gerado eletronicamente pelo Sistema WGA.';
 
     return (
-        <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight ${isPdfGeneration ? 'w-full' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
+        <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight ${isPdfGeneration ? 'w-[190mm] max-w-[190mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
             {/* Header */}
             <header className="border-b-2 border-blue-600 pb-4 mb-6 flex flex-col md:flex-row md:justify-between md:items-start gap-4">
