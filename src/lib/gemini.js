@@ -117,19 +117,23 @@ INSTRUÇÕES IMPORTANTES:
 7. IMPORTANTE: Você DEVE analisar os dados fornecidos. Os resultados estão listados acima - analise cada um deles.
 8. Seja conciso e direto (máximo 500 palavras)
 
-FORMATO DA RESPOSTA:
+FORMATO DA RESPOSTA (SIGA EXATAMENTE):
+Comece DIRETAMENTE com "**Resumo Geral:**" - NÃO inclua parágrafos introdutórios ou saudações.
+
 **Resumo Geral:**
 (1-2 frases sobre o estado geral do sistema)
 
 **Análise por Equipamento:**
 Para cada equipamento, liste:
-- Nome do equipamento
+- Nome do equipamento em negrito
 - Status dos parâmetros
 - Anomalias ou conformidades
 - Recomendações específicas
 
 **Recomendações Finais:**
 (Ações práticas prioritárias)
+
+IMPORTANTE: Comece sua resposta EXATAMENTE com "**Resumo Geral:**" - sem texto antes.
 
 Responda em português brasileiro:`;
     }

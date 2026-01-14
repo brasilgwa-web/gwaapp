@@ -3,6 +3,23 @@ import React from 'react';
 import { formatDateAsLocal } from '@/lib/utils';
 import { format } from "date-fns";
 
+// Helper para converter markdown básico em HTML
+function renderMarkdown(text) {
+    if (!text) return null;
+
+    // Converter **bold** em <strong>
+    let html = text
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        // Converter *italic* em <em>
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        // Converter - list items em bullets
+        .replace(/^- (.+)$/gm, '• $1')
+        // Preservar quebras de linha
+        .replace(/\n/g, '<br />');
+
+    return <span dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
 export function ReportTemplate({ data, isPdfGeneration = false }) {
     const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings } = data;
 
@@ -278,16 +295,16 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
             {/* 4. Analise Técnica (Observações) */}
             <section className="mb-6 break-inside-avoid">
                 <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Análise Técnica</h2>
-                <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify whitespace-pre-wrap min-h-[60px]">
-                    {visit.observations || "Sem observações técnicas."}
+                <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify min-h-[60px]">
+                    {visit.observations ? renderMarkdown(visit.observations) : "Sem observações técnicas."}
                 </div>
             </section>
 
             {/* 5. Observações Gerais - V1.1 */}
             <section className="mb-8 break-inside-avoid">
                 <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Observações Gerais</h2>
-                <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify whitespace-pre-wrap min-h-[60px]">
-                    {visit.general_observations || "Sem observações gerais."}
+                <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify min-h-[60px]">
+                    {visit.general_observations ? renderMarkdown(visit.general_observations) : "Sem observações gerais."}
                 </div>
             </section>
 
