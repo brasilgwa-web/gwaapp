@@ -76,13 +76,19 @@ export async function generateTechnicalAnalysis(visitData) {
     // Use custom prompt from DB if available, otherwise use default
     let prompt;
     if (aiSettings.prompt) {
-        // Replace variables in custom prompt
+        // Replace variables in custom prompt (suporta {{var}} e ${var} formatos)
         prompt = aiSettings.prompt
-            .replace('{{client_name}}', client?.name || 'N/A')
-            .replace('{{client_address}}', client?.address || 'N/A')
-            .replace('{{results}}', analysisData)
-            .replace('{{dosages}}', dosagesText)
-            .replace('{{observations}}', observations || 'Nenhuma observação prévia');
+            // Formato {{var}}
+            .replace(/\{\{client_name\}\}/gi, client?.name || 'N/A')
+            .replace(/\{\{client_address\}\}/gi, client?.address || 'N/A')
+            .replace(/\{\{results\}\}/gi, analysisData)
+            .replace(/\{\{dosages\}\}/gi, dosagesText)
+            .replace(/\{\{observations\}\}/gi, observations || 'Nenhuma observação prévia')
+            // Formato ${var} (para prompts salvos incorretamente)
+            .replace(/\$\{client\?\.name[^}]*\}/gi, client?.name || 'N/A')
+            .replace(/\$\{client\?\.address[^}]*\}/gi, client?.address || 'N/A')
+            .replace(/\$\{client\.name[^}]*\}/gi, client?.name || 'N/A')
+            .replace(/\$\{client\.address[^}]*\}/gi, client?.address || 'N/A');
     } else {
         // Default prompt otimizado
         prompt = `
