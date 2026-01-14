@@ -153,7 +153,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                             </div>
                                             <div className="flex gap-4 text-slate-600">
                                                 {eq.sample?.collection_time && <span><span className="font-semibold">Coleta:</span> {eq.sample.collection_time.substring(0, 5)}h</span>}
-                                                {eq.sample?.complementary_info && <span><span className="font-semibold">Obs:</span> {eq.sample.complementary_info}</span>}
+                                                {eq.sample?.complementary_info && <span><span className="font-semibold">Análises comp. em laboratório:</span> {eq.sample.complementary_info}</span>}
                                             </div>
                                         </div>
 

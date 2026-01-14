@@ -351,7 +351,7 @@ export default function ReadingsTab({ visit, readOnly }) {
 
                                         {/* Análises Complementares */}
                                         <div className="md:col-span-6">
-                                            <label className="text-xs font-semibold text-slate-500 flex items-center mb-1"><FileText className="w-3 h-3 mr-1" />Análises Complementares</label>
+                                            <label className="text-xs font-semibold text-slate-500 flex items-center mb-1"><FileText className="w-3 h-3 mr-1" />Análises Complementares em Laboratório</label>
                                             <Input
                                                 className="h-8 bg-white"
                                                 placeholder="Ex: Ferro total, Cobre..."
