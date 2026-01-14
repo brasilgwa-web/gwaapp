@@ -7,11 +7,72 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // V1.2 Managers
 import ClientInventoryManager from "./ClientInventoryManager";
 import ClientEquipmentManager from "./ClientEquipmentManager";
+
+function SortableClientRow({ client, sortOrder, openEditClient, removeClient, setSelectedClient, setView, index }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: client.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 'auto',
+        position: 'relative',
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`flex flex-col md:flex-row md:items-center justify-between p-4 bg-white border rounded-lg hover:shadow-md cursor-pointer transition-all group gap-4 w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 ring-2 ring-blue-500/20' : ''}`}
+            onClick={() => { setSelectedClient(client); setView('details'); }}
+        >
+            <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 w-full">
+                {sortOrder === 'manual' && (
+                    <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 -ml-2"
+                            {...attributes}
+                            {...listeners}
+                        >
+                            <GripVertical className="w-5 h-5" />
+                        </Button>
+                    </div>
+                )}
+                <div className="bg-blue-100 p-2 rounded-lg text-blue-600 shrink-0"><Building className="w-5 h-5" /></div>
+                <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold truncate pr-2 w-full block">{client.name}</h3>
+                    <p className="text-sm text-slate-500 truncate w-full block">{client.email} • {client.city_state}</p>
+                </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 w-full md:w-auto border-t md:border-t-0 pt-2 md:pt-0 shrink-0">
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600" onClick={(e) => openEditClient(e, client)}>
+                    <Pencil className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); removeClient.mutate(client.id); }}>
+                    <Trash2 className="w-4 h-4" />
+                </Button>
+                <ChevronRight className="w-5 h-5 text-slate-300 hidden md:block" />
+            </div>
+        </div>
+    );
+}
+
 
 export default function ClientLocationManager() {
     const [view, setView] = useState('clients'); // clients, details
@@ -96,23 +157,27 @@ export default function ClientLocationManager() {
         return sorted;
     }, [clients, sortOrder]);
 
-    // Move client up/down for manual ordering
-    const moveClient = async (client, direction) => {
-        const currentIndex = sortedClients.findIndex(c => c.id === client.id);
-        const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
-        if (newIndex < 0 || newIndex >= sortedClients.length) return;
+    const handleDragEnd = async (event) => {
+        const { active, over } = event;
+        if (active.id !== over.id) {
+            const oldIndex = sortedClients.findIndex((item) => item.id === active.id);
+            const newIndex = sortedClients.findIndex((item) => item.id === over.id);
 
-        const otherClient = sortedClients[newIndex];
+            const newOrderedList = arrayMove(sortedClients, oldIndex, newIndex);
 
-        // Swap display_order values
-        const currentOrder = client.display_order ?? currentIndex;
-        const otherOrder = otherClient.display_order ?? newIndex;
+            await Promise.all(newOrderedList.map((item, index) =>
+                Client.update(item.id, { display_order: index })
+            ));
 
-        await Client.update(client.id, { display_order: otherOrder });
-        await Client.update(otherClient.id, { display_order: currentOrder });
-
-        queryClient.invalidateQueries({ queryKey: ['clients'] });
+            queryClient.invalidateQueries({ queryKey: ['clients'] });
+        }
     };
 
     // --- V1.2 Detail View ---
@@ -190,48 +255,30 @@ export default function ClientLocationManager() {
             </CardHeader>
             <CardContent>
                 <div className="grid gap-2 overflow-hidden">
-                    {sortedClients.map((client, index) => (
-                        <div key={client.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white border rounded-lg hover:shadow-md cursor-pointer transition-all group gap-4 w-full max-w-full overflow-hidden" onClick={() => { setSelectedClient(client); setView('details'); }}>
-                            <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 w-full">
-                                {sortOrder === 'manual' && (
-                                    <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-5 w-5 text-slate-400 hover:text-slate-600"
-                                            onClick={() => moveClient(client, 'up')}
-                                            disabled={index === 0}
-                                        >
-                                            <ArrowUp className="w-3 h-3" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-5 w-5 text-slate-400 hover:text-slate-600"
-                                            onClick={() => moveClient(client, 'down')}
-                                            disabled={index === sortedClients.length - 1}
-                                        >
-                                            <ArrowDown className="w-3 h-3" />
-                                        </Button>
-                                    </div>
-                                )}
-                                <div className="bg-blue-100 p-2 rounded-lg text-blue-600 shrink-0"><Building className="w-5 h-5" /></div>
-                                <div className="min-w-0 flex-1">
-                                    <h3 className="font-semibold truncate pr-2 w-full block">{client.name}</h3>
-                                    <p className="text-sm text-slate-500 truncate w-full block">{client.email} • {client.city_state}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center justify-end gap-2 w-full md:w-auto border-t md:border-t-0 pt-2 md:pt-0 shrink-0">
-                                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600" onClick={(e) => openEditClient(e, client)}>
-                                    <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); removeClient.mutate(client.id); }}>
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
-                                <ChevronRight className="w-5 h-5 text-slate-300 hidden md:block" />
-                            </div>
-                        </div>
-                    ))}
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext
+                            items={sortedClients.map(c => c.id)}
+                            strategy={verticalListSortingStrategy}
+                            disabled={sortOrder !== 'manual'}
+                        >
+                            {sortedClients.map((client, index) => (
+                                <SortableClientRow
+                                    key={client.id}
+                                    client={client}
+                                    sortOrder={sortOrder}
+                                    openEditClient={openEditClient}
+                                    removeClient={removeClient}
+                                    setSelectedClient={setSelectedClient}
+                                    setView={setView}
+                                    index={index}
+                                />
+                            ))}
+                        </SortableContext>
+                    </DndContext>
                 </div>
             </CardContent>
         </Card>

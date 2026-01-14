@@ -8,7 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowUpDown } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableTableRow } from '@/components/ui/sortable-table-row';
 
 export default function TestCatalog() {
     const queryClient = useQueryClient();
@@ -96,23 +99,27 @@ export default function TestCatalog() {
         return sorted;
     }, [tests, sortOrder]);
 
-    // Move test up/down for manual ordering
-    const moveTest = async (test, direction) => {
-        const currentIndex = sortedTests.findIndex(t => t.id === test.id);
-        const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
-        if (newIndex < 0 || newIndex >= sortedTests.length) return;
+    const handleDragEnd = async (event) => {
+        const { active, over } = event;
+        if (active.id !== over.id) {
+            const oldIndex = sortedTests.findIndex((item) => item.id === active.id);
+            const newIndex = sortedTests.findIndex((item) => item.id === over.id);
 
-        const otherTest = sortedTests[newIndex];
+            const newOrderedList = arrayMove(sortedTests, oldIndex, newIndex);
 
-        // Swap display_order values
-        const currentOrder = test.display_order ?? currentIndex;
-        const otherOrder = otherTest.display_order ?? newIndex;
+            await Promise.all(newOrderedList.map((item, index) =>
+                TestDefinition.update(item.id, { display_order: index })
+            ));
 
-        await TestDefinition.update(test.id, { display_order: otherOrder });
-        await TestDefinition.update(otherTest.id, { display_order: currentOrder });
-
-        queryClient.invalidateQueries({ queryKey: ['testDefinitions'] });
+            queryClient.invalidateQueries({ queryKey: ['testDefinitions'] });
+        }
     };
 
     return (
@@ -173,63 +180,51 @@ export default function TestCatalog() {
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="rounded-md border overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                {sortOrder === 'manual' && <TableHead className="w-16"></TableHead>}
-                                <TableHead>Nome</TableHead>
-                                <TableHead>Unidade</TableHead>
-                                <TableHead>Faixa</TableHead>
-                                <TableHead>Metodologia</TableHead>
-                                <TableHead className="w-24"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedTests.map((test, index) => (
-                                <TableRow key={test.id}>
-                                    {sortOrder === 'manual' && (
-                                        <TableCell>
-                                            <div className="flex flex-col gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-5 w-5 text-slate-400 hover:text-slate-600"
-                                                    onClick={() => moveTest(test, 'up')}
-                                                    disabled={index === 0}
-                                                >
-                                                    <ArrowUp className="w-3 h-3" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-5 w-5 text-slate-400 hover:text-slate-600"
-                                                    onClick={() => moveTest(test, 'down')}
-                                                    disabled={index === sortedTests.length - 1}
-                                                >
-                                                    <ArrowDown className="w-3 h-3" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    )}
-                                    <TableCell className="font-medium">{test.name}</TableCell>
-                                    <TableCell>{test.unit}</TableCell>
-                                    <TableCell><span className="font-mono bg-slate-100 px-2 py-1 rounded text-xs">{test.min_value} - {test.max_value}</span></TableCell>
-                                    <TableCell className="text-xs text-slate-500">{test.methodology || '-'}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-1">
-                                            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600" onClick={() => openEdit(test)}>
-                                                <Pencil className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600" onClick={() => remove.mutate(test.id)}>
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[50px]"></TableHead>
+                                    <TableHead>Nome</TableHead>
+                                    <TableHead>Unidade</TableHead>
+                                    <TableHead>Faixa</TableHead>
+                                    <TableHead>Metodologia</TableHead>
+                                    <TableHead className="w-24"></TableHead>
                                 </TableRow>
-                            ))}
-                            {sortedTests.length === 0 && <TableRow><TableCell colSpan={sortOrder === 'manual' ? 6 : 5} className="text-center text-slate-500 py-4">Nenhum teste cadastrado.</TableCell></TableRow>}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                <SortableContext
+                                    items={sortedTests.map(t => t.id)}
+                                    strategy={verticalListSortingStrategy}
+                                    disabled={sortOrder !== 'manual'}
+                                >
+                                    {sortedTests.map((test) => (
+                                        <SortableTableRow key={test.id} id={test.id}>
+                                            <TableCell className="font-medium">{test.name}</TableCell>
+                                            <TableCell>{test.unit}</TableCell>
+                                            <TableCell><span className="font-mono bg-slate-100 px-2 py-1 rounded text-xs">{test.min_value} - {test.max_value}</span></TableCell>
+                                            <TableCell className="text-xs text-slate-500">{test.methodology || '-'}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1">
+                                                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600" onClick={() => openEdit(test)}>
+                                                        <Pencil className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600" onClick={() => remove.mutate(test.id)}>
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </SortableTableRow>
+                                    ))}
+                                </SortableContext>
+                                {sortedTests.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-4">Nenhum teste cadastrado.</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    </DndContext>
                 </div>
             </CardContent>
         </Card>

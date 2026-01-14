@@ -8,7 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, Beaker, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, Pencil, Beaker, ArrowUpDown } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableTableRow } from '@/components/ui/sortable-table-row';
 
 export default function ProductCatalog() {
     const queryClient = useQueryClient();
@@ -86,23 +89,36 @@ export default function ProductCatalog() {
         return sorted;
     }, [products, sortOrder]);
 
-    // Move product up/down for manual ordering
-    const moveProduct = async (product, direction) => {
-        const currentIndex = sortedProducts.findIndex(p => p.id === product.id);
-        const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
-        if (newIndex < 0 || newIndex >= sortedProducts.length) return;
+    const handleDragEnd = async (event) => {
+        const { active, over } = event;
+        if (active.id !== over.id) {
+            const oldIndex = sortedProducts.findIndex((p) => p.id === active.id);
+            const newIndex = sortedProducts.findIndex((p) => p.id === over.id);
 
-        const otherProduct = sortedProducts[newIndex];
+            // Optimistic Update (optional but recommended for smooth UX)
+            // For now we trust refetch, but here we update backend.
 
-        // Swap display_order values
-        const currentOrder = product.display_order ?? currentIndex;
-        const otherOrder = otherProduct.display_order ?? newIndex;
+            // Re-calculate orders logic:
+            // We need to update display_order for ALL items affected or swap?
+            // Swap is easier but drag usually implies re-insert.
+            // arrayMove gives us the new array. We should update display_order locally then push.
 
-        await Product.update(product.id, { display_order: otherOrder });
-        await Product.update(otherProduct.id, { display_order: currentOrder });
+            const newOrderedList = arrayMove(sortedProducts, oldIndex, newIndex);
 
-        queryClient.invalidateQueries({ queryKey: ['products'] });
+            // Update all to match new index
+            await Promise.all(newOrderedList.map((item, index) =>
+                Product.update(item.id, { display_order: index })
+            ));
+
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+        }
     };
 
     return (
@@ -143,61 +159,49 @@ export default function ProductCatalog() {
             </CardHeader>
             <CardContent>
                 <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                {sortOrder === 'manual' && <TableHead className="w-16"></TableHead>}
-                                <TableHead className="w-[50px]"></TableHead>
-                                <TableHead>Nome</TableHead>
-                                <TableHead>Unidade</TableHead>
-                                <TableHead className="w-24"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedProducts.map((prod, index) => (
-                                <TableRow key={prod.id}>
-                                    {sortOrder === 'manual' && (
-                                        <TableCell>
-                                            <div className="flex flex-col gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-5 w-5 text-slate-400 hover:text-slate-600"
-                                                    onClick={() => moveProduct(prod, 'up')}
-                                                    disabled={index === 0}
-                                                >
-                                                    <ArrowUp className="w-3 h-3" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-5 w-5 text-slate-400 hover:text-slate-600"
-                                                    onClick={() => moveProduct(prod, 'down')}
-                                                    disabled={index === sortedProducts.length - 1}
-                                                >
-                                                    <ArrowDown className="w-3 h-3" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    )}
-                                    <TableCell><Beaker className="w-4 h-4 text-slate-500" /></TableCell>
-                                    <TableCell className="font-medium">{prod.name}</TableCell>
-                                    <TableCell>{prod.unit}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-1">
-                                            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600" onClick={() => openEdit(prod)}>
-                                                <Pencil className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600" onClick={() => remove.mutate(prod.id)}>
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-[50px]"></TableHead>
+                                    <TableHead className="w-[50px]"></TableHead>
+                                    <TableHead>Nome</TableHead>
+                                    <TableHead>Unidade</TableHead>
+                                    <TableHead className="w-24"></TableHead>
                                 </TableRow>
-                            ))}
-                            {sortedProducts.length === 0 && <TableRow><TableCell colSpan={sortOrder === 'manual' ? 5 : 4} className="text-center text-slate-500 py-4">Nenhum produto cadastrado.</TableCell></TableRow>}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                <SortableContext
+                                    items={sortedProducts.map(p => p.id)}
+                                    strategy={verticalListSortingStrategy}
+                                    disabled={sortOrder !== 'manual'}
+                                >
+                                    {sortedProducts.map((prod) => (
+                                        <SortableTableRow key={prod.id} id={prod.id}>
+                                            <TableCell><Beaker className="w-4 h-4 text-slate-500" /></TableCell>
+                                            <TableCell className="font-medium">{prod.name}</TableCell>
+                                            <TableCell>{prod.unit}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1">
+                                                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600" onClick={() => openEdit(prod)}>
+                                                        <Pencil className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-600" onClick={() => remove.mutate(prod.id)}>
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </SortableTableRow>
+                                    ))}
+                                </SortableContext>
+                                {sortedProducts.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-4">Nenhum produto cadastrado.</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    </DndContext>
                 </div>
             </CardContent>
         </Card>
