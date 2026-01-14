@@ -9,7 +9,13 @@ CREATE TABLE IF NOT EXISTS technical_responsibles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Add RLS policies
+-- Add RLS policies (Check if they exist first or drop them to be safe, but IF NOT EXISTS isn't standard for policies)
+-- Doing DROP IF EXISTS is safer for re-running
+DROP POLICY IF EXISTS "Enable read access for all users" ON technical_responsibles;
+DROP POLICY IF EXISTS "Enable insert access for authenticated users" ON technical_responsibles;
+DROP POLICY IF EXISTS "Enable update access for authenticated users" ON technical_responsibles;
+DROP POLICY IF EXISTS "Enable delete access for authenticated users" ON technical_responsibles;
+
 ALTER TABLE technical_responsibles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Enable read access for all users" ON technical_responsibles
@@ -29,5 +35,9 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('signatures', 'signatures', true)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING ( bucket_id = 'signatures' );
-CREATE POLICY "Auth Upload" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'signatures' AND auth.role() = 'authenticated' );
+-- Storage Policies - using specific names to avoid "relation already exists" errors with generic names
+DROP POLICY IF EXISTS "Signatures Public Access" ON storage.objects;
+DROP POLICY IF EXISTS "Signatures Auth Upload" ON storage.objects;
+
+CREATE POLICY "Signatures Public Access" ON storage.objects FOR SELECT USING ( bucket_id = 'signatures' );
+CREATE POLICY "Signatures Auth Upload" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'signatures' AND auth.role() = 'authenticated' );
