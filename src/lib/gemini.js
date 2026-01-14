@@ -48,25 +48,30 @@ export async function generateTechnicalAnalysis(visitData) {
     const aiSettings = await getAISettings();
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model}:generateContent`;
 
-    const { client, results, dosages, observations } = visitData;
+    const { client, results, dosages, observations, equipmentDataText } = visitData;
 
     Logger.info('AI_GENERATION', 'Starting generation', {
         clientId: client?.id,
         resultsCount: results?.length,
+        hasEquipmentData: !!equipmentDataText,
         hasHistory: !!observations
     });
 
-    // Build context from results
+    // Build context from results (fallback se não tiver equipmentDataText)
     const resultsText = results?.map(r => {
         const status = r.status_light === 'red' ? '🔴 CRÍTICO' :
             r.status_light === 'yellow' ? '🟡 ALERTA' : '🟢 OK';
-        return `- ${r.test_name || r.test_definition_id}: ${r.measured_value} ${r.unit || ''} [${status}]`;
-    }).join('\n') || 'Nenhum resultado disponível';
+        const equipInfo = r.equipment_name ? ` (${r.equipment_name})` : '';
+        return `- ${r.test_name || r.test_definition_id}${equipInfo}: ${r.measured_value} ${r.unit || ''} [${status}]`;
+    }).join('\n') || '';
 
     // Build context from dosages
     const dosagesText = dosages?.map(d =>
-        `- ${d.product_name}: Estoque ${d.current_stock || '-'}, Aplicado ${d.dosage_applied || '-'}`
+        `- ${d.product_name || d.product?.name || 'Produto'}: Aplicado ${d.dosage_applied || '-'} ${d.product?.unit || ''}`
     ).join('\n') || 'Nenhuma dosagem registrada';
+
+    // Preferir dados estruturados por equipamento
+    const analysisData = equipmentDataText || resultsText || 'Nenhum dado de leitura disponível';
 
     // Use custom prompt from DB if available, otherwise use default
     let prompt;
@@ -75,11 +80,11 @@ export async function generateTechnicalAnalysis(visitData) {
         prompt = aiSettings.prompt
             .replace('{{client_name}}', client?.name || 'N/A')
             .replace('{{client_address}}', client?.address || 'N/A')
-            .replace('{{results}}', resultsText)
+            .replace('{{results}}', analysisData)
             .replace('{{dosages}}', dosagesText)
             .replace('{{observations}}', observations || 'Nenhuma observação prévia');
     } else {
-        // Default prompt
+        // Default prompt otimizado
         prompt = `
 Você é um engenheiro químico sênior especializado em tratamento de água e efluentes da WGA Brasil.
 
@@ -87,8 +92,8 @@ DADOS DA VISITA TÉCNICA:
 Cliente: ${client?.name || 'N/A'}
 Endereço: ${client?.address || 'N/A'}
 
-RESULTADOS ANALÍTICOS:
-${resultsText}
+RESULTADOS ANALÍTICOS POR EQUIPAMENTO:
+${analysisData}
 
 DOSAGENS APLICADAS:
 ${dosagesText}
@@ -96,18 +101,29 @@ ${dosagesText}
 OBSERVAÇÕES DO TÉCNICO:
 ${observations || 'Nenhuma observação prévia'}
 
-INSTRUÇÕES:
-1. Analise os resultados acima de forma técnica e profissional
-2. Identifique anomalias (valores fora da faixa, especialmente 🔴 e 🟡)
-3. Sugira ações corretivas específicas quando necessário
-4. Se tudo estiver OK, elogie a manutenção preventiva
-5. Use linguagem técnica mas acessível
-6. Seja conciso e direto (máximo 200 palavras)
+INSTRUÇÕES IMPORTANTES:
+1. Faça a análise OBRIGATORIAMENTE separada por cada equipamento listado acima
+2. Para cada equipamento, avalie os parâmetros medidos comparando com as faixas indicadas
+3. Identifique anomalias: 🔴 CRÍTICO requer ação imediata, 🟡 ALERTA requer monitoramento
+4. Sugira ações corretivas específicas para cada equipamento quando necessário
+5. Se os valores estão dentro da faixa (🟢 OK), confirme que está em conformidade
+6. Use linguagem técnica mas acessível
+7. IMPORTANTE: Você DEVE analisar os dados fornecidos. Os resultados estão listados acima - analise cada um deles.
+8. Seja conciso e direto (máximo 500 palavras)
 
-FORMATO:
-- Inicie com um resumo geral (1-2 frases)
-- Liste anomalias encontradas se houver
-- Finalize com recomendações práticas
+FORMATO DA RESPOSTA:
+**Resumo Geral:**
+(1-2 frases sobre o estado geral do sistema)
+
+**Análise por Equipamento:**
+Para cada equipamento, liste:
+- Nome do equipamento
+- Status dos parâmetros
+- Anomalias ou conformidades
+- Recomendações específicas
+
+**Recomendações Finais:**
+(Ações práticas prioritárias)
 
 Responda em português brasileiro:`;
     }
@@ -144,7 +160,6 @@ Responda em português brasileiro:`;
             throw new Error('Resposta vazia da API Gemini');
         }
 
-        return text.trim();
         return text.trim();
     } catch (error) {
         console.error('Gemini Service Error:', error);

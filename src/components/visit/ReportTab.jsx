@@ -132,6 +132,34 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const handleGenerateAI = async () => {
         setIsGenerating(true);
         try {
+            // Refetch report data para ter estrutura completa
+            const { data: freshReportData } = await refetchReport();
+
+            // Estruturar dados por equipamento (usando fullReportStructure)
+            let equipmentDataText = '';
+            if (freshReportData?.fullReportStructure?.length > 0) {
+                freshReportData.fullReportStructure.forEach(location => {
+                    equipmentDataText += `\n\n📍 LOCAL: ${location.name}\n`;
+                    location.equipments?.forEach(eq => {
+                        equipmentDataText += `\n  🔧 EQUIPAMENTO: ${eq.equipment.name}\n`;
+                        if (eq.sample?.collection_time) {
+                            equipmentDataText += `     Coleta: ${eq.sample.collection_time}\n`;
+                        }
+                        if (eq.tests?.length > 0) {
+                            eq.tests.forEach(test => {
+                                const status = test.result?.status_light === 'red' ? '🔴 CRÍTICO' :
+                                    test.result?.status_light === 'yellow' ? '🟡 ALERTA' : '🟢 OK';
+                                const value = test.result?.measured_value ?? 'N/R';
+                                const range = `${test.min_value || '-'} a ${test.max_value || '-'}`;
+                                equipmentDataText += `     - ${test.name}: ${value} ${test.unit || ''} (Faixa: ${range}) [${status}]\n`;
+                            });
+                        } else {
+                            equipmentDataText += `     (Nenhum teste registrado)\n`;
+                        }
+                    });
+                });
+            }
+
             // Prepare visit data for AI analysis
             const visitData = {
                 client: visit.client,
@@ -140,10 +168,14 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     test_definition_id: r.test_definition_id,
                     measured_value: r.measured_value,
                     unit: r.unit || r.test?.unit,
-                    status_light: r.status_light
+                    status_light: r.status_light,
+                    equipment_name: r.equipment_name
                 })),
-                dosages: [], // Could be populated from report data if available
-                observations: observations
+                dosages: freshReportData?.fullReportStructure?.flatMap(loc =>
+                    loc.equipments?.flatMap(eq => eq.dosages || []) || []
+                ) || [],
+                observations: observations,
+                equipmentDataText: equipmentDataText // Texto estruturado por equipamento
             };
 
             const aiAnalysis = await generateTechnicalAnalysis(visitData);
