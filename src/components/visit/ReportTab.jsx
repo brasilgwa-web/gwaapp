@@ -40,13 +40,13 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [showObsPreview, setShowObsPreview] = useState(true);
     const [technicalResponsibleId, setTechnicalResponsibleId] = useState(visit.technical_responsible_id || '');
 
-    // Helper para converter markdown bÃ¡sico em HTML
+    // Helper para converter markdown básico em HTML
     const renderMarkdown = (text) => {
         if (!text) return null;
         let html = text
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
             .replace(/(?<!\*)\*(?!\*)([^*\n]+)\*(?!\*)/g, '<em>$1</em>')
-            .replace(/^- (.+)$/gm, 'â€¢ $1')
+            .replace(/^- (.+)$/gm, '• $1')
             .replace(/\n/g, '<br />');
         return <span dangerouslySetInnerHTML={{ __html: html }} />;
     };
@@ -350,8 +350,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         // Validation: If user has no CRQ, Technical Responsible is MANDATORY
         if (needsTechnicalResponsible && !technicalResponsibleId) {
             await alert({
-                title: 'ResponsÃ¡vel TÃ©cnico ObrigatÃ³rio',
-                message: 'Como vocÃª nÃ£o possui CRQ cadastrado, Ã© obrigatÃ³rio selecionar um ResponsÃ¡vel TÃ©cnico para assinar o relatÃ³rio.',
+                title: 'Responsável Técnico Obrigatório',
+                message: 'Como você não possui CRQ cadastrado, é obrigatório selecionar um Responsável Técnico para assinar o relatório.',
                 type: 'warning'
             });
             return;
@@ -360,7 +360,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         const actionLabel = readOnly ? "reenviar e salvar" : "finalizar, enviar e salvar";
         const confirmed = await confirm({
             title: 'Confirmar Envio',
-            message: `Tem certeza que deseja ${actionLabel} o relatÃ³rio?`,
+            message: `Tem certeza que deseja ${actionLabel} o relatório?`,
             confirmLabel: 'Sim, enviar',
             cancelLabel: 'Cancelar',
             type: 'confirm'
@@ -370,7 +370,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         const { data } = await refetchReport();
 
         if (!data) {
-            await alert({ title: 'Aguarde', message: 'Aguarde o carregamento completo dos dados do relatÃ³rio.', type: 'info' });
+            await alert({ title: 'Aguarde', message: 'Aguarde o carregamento completo dos dados do relatório.', type: 'info' });
             return;
         }
 
@@ -389,7 +389,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
         try {
             const element = document.getElementById('report-preview-content');
-            if (!element) throw new Error("Template de prÃ©-visualizaÃ§Ã£o nÃ£o encontrado");
+            if (!element) throw new Error("Template de pré-visualização não encontrado");
 
             await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -401,16 +401,16 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // Obter texto do rodapÃ© das configuraÃ§Ãµes ANTES de gerar o PDF
+            // Obter texto do rodapé das configurações ANTES de gerar o PDF
             const { data: reportSettingsData } = await supabase
                 .from('report_settings')
                 .select('footer_text')
                 .limit(1)
                 .single();
 
-            const footerText = reportSettingsData?.footer_text || 'WGA Brasil Tratamento de Ãguas - Este relatÃ³rio possui validade tÃ©cnica.';
+            const footerText = reportSettingsData?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
 
-            // Gerar PDF e adicionar rodapÃ© usando callback
+            // Gerar PDF e adicionar rodapé usando callback
             const pdfBase64 = await new Promise((resolve, reject) => {
                 html2pdf()
                     .set(opt)
@@ -422,13 +422,13 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         const pageWidth = pdf.internal.pageSize.getWidth();
                         const pageHeight = pdf.internal.pageSize.getHeight();
 
-                        // Adicionar rodapÃ© em CADA pÃ¡gina
+                        // Adicionar rodapé em CADA página
                         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
                             pdf.setPage(pageNum);
                             pdf.setFontSize(8);
                             pdf.setTextColor(150, 150, 150);
 
-                            // Texto do rodapÃ© centralizado (pode ter mÃºltiplas linhas)
+                            // Texto do rodapé centralizado (pode ter múltiplas linhas)
                             const lines = footerText.split('\n');
                             const lineHeight = 3.5;
                             const startY = pageHeight - 8 - (lines.length * lineHeight);
@@ -439,8 +439,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                                 pdf.text(line, xPos > 10 ? xPos : 10, startY + (idx * lineHeight));
                             });
 
-                            // NÃºmero da pÃ¡gina no canto inferior direito
-                            const pageText = `PÃ¡gina ${pageNum} de ${totalPages}`;
+                            // Número da página no canto inferior direito
+                            const pageText = `Página ${pageNum} de ${totalPages}`;
                             pdf.text(pageText, pageWidth - 35, pageHeight - 5);
                         }
 
@@ -523,11 +523,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             }
 
             const emailBody = `
-                OlÃ¡,
+                Olá,
                 
-                Segue abaixo o link para o relatÃ³rio da visita tÃ©cnica realizada em ${format(safeDate, 'dd/MM/yyyy')}.
+                Segue abaixo o link para o relatório da visita técnica realizada em ${format(safeDate, 'dd/MM/yyyy')}.
                 
-                ${driveLink ? `<p><strong><a href="${driveLink}">Clique aqui para visualizar o RelatÃ³rio (Google Drive)</a></strong></p>` : '<p>Nota: O arquivo nÃ£o pÃ´de ser salvo no Drive, favor contactar o suporte.</p>'}
+                ${driveLink ? `<p><strong><a href="${driveLink}">Clique aqui para visualizar o Relatório (Google Drive)</a></strong></p>` : '<p>Nota: O arquivo não pôde ser salvo no Drive, favor contactar o suporte.</p>'}
                 
                 Atenciosamente,
                 Equipe WGA Brasil
@@ -535,11 +535,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             await Core.SendEmail({
                 to: visit.client?.email,
-                subject: `RelatÃ³rio de Visita TÃ©cnica - ${visit.client?.name} - ${format(safeDate, 'dd/MM/yyyy')}`,
+                subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${format(safeDate, 'dd/MM/yyyy')}`,
                 body: emailBody,
             });
 
-            await alert({ title: 'Sucesso!', message: 'RelatÃ³rio enviado e salvo com sucesso.', type: 'success' });
+            await alert({ title: 'Sucesso!', message: 'Relatório enviado e salvo com sucesso.', type: 'success' });
             Logger.info('USER_ACTION', 'Report sent successfully', { visitId: visit.id, email: visit.client?.email });
             updateMutation.mutate({ status: 'synced' });
             setIsPreviewing(false);
@@ -554,244 +554,285 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         }
     };
 
-return (
-    <div className="space-y-6 pb-20 relative">
+    return (
+        <div className="space-y-6 pb-20 relative">
 
-        {/* Hidden Offscreen Container for PDF Generation - Not visible to user */}
-        {isPreviewing && (
-            <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
-                <div id="report-preview-content" className="bg-white w-[210mm] min-h-[297mm]">
-                    {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
-                </div>
-            </div>
-        )}
-
-        {/* Loading Dialog - Shows progress during PDF generation/send */}
-        <Dialog open={isSending} onOpenChange={() => { }}>
-            <DialogContent className="max-w-sm text-center">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                        Processando...
-                    </DialogTitle>
-                    <DialogDescription className="text-center pt-2">
-                        {uploadStatus || "Gerando relatÃ³rio..."}
-                    </DialogDescription>
-                </DialogHeader>
-            </DialogContent>
-        </Dialog>
-
-        {/* Signature Dialog */}
-        <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Assinatura do TÃ©cnico NecessÃ¡ria</DialogTitle>
-                    <DialogDescription>Para finalizar relatÃ³rios, cadastre sua assinatura digital.</DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                    <SignaturePad onSave={handleSaveTechnicianSignature} />
-                </div>
-            </DialogContent>
-        </Dialog>
-
-        {/* Warnings */}
-        {user && !user.signature_url && !showSignatureDialog && !readOnly && (
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex items-center">
-                <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
-                <p className="text-sm text-yellow-700">
-                    VocÃª ainda nÃ£o cadastrou sua assinatura.
-                    <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>Cadastrar agora</Button>
-                </p>
-            </div>
-        )}
-
-        {readOnly && (
-            <div className="bg-slate-100 border-l-4 border-slate-500 p-4 mb-4 flex justify-between items-center">
-                <div className="flex items-center">
-                    <Lock className="h-5 w-5 text-slate-500 mr-2" />
-                    <p className="text-sm text-slate-700">Visita finalizada. Modo somente leitura.</p>
-                </div>
-                {isAdmin && <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>}
-            </div>
-        )}
-
-        {/* 0. HorÃ¡rios */}
-        <Card>
-            <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />HorÃ¡rios da Visita</CardTitle>
-                <CardDescription>Informe os horÃ¡rios de chegada e saÃ­da.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="arrivalTime">Hora de Chegada</Label>
-                        <Input
-                            id="arrivalTime"
-                            type="time"
-                            value={arrivalTime}
-                            onChange={(e) => setArrivalTime(e.target.value)}
-                            onBlur={() => handleBlur('arrival_time', arrivalTime)}
-                            disabled={readOnly}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="departureTime">Hora de SaÃ­da</Label>
-                        <Input
-                            id="departureTime"
-                            type="time"
-                            value={departureTime}
-                            onChange={(e) => setDepartureTime(e.target.value)}
-                            onBlur={() => handleBlur('departure_time', departureTime)}
-                            disabled={readOnly}
-                        />
+            {/* Hidden Offscreen Container for PDF Generation - Not visible to user */}
+            {isPreviewing && (
+                <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
+                    <div id="report-preview-content" className="bg-white w-[210mm] min-h-[297mm]">
+                        {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
                     </div>
                 </div>
-            </CardContent>
-        </Card>
-
-        {/* 1. Descargas e Drenagens */}
-        <Card>
-            <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><Droplets className="w-4 h-4 text-blue-500" />Descargas e Drenagens</CardTitle>
-                <CardDescription>Informe as descargas de fundo ou drenagens realizadas.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Input
-                    placeholder="Ex: Descarga de fundo em todas as caldeiras..."
-                    value={discharges}
-                    onChange={(e) => setDischarges(e.target.value)}
-                    onBlur={() => handleBlur('discharges_drainages', discharges)}
-                    disabled={readOnly}
-                />
-            </CardContent>
-        </Card>
-
-        {/* 2. AnÃ¡lise TÃ©cnica (ObservaÃ§Ãµes) */}
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle className="text-base">ObservaÃ§Ãµes (AnÃ¡lise TÃ©cnica)</CardTitle>
-                    <CardDescription>AnÃ¡lise dos resultados e recomendaÃ§Ãµes.</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowObsPreview(!showObsPreview)}
-                        className="text-slate-500"
-                        title={showObsPreview ? "Editar" : "PrÃ©-visualizar"}
-                    >
-                        {showObsPreview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
-                        {showObsPreview ? "Editar" : "Preview"}
-                    </Button>
-                    {!readOnly && (
-                        <Button variant="outline" size="sm" onClick={handleGenerateAI} disabled={isGenerating} className="bg-purple-50 text-purple-600 border-purple-200">
-                            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Bot className="w-4 h-4 mr-2" />}
-                            Gerar com IA
-                        </Button>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent>
-                {showObsPreview ? (
-                    <div className="bg-slate-50 p-4 rounded border border-slate-200 min-h-[150px] text-sm">
-                        {observations ? renderMarkdown(observations) : <span className="text-slate-400 italic">Sem observaÃ§Ãµes tÃ©cnicas.</span>}
-                    </div>
-                ) : (
-                    <Textarea
-                        value={observations}
-                        onChange={(e) => setObservations(e.target.value)}
-                        onBlur={() => handleBlur('observations', observations)}
-                        className="min-h-[150px]"
-                        placeholder="Descreva a anÃ¡lise tÃ©cnica..."
-                        disabled={readOnly}
-                    />
-                )}
-            </CardContent>
-        </Card>
-
-        {/* 3. ObservaÃ§Ãµes Gerais */}
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle className="text-base">ObservaÃ§Ãµes Gerais</CardTitle>
-                    <CardDescription>InformaÃ§Ãµes complementares e sugestÃµes.</CardDescription>
-                </div>
-                {!readOnly && (
-                    <Select onValueChange={(val) => handleInsertTemplate(val, setGeneralObservations, 'general_observations', generalObservations)}>
-                        <SelectTrigger className="w-[180px] h-8 text-xs">
-                            <SelectValue placeholder="Inserir Modelo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {templates?.map(t => (
-                                <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                )}
-            </CardHeader>
-            <CardContent>
-                <Textarea
-                    value={generalObservations}
-                    onChange={(e) => setGeneralObservations(e.target.value)}
-                    onBlur={() => handleBlur('general_observations', generalObservations)}
-                    className="min-h-[100px]"
-                    placeholder="ObservaÃ§Ãµes gerais..."
-                    disabled={readOnly}
-                />
-            </CardContent>
-        </Card>
-
-        {/* 4. Client Signature */}
-        <Card>
-            <CardHeader>
-                <CardTitle className="text-base">Assinatura do Cliente</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="mb-4 flex items-center space-x-2">
-                    <Checkbox
-                        id="clientAbsent"
-                        checked={clientAbsent}
-                        onCheckedChange={(checked) => {
-                            setClientAbsent(checked);
-                            handleBlur('client_absent', checked);
-                        }}
-                        disabled={readOnly}
-                    />
-                    <Label htmlFor="clientAbsent" className="text-sm text-slate-600 cursor-pointer">
-                        ResponsÃ¡vel ausente (cliente nÃ£o disponÃ­vel para assinatura)
-                    </Label>
-                </div>
-                {clientAbsent ? (
-                    <p className="text-slate-400 italic text-sm">Assinatura nÃ£o necessÃ¡ria - responsÃ¡vel ausente</p>
-                ) : (
-                    readOnly ? (
-                        visit.client_signature_url ? <img src={visit.client_signature_url} className="h-24 border rounded bg-slate-50" alt="Assinatura" /> : <p className="text-slate-400 italic">NÃ£o assinado</p>
-                    ) : (
-                        <SignaturePad savedUrl={visit.client_signature_url} onSave={handleSaveSignature} />
-                    )
-                )}
-            </CardContent>
-        </Card>
-
-        {/* Footer / Actions */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col gap-3 md:relative md:flex-row md:border-0 md:bg-transparent md:p-0">
-            <a href={`/report/${visit.id}`} target="_blank" className="w-full md:flex-1">
-                <Button variant="outline" className="w-full"><FileText className="w-4 h-4 mr-2" /> Visualizar RelatÃ³rio Web</Button>
-            </a>
-
-            {!readOnly && (
-                <Button className="w-full md:flex-1 bg-green-600 hover:bg-green-700" onClick={handleFinalize}>
-                    <CheckCircle className="w-4 h-4 mr-2" /> Finalizar Localmente
-                </Button>
             )}
 
-            <Button className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleOpenPreview()} disabled={isSending || isLoadingReport}>
-                {isSending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (readOnly ? <MonitorUp className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />)}
-                {readOnly ? "Reenviar e Salvar no Drive" : "Finalizar, Enviar e Salvar"}
-            </Button>
+            {/* Loading Dialog - Shows progress during PDF generation/send */}
+            <Dialog open={isSending} onOpenChange={() => { }}>
+                <DialogContent className="max-w-sm text-center">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                            Processando...
+                        </DialogTitle>
+                        <DialogDescription className="text-center pt-2">
+                            {uploadStatus || "Gerando relatório..."}
+                        </DialogDescription>
+                    </DialogHeader>
+                </DialogContent>
+            </Dialog>
+
+            {/* Signature Dialog */}
+            <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Assinatura do Técnico Necessária</DialogTitle>
+                        <DialogDescription>Para finalizar relatórios, cadastre sua assinatura digital.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <SignaturePad onSave={handleSaveTechnicianSignature} />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Warnings */}
+            {user && !user.signature_url && !showSignatureDialog && !readOnly && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex items-center">
+                    <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
+                    <p className="text-sm text-yellow-700">
+                        Você ainda não cadastrou sua assinatura.
+                        <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>Cadastrar agora</Button>
+                    </p>
+                </div>
+            )}
+
+            {readOnly && (
+                <div className="bg-slate-100 border-l-4 border-slate-500 p-4 mb-4 flex justify-between items-center">
+                    <div className="flex items-center">
+                        <Lock className="h-5 w-5 text-slate-500 mr-2" />
+                        <p className="text-sm text-slate-700">Visita finalizada. Modo somente leitura.</p>
+                    </div>
+                    {isAdmin && <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>}
+                </div>
+            )}
+
+            {/* 0. HorÃ¡rios */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Horários da Visita</CardTitle>
+                    <CardDescription>Informe os horários de chegada e saída.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="arrivalTime">Hora de Chegada</Label>
+                            <Input
+                                id="arrivalTime"
+                                type="time"
+                                value={arrivalTime}
+                                onChange={(e) => setArrivalTime(e.target.value)}
+                                onBlur={() => handleBlur('arrival_time', arrivalTime)}
+                                disabled={readOnly}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="departureTime">Hora de Saída</Label>
+                            <Input
+                                id="departureTime"
+                                type="time"
+                                value={departureTime}
+                                onChange={(e) => setDepartureTime(e.target.value)}
+                                onBlur={() => handleBlur('departure_time', departureTime)}
+                                disabled={readOnly}
+                            />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* 1. Descargas e Drenagens */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2"><Droplets className="w-4 h-4 text-blue-500" />Descargas e Drenagens</CardTitle>
+                    <CardDescription>Informe as descargas de fundo ou drenagens realizadas.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Input
+                        placeholder="Ex: Descarga de fundo em todas as caldeiras..."
+                        value={discharges}
+                        onChange={(e) => setDischarges(e.target.value)}
+                        onBlur={() => handleBlur('discharges_drainages', discharges)}
+                        disabled={readOnly}
+                    />
+                </CardContent>
+            </Card>
+
+            {/* 2. AnÃ¡lise TÃ©cnica (ObservaÃ§Ãµes) */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-base">Observações (Análise Técnica)</CardTitle>
+                        <CardDescription>Análise dos resultados e recomendações.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowObsPreview(!showObsPreview)}
+                            className="text-slate-500"
+                            title={showObsPreview ? "Editar" : "Pré-visualizar"}
+                        >
+                            {showObsPreview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+                            {showObsPreview ? "Editar" : "Preview"}
+                        </Button>
+                        {!readOnly && (
+                            <Button variant="outline" size="sm" onClick={handleGenerateAI} disabled={isGenerating} className="bg-purple-50 text-purple-600 border-purple-200">
+                                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Bot className="w-4 h-4 mr-2" />}
+                                Gerar com IA
+                            </Button>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {showObsPreview ? (
+                        <div className="bg-slate-50 p-4 rounded border border-slate-200 min-h-[150px] text-sm">
+                            {observations ? renderMarkdown(observations) : <span className="text-slate-400 italic">Sem observações técnicas.</span>}
+                        </div>
+                    ) : (
+                        <Textarea
+                            value={observations}
+                            onChange={(e) => setObservations(e.target.value)}
+                            onBlur={() => handleBlur('observations', observations)}
+                            className="min-h-[150px]"
+                            placeholder="Descreva a análise técnica..."
+                            disabled={readOnly}
+                        />
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* 3. ObservaÃ§Ãµes Gerais */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-base">Observações Gerais</CardTitle>
+                        <CardDescription>Informações complementares e sugestões.</CardDescription>
+                    </div>
+                    {!readOnly && (
+                        <Select onValueChange={(val) => handleInsertTemplate(val, setGeneralObservations, 'general_observations', generalObservations)}>
+                            <SelectTrigger className="w-[180px] h-8 text-xs">
+                                <SelectValue placeholder="Inserir Modelo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {templates?.map(t => (
+                                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                </CardHeader>
+                <CardContent>
+                    <Textarea
+                        value={generalObservations}
+                        onChange={(e) => setGeneralObservations(e.target.value)}
+                        onBlur={() => handleBlur('general_observations', generalObservations)}
+                        className="min-h-[100px]"
+                        placeholder="Observações gerais..."
+                        disabled={readOnly}
+                    />
+                </CardContent>
+            </Card>
+
+            {/* Responsibilidade Técnica (Inserido) */}
+            {(needsTechnicalResponsible || technicalResponsibles?.length > 0) && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <PenTool className="w-4 h-4 text-purple-500" />
+                            Responsabilidade Técnica
+                        </CardTitle>
+                        <CardDescription>
+                            Selecione o engenheiro/químico responsável por este relatório.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {needsTechnicalResponsible && (
+                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-xs text-yellow-700">
+                                <strong>Atenção:</strong> Como seu usuário não possui CRQ cadastrado, é obrigatório selecionar um responsável técnico.
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label>Responsável Técnico</Label>
+                            <Select
+                                value={technicalResponsibleId}
+                                onValueChange={handleResponsibleChange}
+                                disabled={readOnly}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o responsável..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {technicalResponsibles?.map((resp) => (
+                                        <SelectItem key={resp.id} value={resp.id}>
+                                            {resp.name} ({resp.crq})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* 4. Client Signature */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">Assinatura do Cliente</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="mb-4 flex items-center space-x-2">
+                        <Checkbox
+                            id="clientAbsent"
+                            checked={clientAbsent}
+                            onCheckedChange={(checked) => {
+                                setClientAbsent(checked);
+                                handleBlur('client_absent', checked);
+                            }}
+                            disabled={readOnly}
+                        />
+                        <Label htmlFor="clientAbsent" className="text-sm text-slate-600 cursor-pointer">
+                            Responsável ausente (cliente não disponível para assinatura)
+                        </Label>
+                    </div>
+                    {clientAbsent ? (
+                        <p className="text-slate-400 italic text-sm">Assinatura não necessária - responsável ausente</p>
+                    ) : (
+                        readOnly ? (
+                            visit.client_signature_url ? <img src={visit.client_signature_url} className="h-24 border rounded bg-slate-50" alt="Assinatura" /> : <p className="text-slate-400 italic">Não assinado</p>
+                        ) : (
+                            <SignaturePad savedUrl={visit.client_signature_url} onSave={handleSaveSignature} />
+                        )
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Footer / Actions */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col gap-3 md:relative md:flex-row md:border-0 md:bg-transparent md:p-0">
+                <a href={`/report/${visit.id}`} target="_blank" className="w-full md:flex-1">
+                    <Button variant="outline" className="w-full"><FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web</Button>
+                </a>
+
+                {!readOnly && (
+                    <Button className="w-full md:flex-1 bg-green-600 hover:bg-green-700" onClick={handleFinalize}>
+                        <CheckCircle className="w-4 h-4 mr-2" /> Finalizar Localmente
+                    </Button>
+                )}
+
+                <Button className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleOpenPreview()} disabled={isSending || isLoadingReport}>
+                    {isSending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (readOnly ? <MonitorUp className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />)}
+                    {readOnly ? "Reenviar e Salvar no Drive" : "Finalizar, Enviar e Salvar"}
+                </Button>
+            </div>
+            {isLoadingReport && <div className="text-center text-xs text-slate-400">Carregando dados para geração de PDF...</div>}
         </div>
-        {isLoadingReport && <div className="text-center text-xs text-slate-400">Carregando dados para geraÃ§Ã£o de PDF...</div>}
-    </div>
-);
+    );
 }
