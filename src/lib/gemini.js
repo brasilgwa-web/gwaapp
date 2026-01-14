@@ -128,39 +128,63 @@ Para cada equipamento, liste:
 Responda em português brasileiro:`;
     }
 
-    try {
-        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }],
-                generationConfig: {
-                    temperature: 0.7,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: aiSettings.maxTokens,
+    // Função para fazer request com retry
+    const makeRequest = async (attempt = 1, maxAttempts = 3, delayMs = 3000) => {
+        try {
+            const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: aiSettings.maxTokens,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                const errorMessage = errorData.error?.message || 'Erro na API Gemini';
+
+                // Se o modelo está sobrecarregado e ainda temos tentativas, retry
+                if (errorMessage.includes('overloaded') && attempt < maxAttempts) {
+                    console.warn(`Gemini API sobrecarregada. Tentativa ${attempt}/${maxAttempts}. Aguardando ${delayMs / 1000}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                    return makeRequest(attempt + 1, maxAttempts, delayMs);
                 }
-            })
-        });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Gemini API Error:', errorData);
-            throw new Error(errorData.error?.message || 'Erro na API Gemini');
+                console.error('Gemini API Error:', errorData);
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!text) {
+                throw new Error('Resposta vazia da API Gemini');
+            }
+
+            return text.trim();
+        } catch (error) {
+            // Retry em caso de erro de rede ou timeout
+            if (attempt < maxAttempts && (error.name === 'TypeError' || error.message.includes('overloaded'))) {
+                console.warn(`Erro na requisição. Tentativa ${attempt}/${maxAttempts}. Aguardando ${delayMs / 1000}s...`);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                return makeRequest(attempt + 1, maxAttempts, delayMs);
+            }
+            throw error;
         }
+    };
 
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (!text) {
-            throw new Error('Resposta vazia da API Gemini');
-        }
-
-        return text.trim();
+    try {
+        return await makeRequest();
     } catch (error) {
         console.error('Gemini Service Error:', error);
         Logger.error('AI_GENERATION', 'Error generating technical analysis', error);
