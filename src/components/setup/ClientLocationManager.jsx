@@ -47,6 +47,7 @@ function SortableClientRow({ client, sortOrder, openEditClient, removeClient, se
                             variant="ghost"
                             size="icon"
                             className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 -ml-2"
+                            style={{ touchAction: 'none' }} // Critical for mobile functionality
                             {...attributes}
                             {...listeners}
                         >
@@ -161,12 +162,6 @@ export default function ClientLocationManager() {
         useSensor(PointerSensor, {
             activationConstraint: {
                 distance: 8,
-            },
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: 250,
-                tolerance: 5,
             },
         }),
         useSensor(KeyboardSensor, {
