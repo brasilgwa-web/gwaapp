@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { useConfirm } from "@/context/ConfirmContext";
 
 export default function SetupReport() {
     const queryClient = useQueryClient();
