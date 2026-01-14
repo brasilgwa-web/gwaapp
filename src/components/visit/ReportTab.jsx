@@ -307,18 +307,14 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const opt = {
-                margin: [10, 10, 20, 10], // [top, left, bottom, right] - margem inferior maior para o rodapé
+                margin: [10, 10, 25, 10], // [top, left, bottom, right] - margem inferior maior para o rodapé
                 filename: `relatorio_${visit.id}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // Gerar PDF com html2pdf e adicionar rodapé em todas as páginas
-            const worker = html2pdf().set(opt).from(element);
-            const pdf = await worker.toPdf().get('pdf');
-
-            // Obter texto do rodapé das configurações
+            // Obter texto do rodapé das configurações ANTES de gerar o PDF
             const { data: reportSettingsData } = await supabase
                 .from('report_settings')
                 .select('footer_text')
@@ -327,30 +323,44 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             const footerText = reportSettingsData?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
 
-            // Adicionar rodapé em todas as páginas
-            const totalPages = pdf.internal.getNumberOfPages();
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
+            // Gerar PDF e adicionar rodapé usando callback
+            const pdfBase64 = await new Promise((resolve, reject) => {
+                html2pdf()
+                    .set(opt)
+                    .from(element)
+                    .toPdf()
+                    .get('pdf')
+                    .then((pdf) => {
+                        const totalPages = pdf.internal.getNumberOfPages();
+                        const pageWidth = pdf.internal.pageSize.getWidth();
+                        const pageHeight = pdf.internal.pageSize.getHeight();
 
-            for (let i = 1; i <= totalPages; i++) {
-                pdf.setPage(i);
-                pdf.setFontSize(8);
-                pdf.setTextColor(150, 150, 150);
+                        // Adicionar rodapé em CADA página
+                        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                            pdf.setPage(pageNum);
+                            pdf.setFontSize(8);
+                            pdf.setTextColor(150, 150, 150);
 
-                // Texto do rodapé centralizado
-                const lines = footerText.split('\n');
-                let yPos = pageHeight - 12;
-                lines.forEach((line, idx) => {
-                    const textWidth = pdf.getStringUnitWidth(line) * 8 / pdf.internal.scaleFactor;
-                    const xPos = (pageWidth - textWidth) / 2;
-                    pdf.text(line, xPos, yPos + (idx * 4));
-                });
+                            // Texto do rodapé centralizado (pode ter múltiplas linhas)
+                            const lines = footerText.split('\n');
+                            const lineHeight = 3.5;
+                            const startY = pageHeight - 8 - (lines.length * lineHeight);
 
-                // Número da página
-                pdf.text(`Página ${i} de ${totalPages}`, pageWidth - 25, pageHeight - 5);
-            }
+                            lines.forEach((line, idx) => {
+                                const textWidth = pdf.getStringUnitWidth(line) * 8 / pdf.internal.scaleFactor;
+                                const xPos = (pageWidth - textWidth) / 2;
+                                pdf.text(line, xPos > 10 ? xPos : 10, startY + (idx * lineHeight));
+                            });
 
-            const pdfBase64 = pdf.output('datauristring');
+                            // Número da página no canto inferior direito
+                            const pageText = `Página ${pageNum} de ${totalPages}`;
+                            pdf.text(pageText, pageWidth - 35, pageHeight - 5);
+                        }
+
+                        resolve(pdf.output('datauristring'));
+                    })
+                    .catch(reject);
+            });
 
             let safeDate = new Date();
             if (visit.visit_date) {
