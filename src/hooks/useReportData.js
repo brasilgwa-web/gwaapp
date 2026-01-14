@@ -148,13 +148,24 @@ export function useReportData(id) {
                 .limit(1)
                 .single();
 
-            // Fetch Active Technical Responsibles
+            // Fetch Active Technical Responsibles (for potential listing or context)
             const { data: technicalResponsibles } = await supabase
                 .from('technical_responsibles')
                 .select('*')
                 .eq('active', true);
 
-            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, technicalResponsibles };
+            // Fetch Selected Technical Responsible (specifically for this visit, regardless of active status)
+            let selectedTechnicalResponsible = null;
+            if (visit.technical_responsible_id) {
+                const { data: resp } = await supabase
+                    .from('technical_responsibles')
+                    .select('*')
+                    .eq('id', visit.technical_responsible_id)
+                    .single();
+                selectedTechnicalResponsible = resp;
+            }
+
+            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, technicalResponsibles, selectedTechnicalResponsible };
         },
         // Cache for 5 minutes
         staleTime: 1000 * 60 * 5

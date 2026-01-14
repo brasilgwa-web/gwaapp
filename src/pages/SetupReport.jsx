@@ -12,12 +12,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Switch } from "@/components/ui/switch";
 import { useConfirm } from "@/context/ConfirmContext";
 import { format } from "date-fns";
+import SignaturePad from "@/components/visit/SignaturePad";
+
+const dataURLtoBlob = (dataurl) => {
+    let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+        bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+};
 
 export default function SetupReport() {
     const queryClient = useQueryClient();
     const { alert, confirm } = useConfirm();
     const fileInputRef = useRef(null);
-    const signatureInputRef = useRef(null);
 
     const [initialNumber, setInitialNumber] = useState('');
     const [footerText, setFooterText] = useState('');
@@ -28,8 +37,7 @@ export default function SetupReport() {
     // Technical Responsible States
     const [isRespDialogOpen, setIsRespDialogOpen] = useState(false);
     const [editingResp, setEditingResp] = useState(null);
-    const [signatureFile, setSignatureFile] = useState(null);
-    const [signaturePreview, setSignaturePreview] = useState(null);
+    const [currentSignature, setCurrentSignature] = useState(null);
     const [isSavingResp, setIsSavingResp] = useState(false);
 
     // Fetch existing settings
@@ -121,8 +129,7 @@ export default function SetupReport() {
             queryClient.invalidateQueries({ queryKey: ['technicalResponsibles'] });
             setIsRespDialogOpen(false);
             setEditingResp(null);
-            setSignatureFile(null);
-            setSignaturePreview(null);
+            setCurrentSignature(null);
             alert({ title: 'Sucesso', message: 'Responsável técnico salvo!', type: 'success' });
         },
         onError: (err) => alert({ title: 'Erro', message: err.message, type: 'error' })
@@ -158,18 +165,6 @@ export default function SetupReport() {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setLogoPreview(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleSignatureChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setSignatureFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setSignaturePreview(reader.result);
             };
             reader.readAsDataURL(file);
         }
@@ -230,40 +225,46 @@ export default function SetupReport() {
             const name = formData.get('name');
             const crq = formData.get('crq');
 
-            let signatureUrl = editingResp?.signature_url || null;
+            let signatureUrl = currentSignature;
 
-            if (signatureFile) {
-                const fileExt = signatureFile.name.split('.').pop();
+            // If it's a base64 string, upload it
+            if (signatureUrl && signatureUrl.startsWith('data:')) {
+                const blob = dataURLtoBlob(signatureUrl);
+                const fileExt = 'png';
                 const fileName = `sig_${Date.now()}.${fileExt}`;
                 const filePath = `signatures/${fileName}`;
 
-                // Try signatures bucket
                 let bucketName = 'signatures';
-                // Check if bucket exists/accessible or fallback to uploads (simplified logic: try signatures first)
+
                 const { error: uploadError } = await supabase.storage
                     .from(bucketName)
-                    .upload(filePath, signatureFile, { upsert: true });
+                    .upload(filePath, blob, { upsert: true, contentType: 'image/png' });
 
                 if (uploadError) {
                     console.warn("Signatures bucket failed, trying uploads", uploadError);
                     bucketName = 'uploads';
-                    const { error: uploadError2 } = await supabase.storage.from(bucketName).upload(filePath, signatureFile, { upsert: true });
+                    const { error: uploadError2 } = await supabase.storage.from(bucketName).upload(filePath, blob, { upsert: true, contentType: 'image/png' });
                     if (uploadError2) throw uploadError2;
                 }
 
                 const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(filePath);
                 signatureUrl = urlData.publicUrl;
+            } else if (!signatureUrl) {
+                // Explicitly set to null if cleared
+                signatureUrl = null;
             }
+            // If it starts with http, it is existing url, keep it.
 
             await upsertResponsible.mutateAsync({
                 id: editingResp?.id,
                 name,
                 crq,
                 signature_url: signatureUrl,
-                active: editingResp ? editingResp.active : true // Default active for new
+                active: editingResp ? editingResp.active : true
             });
 
         } catch (error) {
+            console.error(error);
             alert({ title: 'Erro', message: error.message, type: 'error' });
         } finally {
             setIsSavingResp(false);
@@ -272,15 +273,13 @@ export default function SetupReport() {
 
     const openNewResp = () => {
         setEditingResp(null);
-        setSignatureFile(null);
-        setSignaturePreview(null);
+        setCurrentSignature(null);
         setIsRespDialogOpen(true);
     };
 
     const openEditResp = (resp) => {
         setEditingResp(resp);
-        setSignatureFile(null);
-        setSignaturePreview(resp.signature_url);
+        setCurrentSignature(resp.signature_url);
         setIsRespDialogOpen(true);
     };
 
@@ -391,27 +390,16 @@ export default function SetupReport() {
                         </div>
                         <div className="space-y-2">
                             <Label>Assinatura Digital</Label>
-                            <div className="flex items-start gap-4">
-                                <div className="w-24 h-16 border-2 border-dashed border-slate-300 rounded flex items-center justify-center bg-slate-50 overflow-hidden">
-                                    {signaturePreview ? (
-                                        <img src={signaturePreview} alt="Preview" className="max-w-full max-h-full object-contain" />
-                                    ) : (
-                                        <span className="text-[10px] text-slate-400 text-center px-1">Selecione imagem</span>
-                                    )}
-                                </div>
-                                <div className="flex-1 space-y-2">
-                                    <input
-                                        ref={signatureInputRef}
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleSignatureChange}
-                                        className="hidden"
-                                    />
-                                    <Button type="button" variant="outline" size="sm" onClick={() => signatureInputRef.current?.click()}>
-                                        <Upload className="w-3 h-3 mr-2" /> Upload Assinatura
-                                    </Button>
-                                    <p className="text-[10px] text-slate-500">Fundo transparente recomendado (PNG).</p>
-                                </div>
+                            <div className="space-y-2">
+                                <SignaturePad
+                                    savedUrl={currentSignature}
+                                    onSave={(data) => {
+                                        setCurrentSignature(data);
+                                    }}
+                                />
+                                <p className="text-[10px] text-slate-500">
+                                    Use o mouse ou dedo para assinar no quadro acima.
+                                </p>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 pt-2">

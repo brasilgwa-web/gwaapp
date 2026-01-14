@@ -407,79 +407,251 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             });
 
             let safeDate = new Date();
-            if (visit.visit_date) {
-                const dateStr = visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date;
-                const [y, m, d] = dateStr.split('-').map(Number);
-                safeDate = new Date(y, m - 1, d, 12, 0, 0);
-            }
+            const [arrivalTime, setArrivalTime] = useState(visit.arrival_time || '');
+            const [departureTime, setDepartureTime] = useState(visit.departure_time || '');
+            const [technicalResponsibleId, setTechnicalResponsibleId] = useState(visit.technical_responsible_id || '');
+            const [clientAbsent, setClientAbsent] = useState(visit.client_absent || false);
+            const [showObsPreview, setShowObsPreview] = useState(true);
 
-            const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
+            // ... (helper renderMarkdown)
 
-            // Upload to Drive
-            const driveFolderId = visit.client?.google_drive_folder_id;
-            let driveLink = null;
+            // ... (clientDetails query) -> unchanged
 
-            if (driveFolderId) {
-                setUploadStatus('Enviando para o Google Drive...');
-                const uploadRes = await fetch('/api/upload-drive', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileBase64: pdfBase64,
-                        fileName: fileName,
-                        folderId: driveFolderId
-                    })
-                });
+            // Fetch Active Technical Responsibles
+            const { data: technicalResponsibles } = useQuery({
+                queryKey: ['activeTechnicalResponsibles'],
+                queryFn: async () => {
+                    const { data, error } = await supabase
+                        .from('technical_responsibles')
+                        .select('*')
+                        .eq('active', true)
+                        .order('name');
+                    if (error) {
+                        console.error('Error fetching responsibles:', error);
+                        return [];
+                    }
+                    return data;
+                },
+            });
 
-                if (!uploadRes.ok) {
-                    console.error("Drive upload failed", await uploadRes.json());
-                    alert("Aviso: Falha ao salvar no Google Drive. Verifique o ID da pasta.");
-                } else {
-                    const responseData = await uploadRes.json();
-                    driveLink = responseData.webViewLink;
-                }
-            }
+            // ... (useEffect default discharges)
 
-            // Send Email
-            setUploadStatus('Enviando email...');
+            // ... (UI States)
 
-            // Generate and save report number if not already set
-            let reportNumber = visit.report_number;
-            if (!reportNumber && !readOnly) {
-                // Fetch report settings
-                const { data: reportSettings } = await supabase
-                    .from('report_settings')
-                    .select('*')
-                    .limit(1)
-                    .single();
+            // ... (reportData query)
 
-                if (reportSettings) {
-                    const currentNum = reportSettings.current_report_number || 1;
-                    reportNumber = `${format(safeDate, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
+            // ... (templates query)
 
-                    // Update visit with report number
+            // Fetch Current User
+            const { user } = useAuth();
+
+            // Check if user needs to select a technical responsible
+            const userHasCrq = Boolean(user?.crq);
+            const needsTechnicalResponsible = !userHasCrq;
+
+            // ... (useEffect signature check)
+
+            // ... (handlers like handleBlur)
+
+            const handleResponsibleChange = async (value) => {
+                setTechnicalResponsibleId(value);
+                try {
                     await supabase
                         .from('visits')
-                        .update({ report_number: reportNumber })
+                        .update({ technical_responsible_id: value })
                         .eq('id', visit.id);
-
-                    // Increment counter and update highest emitted
-                    await supabase
-                        .from('report_settings')
-                        .update({
-                            current_report_number: currentNum + 1,
-                            highest_emitted_number: currentNum,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', reportSettings.id);
+                    onUpdateVisit({ ...visit, technical_responsible_id: value });
+                } catch (error) {
+                    console.error("Error updating responsible:", error);
+                    alert({ title: "Erro", message: "Erro ao atualizar responsável técnico", type: "error" });
                 }
-            }
+            };
 
-            if (!readOnly) {
-                await Visit.update(visit.id, { status: 'completed' });
-            }
+            // ... (handleGenerateAI)
 
-            const emailBody = `
+            // ... (handleSyncStock)
+
+            // ... (handleReopen)
+
+            // PDF & Email Logic
+            const handleOpenPreview = async () => {
+                // Validation: If user has no CRQ, Technical Responsible is MANDATORY
+                if (needsTechnicalResponsible && !technicalResponsibleId) {
+                    await alert({
+                        title: 'Responsável Técnico Obrigatório',
+                        message: 'Como você não possui CRQ cadastrado, é obrigatório selecionar um Responsável Técnico para assinar o relatório.',
+                        type: 'warning'
+                    });
+                    return;
+                }
+
+                // Simple confirmation instead of preview
+                const actionLabel = readOnly ? "reenviar e salvar" : "finalizar, enviar e salvar";
+                const confirmed = await confirm({
+                    title: 'Confirmar Envio',
+                    message: `Tem certeza que deseja ${actionLabel} o relatório?`,
+                    confirmLabel: 'Sim, enviar',
+                    cancelLabel: 'Cancelar',
+                    type: 'confirm'
+                });
+                if (!confirmed) return;
+
+                const { data } = await refetchReport();
+
+                if (!data) {
+                    await alert({ title: 'Aguarde', message: 'Aguarde o carregamento completo dos dados do relatório.', type: 'info' });
+                    return;
+                }
+
+                // Set previewing to true to render the hidden PDF template
+                setIsPreviewing(true);
+
+                // Wait for React to render the offscreen template, then generate PDF
+                setTimeout(() => {
+                    handleConfirmSend();
+                }, 500);
+            };
+
+            const handleConfirmSend = async () => {
+                setIsSending(true);
+                setUploadStatus('Gerando PDF...');
+
+                try {
+                    const element = document.getElementById('report-preview-content');
+                    if (!element) throw new Error("Template de pré-visualização não encontrado");
+
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    const opt = {
+                        margin: [10, 10, 25, 10], // [top, left, bottom, right]
+                        filename: `relatorio_${visit.id}.pdf`,
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true, logging: false },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    };
+
+                    // Obter texto do rodapé das configurações ANTES de gerar o PDF
+                    const { data: reportSettingsData } = await supabase
+                        .from('report_settings')
+                        .select('footer_text')
+                        .limit(1)
+                        .single();
+
+                    const footerText = reportSettingsData?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
+
+                    // Gerar PDF e adicionar rodapé usando callback
+                    const pdfBase64 = await new Promise((resolve, reject) => {
+                        html2pdf()
+                            .set(opt)
+                            .from(element)
+                            .toPdf()
+                            .get('pdf')
+                            .then((pdf) => {
+                                const totalPages = pdf.internal.getNumberOfPages();
+                                const pageWidth = pdf.internal.pageSize.getWidth();
+                                const pageHeight = pdf.internal.pageSize.getHeight();
+
+                                // Adicionar rodapé em CADA página
+                                for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                                    pdf.setPage(pageNum);
+                                    pdf.setFontSize(8);
+                                    pdf.setTextColor(150, 150, 150);
+
+                                    // Texto do rodapé centralizado (pode ter múltiplas linhas)
+                                    const lines = footerText.split('\n');
+                                    const lineHeight = 3.5;
+                                    const startY = pageHeight - 8 - (lines.length * lineHeight);
+
+                                    lines.forEach((line, idx) => {
+                                        const textWidth = pdf.getStringUnitWidth(line) * 8 / pdf.internal.scaleFactor;
+                                        const xPos = (pageWidth - textWidth) / 2;
+                                        pdf.text(line, xPos > 10 ? xPos : 10, startY + (idx * lineHeight));
+                                    });
+
+                                    // Número da página no canto inferior direito
+                                    const pageText = `Página ${pageNum} de ${totalPages}`;
+                                    pdf.text(pageText, pageWidth - 35, pageHeight - 5);
+                                }
+
+                                resolve(pdf.output('datauristring'));
+                            })
+                            .catch(reject);
+                    });
+
+                    let safeDate = new Date();
+                    if (visit.visit_date) {
+                        const dateStr = visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date;
+                        const [y, m, d] = dateStr.split('-').map(Number);
+                        safeDate = new Date(y, m - 1, d, 12, 0, 0);
+                    }
+
+                    const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
+
+                    // Upload to Drive
+                    const driveFolderId = visit.client?.google_drive_folder_id;
+                    let driveLink = null;
+
+                    if (driveFolderId) {
+                        setUploadStatus('Enviando para o Google Drive...');
+                        const uploadRes = await fetch('/api/upload-drive', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                fileBase64: pdfBase64,
+                                fileName: fileName,
+                                folderId: driveFolderId
+                            })
+                        });
+
+                        if (!uploadRes.ok) {
+                            console.error("Drive upload failed", await uploadRes.json());
+                            alert("Aviso: Falha ao salvar no Google Drive. Verifique o ID da pasta.");
+                        } else {
+                            const responseData = await uploadRes.json();
+                            driveLink = responseData.webViewLink;
+                        }
+                    }
+
+                    // Send Email
+                    setUploadStatus('Enviando email...');
+
+                    // Generate and save report number if not already set
+                    let reportNumber = visit.report_number;
+                    if (!reportNumber && !readOnly) {
+                        // Fetch report settings
+                        const { data: reportSettings } = await supabase
+                            .from('report_settings')
+                            .select('*')
+                            .limit(1)
+                            .single();
+
+                        if (reportSettings) {
+                            const currentNum = reportSettings.current_report_number || 1;
+                            reportNumber = `${format(safeDate, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
+
+                            // Update visit with report number
+                            await supabase
+                                .from('visits')
+                                .update({ report_number: reportNumber })
+                                .eq('id', visit.id);
+
+                            // Increment counter and update highest emitted
+                            await supabase
+                                .from('report_settings')
+                                .update({
+                                    current_report_number: currentNum + 1,
+                                    highest_emitted_number: currentNum,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', reportSettings.id);
+                        }
+                    }
+
+                    if (!readOnly) {
+                        await Visit.update(visit.id, { status: 'completed' });
+                    }
+
+                    const emailBody = `
                 Olá,
                 
                 Segue abaixo o link para o relatório da visita técnica realizada em ${format(safeDate, 'dd/MM/yyyy')}.
@@ -490,265 +662,304 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 Equipe WGA Brasil
             `;
 
-            await Core.SendEmail({
-                to: visit.client?.email,
-                subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${format(safeDate, 'dd/MM/yyyy')}`,
-                body: emailBody,
-            });
+                    await Core.SendEmail({
+                        to: visit.client?.email,
+                        subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${format(safeDate, 'dd/MM/yyyy')}`,
+                        body: emailBody,
+                    });
 
-            await alert({ title: 'Sucesso!', message: 'Relatório enviado e salvo com sucesso.', type: 'success' });
-            Logger.info('USER_ACTION', 'Report sent successfully', { visitId: visit.id, email: visit.client?.email });
-            updateMutation.mutate({ status: 'synced' });
-            setIsPreviewing(false);
+                    await alert({ title: 'Sucesso!', message: 'Relatório enviado e salvo com sucesso.', type: 'success' });
+                    Logger.info('USER_ACTION', 'Report sent successfully', { visitId: visit.id, email: visit.client?.email });
+                    updateMutation.mutate({ status: 'synced' });
+                    setIsPreviewing(false);
 
-        } catch (error) {
-            console.error("Process Error:", error);
-            Logger.error('USER_ACTION', 'Error sending report', error);
-            await alert({ title: 'Erro', message: 'Erro no processo: ' + error.message, type: 'error' });
-        } finally {
-            setIsSending(false);
-            setUploadStatus('');
-        }
-    };
+                } catch (error) {
+                    console.error("Process Error:", error);
+                    Logger.error('USER_ACTION', 'Error sending report', error);
+                    await alert({ title: 'Erro', message: 'Erro no processo: ' + error.message, type: 'error' });
+                } finally {
+                    setIsSending(false);
+                    setUploadStatus('');
+                }
+            };
 
-    return (
-        <div className="space-y-6 pb-20 relative">
+            return (
+                <div className="space-y-6 pb-20 relative">
 
-            {/* Hidden Offscreen Container for PDF Generation - Not visible to user */}
-            {isPreviewing && (
-                <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
-                    <div id="report-preview-content" className="bg-white w-[210mm] min-h-[297mm]">
-                        {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
-                    </div>
-                </div>
-            )}
+                    {/* Hidden Offscreen Container for PDF Generation - Not visible to user */}
+                    {isPreviewing && (
+                        <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
+                            <div id="report-preview-content" className="bg-white w-[210mm] min-h-[297mm]">
+                                {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
+                            </div>
+                        </div>
+                    )}
 
-            {/* Loading Dialog - Shows progress during PDF generation/send */}
-            <Dialog open={isSending} onOpenChange={() => { }}>
-                <DialogContent className="max-w-sm text-center">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center justify-center gap-2">
-                            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                            Processando...
-                        </DialogTitle>
-                        <DialogDescription className="text-center pt-2">
-                            {uploadStatus || "Gerando relatório..."}
-                        </DialogDescription>
-                    </DialogHeader>
-                </DialogContent>
-            </Dialog>
+                    {/* Loading Dialog - Shows progress during PDF generation/send */}
+                    <Dialog open={isSending} onOpenChange={() => { }}>
+                        <DialogContent className="max-w-sm text-center">
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center justify-center gap-2">
+                                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                                    Processando...
+                                </DialogTitle>
+                                <DialogDescription className="text-center pt-2">
+                                    {uploadStatus || "Gerando relatório..."}
+                                </DialogDescription>
+                            </DialogHeader>
+                        </DialogContent>
+                    </Dialog>
 
-            {/* Signature Dialog */}
-            <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Assinatura do Técnico Necessária</DialogTitle>
-                        <DialogDescription>Para finalizar relatórios, cadastre sua assinatura digital.</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <SignaturePad onSave={handleSaveTechnicianSignature} />
-                    </div>
-                </DialogContent>
-            </Dialog>
+                    {/* Signature Dialog */}
+                    <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Assinatura do Técnico Necessária</DialogTitle>
+                                <DialogDescription>Para finalizar relatórios, cadastre sua assinatura digital.</DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <SignaturePad onSave={handleSaveTechnicianSignature} />
+                            </div>
+                        </DialogContent>
+                    </Dialog>
 
-            {/* Warnings */}
-            {user && !user.signature_url && !showSignatureDialog && !readOnly && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex items-center">
-                    <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
-                    <p className="text-sm text-yellow-700">
-                        Você ainda não cadastrou sua assinatura.
-                        <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>Cadastrar agora</Button>
-                    </p>
-                </div>
-            )}
+                    {/* Warnings */}
+                    {user && !user.signature_url && !showSignatureDialog && !readOnly && (
+                        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex items-center">
+                            <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
+                            <p className="text-sm text-yellow-700">
+                                Você ainda não cadastrou sua assinatura.
+                                <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>Cadastrar agora</Button>
+                            </p>
+                        </div>
+                    )}
 
-            {readOnly && (
-                <div className="bg-slate-100 border-l-4 border-slate-500 p-4 mb-4 flex justify-between items-center">
-                    <div className="flex items-center">
-                        <Lock className="h-5 w-5 text-slate-500 mr-2" />
-                        <p className="text-sm text-slate-700">Visita finalizada. Modo somente leitura.</p>
-                    </div>
-                    {isAdmin && <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>}
-                </div>
-            )}
+                    {readOnly && (
+                        <div className="bg-slate-100 border-l-4 border-slate-500 p-4 mb-4 flex justify-between items-center">
+                            <div className="flex items-center">
+                                <Lock className="h-5 w-5 text-slate-500 mr-2" />
+                                <p className="text-sm text-slate-700">Visita finalizada. Modo somente leitura.</p>
+                            </div>
+                            {isAdmin && <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>}
+                        </div>
+                    )}
 
-            {/* 0. Horários */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Horários da Visita</CardTitle>
-                    <CardDescription>Informe os horários de chegada e saída.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="arrivalTime">Hora de Chegada</Label>
+                    {/* 0. Horários */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Horários da Visita</CardTitle>
+                            <CardDescription>Informe os horários de chegada e saída.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="arrivalTime">Hora de Chegada</Label>
+                                    <Input
+                                        id="arrivalTime"
+                                        type="time"
+                                        value={arrivalTime}
+                                        onChange={(e) => setArrivalTime(e.target.value)}
+                                        onBlur={() => handleBlur('arrival_time', arrivalTime)}
+                                        disabled={readOnly}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="departureTime">Hora de Saída</Label>
+                                    <Input
+                                        id="departureTime"
+                                        type="time"
+                                        value={departureTime}
+                                        onChange={(e) => setDepartureTime(e.target.value)}
+                                        onBlur={() => handleBlur('departure_time', departureTime)}
+                                        disabled={readOnly}
+                                    />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Responsável Técnico (Se necessário ou opcional) */}
+                    <Card className={needsTechnicalResponsible && !technicalResponsibleId ? "border-orange-300 ring-1 ring-orange-200" : ""}>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <CheckCircle className={`w-4 h-4 ${needsTechnicalResponsible ? 'text-orange-500' : 'text-slate-500'}`} />
+                                Responsabilidade Técnica
+                            </CardTitle>
+                            <CardDescription>
+                                {needsTechnicalResponsible
+                                    ? "CRQ não detectado no seu perfil. Selecione um Responsável Técnico (Obrigatório)."
+                                    : "Você possui CRQ. Selecione um co-responsável se necessário (Opcional)."}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                <Label>Responsável Técnico pelo Relatório</Label>
+                                <Select
+                                    value={technicalResponsibleId?.toString()}
+                                    onValueChange={handleResponsibleChange}
+                                    disabled={readOnly}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione um responsável..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {technicalResponsibles?.map(resp => (
+                                            <SelectItem key={resp.id} value={resp.id}>
+                                                {resp.name} ({resp.crq})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {needsTechnicalResponsible && !technicalResponsibleId && (
+                                    <p className="text-xs text-orange-600 font-medium">⚠️ Seleção obrigatória para gerar o relatório.</p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* 1. Descargas e Drenagens */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2"><Droplets className="w-4 h-4 text-blue-500" />Descargas e Drenagens</CardTitle>
+                            <CardDescription>Informe as descargas de fundo ou drenagens realizadas.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
                             <Input
-                                id="arrivalTime"
-                                type="time"
-                                value={arrivalTime}
-                                onChange={(e) => setArrivalTime(e.target.value)}
-                                onBlur={() => handleBlur('arrival_time', arrivalTime)}
+                                placeholder="Ex: Descarga de fundo em todas as caldeiras..."
+                                value={discharges}
+                                onChange={(e) => setDischarges(e.target.value)}
+                                onBlur={() => handleBlur('discharges_drainages', discharges)}
                                 disabled={readOnly}
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="departureTime">Hora de Saída</Label>
-                            <Input
-                                id="departureTime"
-                                type="time"
-                                value={departureTime}
-                                onChange={(e) => setDepartureTime(e.target.value)}
-                                onBlur={() => handleBlur('departure_time', departureTime)}
+                        </CardContent>
+                    </Card>
+
+                    {/* 2. Análise Técnica (Observações) */}
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-base">Observações (Análise Técnica)</CardTitle>
+                                <CardDescription>Análise dos resultados e recomendações.</CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setShowObsPreview(!showObsPreview)}
+                                    className="text-slate-500"
+                                    title={showObsPreview ? "Editar" : "Pré-visualizar"}
+                                >
+                                    {showObsPreview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+                                    {showObsPreview ? "Editar" : "Preview"}
+                                </Button>
+                                {!readOnly && (
+                                    <Button variant="outline" size="sm" onClick={handleGenerateAI} disabled={isGenerating} className="bg-purple-50 text-purple-600 border-purple-200">
+                                        {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Bot className="w-4 h-4 mr-2" />}
+                                        Gerar com IA
+                                    </Button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {showObsPreview ? (
+                                <div className="bg-slate-50 p-4 rounded border border-slate-200 min-h-[150px] text-sm">
+                                    {observations ? renderMarkdown(observations) : <span className="text-slate-400 italic">Sem observações técnicas.</span>}
+                                </div>
+                            ) : (
+                                <Textarea
+                                    value={observations}
+                                    onChange={(e) => setObservations(e.target.value)}
+                                    onBlur={() => handleBlur('observations', observations)}
+                                    className="min-h-[150px]"
+                                    placeholder="Descreva a análise técnica..."
+                                    disabled={readOnly}
+                                />
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* 3. Observações Gerais */}
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-base">Observações Gerais</CardTitle>
+                                <CardDescription>Informações complementares e sugestões.</CardDescription>
+                            </div>
+                            {!readOnly && (
+                                <Select onValueChange={(val) => handleInsertTemplate(val, setGeneralObservations, 'general_observations', generalObservations)}>
+                                    <SelectTrigger className="w-[180px] h-8 text-xs">
+                                        <SelectValue placeholder="Inserir Modelo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {templates?.map(t => (
+                                            <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        </CardHeader>
+                        <CardContent>
+                            <Textarea
+                                value={generalObservations}
+                                onChange={(e) => setGeneralObservations(e.target.value)}
+                                onBlur={() => handleBlur('general_observations', generalObservations)}
+                                className="min-h-[100px]"
+                                placeholder="Observações gerais..."
                                 disabled={readOnly}
                             />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
 
-            {/* 1. Descargas e Drenagens */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2"><Droplets className="w-4 h-4 text-blue-500" />Descargas e Drenagens</CardTitle>
-                    <CardDescription>Informe as descargas de fundo ou drenagens realizadas.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Input
-                        placeholder="Ex: Descarga de fundo em todas as caldeiras..."
-                        value={discharges}
-                        onChange={(e) => setDischarges(e.target.value)}
-                        onBlur={() => handleBlur('discharges_drainages', discharges)}
-                        disabled={readOnly}
-                    />
-                </CardContent>
-            </Card>
+                    {/* 4. Client Signature */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Assinatura do Cliente</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="mb-4 flex items-center space-x-2">
+                                <Checkbox
+                                    id="clientAbsent"
+                                    checked={clientAbsent}
+                                    onCheckedChange={(checked) => {
+                                        setClientAbsent(checked);
+                                        handleBlur('client_absent', checked);
+                                    }}
+                                    disabled={readOnly}
+                                />
+                                <Label htmlFor="clientAbsent" className="text-sm text-slate-600 cursor-pointer">
+                                    Responsável ausente (cliente não disponível para assinatura)
+                                </Label>
+                            </div>
+                            {clientAbsent ? (
+                                <p className="text-slate-400 italic text-sm">Assinatura não necessária - responsável ausente</p>
+                            ) : (
+                                readOnly ? (
+                                    visit.client_signature_url ? <img src={visit.client_signature_url} className="h-24 border rounded bg-slate-50" alt="Assinatura" /> : <p className="text-slate-400 italic">Não assinado</p>
+                                ) : (
+                                    <SignaturePad savedUrl={visit.client_signature_url} onSave={handleSaveSignature} />
+                                )
+                            )}
+                        </CardContent>
+                    </Card>
 
-            {/* 2. Análise Técnica (Observações) */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="text-base">Observações (Análise Técnica)</CardTitle>
-                        <CardDescription>Análise dos resultados e recomendações.</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowObsPreview(!showObsPreview)}
-                            className="text-slate-500"
-                            title={showObsPreview ? "Editar" : "Pré-visualizar"}
-                        >
-                            {showObsPreview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
-                            {showObsPreview ? "Editar" : "Preview"}
-                        </Button>
+                    {/* Footer / Actions */}
+                    <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col gap-3 md:relative md:flex-row md:border-0 md:bg-transparent md:p-0">
+                        <a href={`/report/${visit.id}`} target="_blank" className="w-full md:flex-1">
+                            <Button variant="outline" className="w-full"><FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web</Button>
+                        </a>
+
                         {!readOnly && (
-                            <Button variant="outline" size="sm" onClick={handleGenerateAI} disabled={isGenerating} className="bg-purple-50 text-purple-600 border-purple-200">
-                                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Bot className="w-4 h-4 mr-2" />}
-                                Gerar com IA
+                            <Button className="w-full md:flex-1 bg-green-600 hover:bg-green-700" onClick={handleFinalize}>
+                                <CheckCircle className="w-4 h-4 mr-2" /> Finalizar Localmente
                             </Button>
                         )}
+
+                        <Button className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleOpenPreview()} disabled={isSending || isLoadingReport}>
+                            {isSending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (readOnly ? <MonitorUp className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />)}
+                            {readOnly ? "Reenviar e Salvar no Drive" : "Finalizar, Enviar e Salvar"}
+                        </Button>
                     </div>
-                </CardHeader>
-                <CardContent>
-                    {showObsPreview ? (
-                        <div className="bg-slate-50 p-4 rounded border border-slate-200 min-h-[150px] text-sm">
-                            {observations ? renderMarkdown(observations) : <span className="text-slate-400 italic">Sem observações técnicas.</span>}
-                        </div>
-                    ) : (
-                        <Textarea
-                            value={observations}
-                            onChange={(e) => setObservations(e.target.value)}
-                            onBlur={() => handleBlur('observations', observations)}
-                            className="min-h-[150px]"
-                            placeholder="Descreva a análise técnica..."
-                            disabled={readOnly}
-                        />
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* 3. Observações Gerais */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="text-base">Observações Gerais</CardTitle>
-                        <CardDescription>Informações complementares e sugestões.</CardDescription>
-                    </div>
-                    {!readOnly && (
-                        <Select onValueChange={(val) => handleInsertTemplate(val, setGeneralObservations, 'general_observations', generalObservations)}>
-                            <SelectTrigger className="w-[180px] h-8 text-xs">
-                                <SelectValue placeholder="Inserir Modelo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {templates?.map(t => (
-                                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    )}
-                </CardHeader>
-                <CardContent>
-                    <Textarea
-                        value={generalObservations}
-                        onChange={(e) => setGeneralObservations(e.target.value)}
-                        onBlur={() => handleBlur('general_observations', generalObservations)}
-                        className="min-h-[100px]"
-                        placeholder="Observações gerais..."
-                        disabled={readOnly}
-                    />
-                </CardContent>
-            </Card>
-
-            {/* 4. Client Signature */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Assinatura do Cliente</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="mb-4 flex items-center space-x-2">
-                        <Checkbox
-                            id="clientAbsent"
-                            checked={clientAbsent}
-                            onCheckedChange={(checked) => {
-                                setClientAbsent(checked);
-                                handleBlur('client_absent', checked);
-                            }}
-                            disabled={readOnly}
-                        />
-                        <Label htmlFor="clientAbsent" className="text-sm text-slate-600 cursor-pointer">
-                            Responsável ausente (cliente não disponível para assinatura)
-                        </Label>
-                    </div>
-                    {clientAbsent ? (
-                        <p className="text-slate-400 italic text-sm">Assinatura não necessária - responsável ausente</p>
-                    ) : (
-                        readOnly ? (
-                            visit.client_signature_url ? <img src={visit.client_signature_url} className="h-24 border rounded bg-slate-50" alt="Assinatura" /> : <p className="text-slate-400 italic">Não assinado</p>
-                        ) : (
-                            <SignaturePad savedUrl={visit.client_signature_url} onSave={handleSaveSignature} />
-                        )
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Footer / Actions */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col gap-3 md:relative md:flex-row md:border-0 md:bg-transparent md:p-0">
-                <a href={`/report/${visit.id}`} target="_blank" className="w-full md:flex-1">
-                    <Button variant="outline" className="w-full"><FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web</Button>
-                </a>
-
-                {!readOnly && (
-                    <Button className="w-full md:flex-1 bg-green-600 hover:bg-green-700" onClick={handleFinalize}>
-                        <CheckCircle className="w-4 h-4 mr-2" /> Finalizar Localmente
-                    </Button>
-                )}
-
-                <Button className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleOpenPreview()} disabled={isSending || isLoadingReport}>
-                    {isSending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (readOnly ? <MonitorUp className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />)}
-                    {readOnly ? "Reenviar e Salvar no Drive" : "Finalizar, Enviar e Salvar"}
-                </Button>
-            </div>
-            {isLoadingReport && <div className="text-center text-xs text-slate-400">Carregando dados para geração de PDF...</div>}
-        </div>
-    );
-}
+                    {isLoadingReport && <div className="text-center text-xs text-slate-400">Carregando dados para geração de PDF...</div>}
+                </div>
+            );
+        }
