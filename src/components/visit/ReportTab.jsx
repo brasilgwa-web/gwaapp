@@ -385,9 +385,18 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
     const handleConfirmSend = async () => {
         setIsSending(true);
-        setUploadStatus('Gerando PDF...');
+        setUploadStatus('Carregando configurações...');
 
         try {
+            // 1. Fetch Report Settings Global
+            const { data: reportSettings } = await supabase
+                .from('report_settings')
+                .select('*')
+                .limit(1)
+                .single();
+
+            setUploadStatus('Gerando PDF...');
+
             const element = document.getElementById('report-preview-content');
             if (!element) throw new Error("Template de pré-visualização não encontrado");
 
@@ -402,13 +411,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             };
 
             // Obter texto do rodapé das configurações ANTES de gerar o PDF
-            const { data: reportSettingsData } = await supabase
-                .from('report_settings')
-                .select('footer_text')
-                .limit(1)
-                .single();
-
-            const footerText = reportSettingsData?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
+            const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
 
             // Gerar PDF e adicionar rodapé usando callback
             const pdfBase64 = await new Promise((resolve, reject) => {
@@ -489,13 +492,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             // Generate and save report number if not already set
             let reportNumber = visit.report_number;
             if (!reportNumber && !readOnly) {
-                // Fetch report settings
-                const { data: reportSettings } = await supabase
-                    .from('report_settings')
-                    .select('*')
-                    .limit(1)
-                    .single();
-
+                // Using previously fetched reportSettings
                 if (reportSettings) {
                     const currentNum = reportSettings.current_report_number || 1;
                     reportNumber = `${format(safeDate, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
@@ -522,20 +519,28 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 await Visit.update(visit.id, { status: 'completed' });
             }
 
-            const emailBody = `
-                Olá,
-                
-                Segue abaixo o link para o relatório da visita técnica realizada em ${format(safeDate, 'dd/MM/yyyy')}.
-                
-                ${driveLink ? `<p><strong><a href="${driveLink}">Clique aqui para visualizar o Relatório (Google Drive)</a></strong></p>` : '<p>Nota: O arquivo não pôde ser salvo no Drive, favor contactar o suporte.</p>'}
-                
-                Atenciosamente,
-                Equipe WGA Brasil
+            // Dynamic Email Template
+            let subjectTemplate = reportSettings?.email_subject_default || 'Relatório de Visita Técnica - {client_name} - {date}';
+            let bodyTemplate = reportSettings?.email_body_default || `
+                <div style="font-family: Arial, sans-serif; color: #333;">
+                    <p>Olá,</p>
+                    <p>Segue abaixo o link para o relatório da visita técnica realizada em <strong>{date}</strong>.</p>
+                    <p><a href="{link}">Acessar Relatório</a></p>
+                    <p style="font-size: 12px; color: #999;">Esta é uma mensagem automática.</p>
+                </div>
             `;
+
+            const replaceVars = (text) => text
+                .replace(/{client_name}/g, visit.client?.name || '')
+                .replace(/{date}/g, format(safeDate, 'dd/MM/yyyy'))
+                .replace(/{link}/g, driveLink || '#');
+
+            const emailSubject = replaceVars(subjectTemplate);
+            const emailBody = replaceVars(bodyTemplate);
 
             await Core.SendEmail({
                 to: visit.client?.email,
-                subject: `Relatório de Visita Técnica - ${visit.client?.name} - ${format(safeDate, 'dd/MM/yyyy')}`,
+                subject: emailSubject,
                 body: emailBody,
             });
 
