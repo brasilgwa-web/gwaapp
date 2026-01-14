@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 // ... imports
-import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail } from "lucide-react";
+import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -33,6 +33,15 @@ export default function SetupReport() {
     const [footerText, setFooterText] = useState('');
     const [emailSubject, setEmailSubject] = useState('');
     const [emailBody, setEmailBody] = useState('');
+
+    // Cover States
+    const [coverEnabled, setCoverEnabled] = useState(true);
+    const [coverTitle, setCoverTitle] = useState('');
+    const [coverSubtitle, setCoverSubtitle] = useState('');
+    const [coverText, setCoverText] = useState('');
+    const [coverFooterText, setCoverFooterText] = useState('');
+    const [coverSignatureName, setCoverSignatureName] = useState('');
+    const [coverSignatureRole, setCoverSignatureRole] = useState('');
     const [logoFile, setLogoFile] = useState(null);
     const [logoPreview, setLogoPreview] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -79,7 +88,17 @@ export default function SetupReport() {
             setInitialNumber(settings.current_report_number?.toString() || '1');
             setFooterText(settings.footer_text || '');
             setEmailSubject(settings.email_subject_default || 'Relatório de Visita Técnica - {client_name} - {date}');
+            setEmailSubject(settings.email_subject_default || 'Relatório de Visita Técnica - {client_name} - {date}');
             setEmailBody(settings.email_body_default || '');
+
+            // Cover settings
+            setCoverEnabled(settings.cover_enabled !== false); // Default true
+            setCoverTitle(settings.cover_title || 'Relatório de Ensaio Analítico');
+            setCoverSubtitle(settings.cover_subtitle || 'Prezado Cliente');
+            setCoverText(settings.cover_text || 'Segue relatórios de ensaios analíticos para controle de processo referente aos serviços contratados.');
+            setCoverFooterText(settings.cover_footer_text || 'Atendimento ao Cliente - Para esclarecimentos de suas dúvidas: Fones: (011) 9.8348.9922 (011) 9.8331.7957 - E-mail: atendimento@wgabrasil.com.br');
+            setCoverSignatureName(settings.cover_signature_name || 'Adriano Carlos Gava');
+            setCoverSignatureRole(settings.cover_signature_role || 'Gestor - Laboratório de Aguas e Processos de Tratamento');
             if (settings.logo_url) {
                 setLogoPreview(settings.logo_url);
             }
@@ -213,8 +232,6 @@ export default function SetupReport() {
                 current_report_number: parseInt(initialNumber) || 1,
                 logo_url: logoUrl,
                 footer_text: footerText,
-                email_subject_default: emailSubject,
-                email_body_default: emailBody
             });
 
         } catch (error) {
@@ -318,7 +335,9 @@ export default function SetupReport() {
             <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
                     <TabsTrigger value="general">Geral</TabsTrigger>
+                    <TabsTrigger value="general">Geral</TabsTrigger>
                     <TabsTrigger value="email">Email Template</TabsTrigger>
+                    <TabsTrigger value="cover">Capa</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="space-y-6 mt-6">
@@ -606,6 +625,51 @@ export default function SetupReport() {
                                 />
                             </div>
                         </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="cover" className="space-y-6 mt-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-base flex items-center gap-2"><LayoutTemplate className="w-4 h-4 text-blue-600" /> Capa do Relatório</CardTitle>
+                                <CardDescription>Configure a capa personalizada (fundo azul) que será adicionada ao início do relatório PDF.</CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="cover-switch" className="text-sm text-slate-600">{coverEnabled ? 'Ativada' : 'Desativada'}</Label>
+                                <Switch id="cover-switch" checked={coverEnabled} onCheckedChange={setCoverEnabled} />
+                            </div>
+                        </CardHeader>
+                        {coverEnabled && (
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="coverTitle">Título Principal</Label>
+                                    <Input id="coverTitle" value={coverTitle} onChange={(e) => setCoverTitle(e.target.value)} placeholder="Ex: Relatório de Ensaio Analítico" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="coverSubtitle">Subtítulo</Label>
+                                    <Input id="coverSubtitle" value={coverSubtitle} onChange={(e) => setCoverSubtitle(e.target.value)} placeholder="Ex: Prezado Cliente" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="coverText">Texto do Corpo</Label>
+                                    <Textarea id="coverText" value={coverText} onChange={(e) => setCoverText(e.target.value)} rows={3} placeholder="Ex: Segue relatórios..." />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="sigName">Nome da Assinatura (Fixo)</Label>
+                                        <Input id="sigName" value={coverSignatureName} onChange={(e) => setCoverSignatureName(e.target.value)} placeholder="Ex: Adriano Carlos Gava" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="sigRole">Cargo da Assinatura (Fixo)</Label>
+                                        <Input id="sigRole" value={coverSignatureRole} onChange={(e) => setCoverSignatureRole(e.target.value)} placeholder="Ex: Gestor..." />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="coverFooter">Rodapé da Capa</Label>
+                                    <Textarea id="coverFooter" value={coverFooterText} onChange={(e) => setCoverFooterText(e.target.value)} rows={2} placeholder="Ex: Atendimento ao Cliente..." />
+                                </div>
+                            </CardContent>
+                        )}
                     </Card>
                 </TabsContent>
             </Tabs >
