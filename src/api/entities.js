@@ -152,3 +152,6 @@ export const User = {
         return data || [];
     }
 };
+
+export const AnalysisGroup = createAdapter('analysis_groups');
+export const AnalysisGroupItem = createAdapter('analysis_group_items');
