@@ -333,10 +333,9 @@ export default function SetupReport() {
             </div>
 
             <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+                <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
                     <TabsTrigger value="general">Geral</TabsTrigger>
-                    <TabsTrigger value="general">Geral</TabsTrigger>
-                    <TabsTrigger value="email">Email Template</TabsTrigger>
+                    <TabsTrigger value="email">Email</TabsTrigger>
                     <TabsTrigger value="cover">Capa</TabsTrigger>
                 </TabsList>
 
