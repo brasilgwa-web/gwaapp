@@ -38,7 +38,7 @@ function CoverPage({ settings }) {
                     <img
                         src={settings.logo_url}
                         alt="Logo"
-                        className="h-16 w-auto object-contain brightness-0 invert"
+                        className="h-16 w-auto object-contain"
                     />
                 ) : (
                     <>
