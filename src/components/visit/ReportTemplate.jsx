@@ -7,12 +7,12 @@ import { format } from "date-fns";
 function renderMarkdown(text) {
     if (!text) return null;
 
-    // Converter **bold** em <strong>
+    // Converter **bold** em <strong> (aceita qualquer caractere exceto quebra de linha)
     let html = text
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        // Converter *italic* em <em>
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        // Converter - list items em bullets
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        // Converter *italic* em <em> (apenas texto simples)
+        .replace(/(?<!\*)\*(?!\*)([^*\n]+)\*(?!\*)/g, '<em>$1</em>')
+        // Converter - list items em bullets (no início de linha)
         .replace(/^- (.+)$/gm, '• $1')
         // Preservar quebras de linha
         .replace(/\n/g, '<br />');
