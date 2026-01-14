@@ -21,8 +21,11 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
     // Logo from settings or default
     const logoUrl = reportSettings?.logo_url;
 
+    // Footer text from settings or default
+    const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas\nEste relatório possui validade técnica e foi gerado eletronicamente pelo Sistema WGA.';
+
     return (
-        <div className={`bg-white text-slate-900 font-sans text-sm leading-tight ${isPdfGeneration ? 'p-0' : 'p-4 md:p-8 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
+        <div className={`bg-white text-slate-900 font-sans text-sm leading-tight ${isPdfGeneration ? 'px-6 py-4' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
             {/* Header */}
             <header className="border-b-2 border-blue-600 pb-4 mb-6 flex flex-col md:flex-row md:justify-between md:items-start gap-4">
@@ -314,9 +317,8 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
             </section>
 
             {/* Footer */}
-            <footer className="mt-8 text-[9px] text-slate-400 text-center border-t border-slate-100 pt-2">
-                <p>Este relatório possui validade técnica e foi gerado eletronicamente pelo Sistema WGA.</p>
-                <p>WGA Brasil Tratamento de Águas - CNPJ: XX.XXX.XXX/0001-XX</p>
+            <footer className="mt-8 text-[9px] text-slate-400 text-center border-t border-slate-100 pt-2 whitespace-pre-wrap">
+                {footerText}
             </footer>
         </div>
     );

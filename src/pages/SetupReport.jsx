@@ -4,8 +4,9 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { FileText, Upload, Save, Loader2, Image, CheckCircle } from "lucide-react";
+import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft } from "lucide-react";
 import { useConfirm } from "@/context/ConfirmContext";
 import { format } from "date-fns";
 
@@ -15,6 +16,7 @@ export default function SetupReport() {
     const fileInputRef = useRef(null);
 
     const [initialNumber, setInitialNumber] = useState('');
+    const [footerText, setFooterText] = useState('');
     const [logoFile, setLogoFile] = useState(null);
     const [logoPreview, setLogoPreview] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -40,6 +42,7 @@ export default function SetupReport() {
     React.useEffect(() => {
         if (settings) {
             setInitialNumber(settings.current_report_number?.toString() || '1');
+            setFooterText(settings.footer_text || '');
             if (settings.logo_url) {
                 setLogoPreview(settings.logo_url);
             }
@@ -129,7 +132,8 @@ export default function SetupReport() {
 
             await saveMutation.mutateAsync({
                 current_report_number: parseInt(initialNumber) || 1,
-                logo_url: logoUrl
+                logo_url: logoUrl,
+                footer_text: footerText
             });
 
         } catch (error) {
@@ -268,6 +272,35 @@ export default function SetupReport() {
                                 </p>
                             )}
                         </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Footer Text */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <AlignLeft className="w-4 h-4 text-green-500" />
+                        Texto do Rodapé
+                    </CardTitle>
+                    <CardDescription>
+                        Personalize o texto que aparecerá no rodapé de todas as páginas do relatório.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="footerText">Texto do Rodapé</Label>
+                        <Textarea
+                            id="footerText"
+                            value={footerText}
+                            onChange={(e) => setFooterText(e.target.value)}
+                            placeholder="Ex: WGA Brasil Tratamento de Águas - CNPJ: XX.XXX.XXX/0001-XX&#10;Este relatório possui validade técnica e foi gerado eletronicamente."
+                            rows={3}
+                            className="resize-none"
+                        />
+                        <p className="text-xs text-slate-500">
+                            Dica: Use Enter para criar novas linhas. Este texto aparecerá em todas as páginas do relatório.
+                        </p>
                     </div>
                 </CardContent>
             </Card>
