@@ -90,6 +90,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
     const logoUrl = reportSettings?.logo_url;
 
     // Footer text from settings or default
+    const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas\nEste relatório possui validade técnica e foi gerado eletronicamente pelo Sistema WGA.';
 
 
     const includeCover = reportSettings?.cover_enabled !== false;
