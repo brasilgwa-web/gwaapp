@@ -217,11 +217,13 @@ export default function Layout() {
           {reportSettings?.logo_url ? (
             <img src={reportSettings.logo_url} alt="Logo" className="h-8 w-auto" />
           ) : (
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <LayoutDashboard className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="bg-blue-600 p-2 rounded-lg">
+                <LayoutDashboard className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-bold text-lg text-slate-800">WGA Brasil</span>
             </div>
           )}
-          <span className="font-bold text-lg text-slate-800">WGA Brasil</span>
         </div>
       </div>
 
@@ -236,11 +238,13 @@ export default function Layout() {
               {reportSettings?.logo_url ? (
                 <img src={reportSettings.logo_url} alt="Logo" className="h-10 w-auto" />
               ) : (
-                <div className="bg-blue-600 p-2 rounded-lg">
-                  <LayoutDashboard className="w-6 h-6 text-white" />
-                </div>
+                <>
+                  <div className="bg-blue-600 p-2 rounded-lg">
+                    <LayoutDashboard className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="font-bold text-xl">WGA Brasil</span>
+                </>
               )}
-              <span className="font-bold text-xl">WGA Brasil</span>
             </div>
 
             <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
