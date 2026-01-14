@@ -28,10 +28,12 @@ function CoverPage({ settings }) {
     const sigName = settings?.cover_signature_name || 'Adriano Carlos Gava';
     const sigRole = settings?.cover_signature_role || 'Gestor - Laboratório de Aguas e Processos de Tratamento';
 
+    // Ajustado para caber dentro das margens (190mm de largura útil)
+    // Altura ~260mm para considerar margem superior (10) e inferior (25) de uma A4 (297)
     return (
-        <div className="w-[210mm] h-[297mm] bg-[#1e3a8a] text-white flex flex-col p-16 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0">
+        <div className="w-full min-h-[260mm] bg-[#1e3a8a] text-white flex flex-col p-12 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0 rounded-sm">
             {/* Header / Logo */}
-            <div className="border-b border-white/30 pb-4 mb-20">
+            <div className="border-b border-white/30 pb-4 mb-16">
                 <div className="text-3xl font-bold tracking-wider">WGA BRASIL</div>
                 <div className="text-xs tracking-[0.3em] uppercase ml-1 opacity-80">Serviços</div>
             </div>
