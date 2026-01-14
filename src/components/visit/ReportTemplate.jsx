@@ -25,7 +25,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
     const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas\nEste relatório possui validade técnica e foi gerado eletronicamente pelo Sistema WGA.';
 
     return (
-        <div className={`bg-white text-slate-900 font-sans text-sm leading-tight ${isPdfGeneration ? 'px-6 py-4' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
+        <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight ${isPdfGeneration ? 'w-full' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
             {/* Header */}
             <header className="border-b-2 border-blue-600 pb-4 mb-6 flex flex-col md:flex-row md:justify-between md:items-start gap-4">
@@ -132,8 +132,8 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                         </div>
 
                                         {/* Readings Table */}
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-xs border-x border-b border-slate-200 min-w-[600px]">
+                                        <div className="overflow-hidden">
+                                            <table className="w-full text-[10px] border-x border-b border-slate-200">
                                                 <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
                                                     <tr>
                                                         <th className="px-2 py-1.5">Parâmetro</th>

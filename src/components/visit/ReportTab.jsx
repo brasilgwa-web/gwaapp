@@ -307,7 +307,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const opt = {
-                margin: [10, 15, 25, 15], // [top, left, bottom, right] - margens laterais 15mm
+                margin: [10, 10, 25, 10], // [top, left, bottom, right]
                 filename: `relatorio_${visit.id}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
