@@ -411,7 +411,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
                 if (reportSettings) {
                     const currentNum = reportSettings.current_report_number || 1;
-                    reportNumber = `${format(safeDate, 'yy')}-${format(safeDate, 'MM')}-${String(currentNum).padStart(6, '0')}`;
+                    reportNumber = `${format(safeDate, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
 
                     // Update visit with report number
                     await supabase
