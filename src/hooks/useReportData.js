@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product, EquipmentDosageParams, ClientProduct } from "@/api/entities";
+import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product, EquipmentDosageParams, ClientProduct, AnalysisGroupItem } from "@/api/entities";
 
 export function useReportData(id) {
     return useQuery({
