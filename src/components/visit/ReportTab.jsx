@@ -307,14 +307,50 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const opt = {
-                margin: 0,
+                margin: [10, 10, 20, 10], // [top, left, bottom, right] - margem inferior maior para o rodapé
                 filename: `relatorio_${visit.id}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: true },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
+            // Gerar PDF com html2pdf e adicionar rodapé em todas as páginas
+            const worker = html2pdf().set(opt).from(element);
+            const pdf = await worker.toPdf().get('pdf');
+
+            // Obter texto do rodapé das configurações
+            const { data: reportSettingsData } = await supabase
+                .from('report_settings')
+                .select('footer_text')
+                .limit(1)
+                .single();
+
+            const footerText = reportSettingsData?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
+
+            // Adicionar rodapé em todas as páginas
+            const totalPages = pdf.internal.getNumberOfPages();
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            for (let i = 1; i <= totalPages; i++) {
+                pdf.setPage(i);
+                pdf.setFontSize(8);
+                pdf.setTextColor(150, 150, 150);
+
+                // Texto do rodapé centralizado
+                const lines = footerText.split('\n');
+                let yPos = pageHeight - 12;
+                lines.forEach((line, idx) => {
+                    const textWidth = pdf.getStringUnitWidth(line) * 8 / pdf.internal.scaleFactor;
+                    const xPos = (pageWidth - textWidth) / 2;
+                    pdf.text(line, xPos, yPos + (idx * 4));
+                });
+
+                // Número da página
+                pdf.text(`Página ${i} de ${totalPages}`, pageWidth - 25, pageHeight - 5);
+            }
+
+            const pdfBase64 = pdf.output('datauristring');
 
             let safeDate = new Date();
             if (visit.visit_date) {
