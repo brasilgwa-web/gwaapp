@@ -37,7 +37,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [arrivalTime, setArrivalTime] = useState(visit.arrival_time || '');
     const [departureTime, setDepartureTime] = useState(visit.departure_time || '');
     const [clientAbsent, setClientAbsent] = useState(visit.client_absent || false);
-    const [showObsPreview, setShowObsPreview] = useState(false);
+    const [showObsPreview, setShowObsPreview] = useState(true);
 
     // Helper para converter markdown básico em HTML
     const renderMarkdown = (text) => {
