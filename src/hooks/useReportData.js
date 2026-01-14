@@ -35,7 +35,7 @@ export function useReportData(id) {
             const locationEquipmentsResults = await Promise.all(locationEquipmentPromises);
             const allLocationEquipments = locationEquipmentsResults.flat();
 
-            // 4. Fetch remaining data (Results, Definitions, Equipment, Tests, Photos, Users, Dosages, Samples, Products, DosageParams, ClientProducts)
+            // 4. Fetch remaining data (Results, Definitions, Equipment, Tests, Photos, Users, Dosages, Samples, Products, DosageParams, ClientProducts, AnalysisGroupItems)
             const [
                 allResults,
                 allDefinitions,
@@ -47,7 +47,8 @@ export function useReportData(id) {
                 allSamples,
                 allProducts,
                 allDosageParams,
-                clientProducts
+                clientProducts,
+                allAnalysisGroupItems
             ] = await Promise.all([
                 TestResult.filter({ visit_id: id }, undefined, 2000),
                 TestDefinition.list(undefined, 1000),
@@ -59,7 +60,8 @@ export function useReportData(id) {
                 VisitEquipmentSample.filter({ visit_id: id }, undefined, 1000),
                 Product.list(undefined, 1000),
                 EquipmentDosageParams.list(undefined, 1000),
-                visit.client_id ? ClientProduct.filter({ client_id: visit.client_id }, undefined, 1000) : Promise.resolve([])
+                visit.client_id ? ClientProduct.filter({ client_id: visit.client_id }, undefined, 1000) : Promise.resolve([]),
+                AnalysisGroupItem.list(undefined, 2000)
             ]);
 
             // Attempt to find technician
@@ -79,22 +81,49 @@ export function useReportData(id) {
                         const catalogItem = allEquipments.find(e => e.id === le.equipment_id);
                         if (!catalogItem) return null;
 
+                        // Attach Sample Info (Time, Complementary)
+                        const sampleInfo = allSamples.find(s => s.location_equipment_id === le.id);
+
+                        // 1. Tests linked via Equipment Configuration
                         const linkedTestIds = allEquipmentTests
                             .filter(et => et.equipment_id === catalogItem.id)
                             .map(et => et.test_definition_id);
 
-                        const tests = allDefinitions.filter(t => linkedTestIds.includes(t.id));
+                        // 2. Tests linked via Selected Analysis Group (if any)
+                        let groupTestIds = [];
+                        if (sampleInfo?.analysis_group_id && allAnalysisGroupItems) {
+                            groupTestIds = allAnalysisGroupItems
+                                .filter(agi => agi.group_id === sampleInfo.analysis_group_id)
+                                .map(agi => agi.test_definition_id);
+                        }
+
+                        // 3. Merge Lists
+                        const allTestIds = [...new Set([...linkedTestIds, ...groupTestIds])];
+
+                        const tests = allDefinitions.filter(t => allTestIds.includes(t.id));
 
                         const testsWithResults = tests.map(test => {
                             const result = allResults.find(r =>
                                 r.test_definition_id === test.id &&
                                 (r.equipment_id === le.id || r.equipment_id === catalogItem.id) // Check both instance and catalog IDs
                             );
-                            return { ...test, result };
-                        });
 
-                        // Attach Sample Info (Time, Complementary)
-                        const sampleInfo = allSamples.find(s => s.location_equipment_id === le.id);
+                            // Check for override in allEquipmentTests (only for linked ones, but simplified here)
+                            // We should technically look for override in allEquipmentTests...
+                            // But for report purposes, using base definition is usually fine unless limits are critical.
+                            // Let's replicate ReadingsTab logic for limits overriding if present in linkedTests
+                            const override = allEquipmentTests.find(et => et.equipment_id === catalogItem.id && et.test_definition_id === test.id);
+
+                            const effectiveTest = {
+                                ...test,
+                                min_value: override?.min_value ?? test.min_value,
+                                max_value: override?.max_value ?? test.max_value,
+                                unit: override?.unit ?? test.unit,
+                                result
+                            };
+
+                            return effectiveTest;
+                        });
 
                         // Attach Dosages - Only products CONFIGURED for this equipment
                         // Get configured products from equipment_dosage_params
