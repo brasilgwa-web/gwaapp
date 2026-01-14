@@ -333,20 +333,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
             <section className="mt-12 pt-8 border-t border-slate-200 break-inside-avoid">
                 <div className="flex justify-between items-start gap-12 text-center">
 
-                    {/* Left: Client Signature */}
-                    <div className="flex-1 flex flex-col items-center">
-                        <div className="h-16 mb-2 flex items-end justify-center w-full">
-                            {visit.client_signature_url ? (
-                                <img src={visit.client_signature_url} className="max-h-full" alt="Assinatura Cliente" crossOrigin="anonymous" />
-                            ) : (<div className="text-[10px] text-slate-300 italic">Não assinado</div>)}
-                        </div>
-                        <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
-                            <p className="font-bold text-xs uppercase">{client?.contact_name || 'Cliente'}</p>
-                            <p className="text-[9px] text-slate-500">Responsável no Local</p>
-                        </div>
-                    </div>
-
-                    {/* Right: Technical Signatures (Stacked) */}
+                    {/* Left: Technical Signatures (Stacked) */}
                     <div className="flex-1 flex flex-col items-center space-y-8">
 
                         {/* 1. Technician */}
@@ -381,6 +368,19 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                             </div>
                         )}
 
+                    </div>
+
+                    {/* Right: Client Signature */}
+                    <div className="flex-1 flex flex-col items-center">
+                        <div className="h-16 mb-2 flex items-end justify-center w-full">
+                            {visit.client_signature_url ? (
+                                <img src={visit.client_signature_url} className="max-h-full" alt="Assinatura Cliente" crossOrigin="anonymous" />
+                            ) : (<div className="text-[10px] text-slate-300 italic">Não assinado</div>)}
+                        </div>
+                        <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
+                            <p className="font-bold text-xs uppercase">{client?.contact_name || 'Cliente'}</p>
+                            <p className="text-[9px] text-slate-500">Responsável no Local</p>
+                        </div>
                     </div>
                 </div>
             </section>
