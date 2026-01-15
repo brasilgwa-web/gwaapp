@@ -34,15 +34,15 @@ function SortableEquipmentRow({ eq, sortOrder, moveEquipment, handleOpenEdit, re
         <div ref={setNodeRef} style={style} className={`flex items-center justify-between p-4 bg-white border rounded-lg ${isDragging ? 'opacity-50 shadow-lg ring-2 ring-blue-500/20' : ''}`}>
             <div className="flex items-center gap-3">
                 {sortOrder === 'manual' && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 -ml-2"
+                    <button
+                        type="button"
+                        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 -ml-2"
+                        style={{ touchAction: 'none' }}
                         {...attributes}
                         {...listeners}
                     >
                         <GripVertical className="w-5 h-5" />
-                    </Button>
+                    </button>
                 )}
                 <div>
                     <h3 className="font-semibold">{eq.name}</h3>
@@ -250,7 +250,11 @@ export default function EquipmentCatalog() {
     }, [equipments, sortOrder]);
 
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })

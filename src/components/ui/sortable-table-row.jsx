@@ -31,15 +31,15 @@ export function SortableTableRow({ id, children, ...props }) {
             {...props}
         >
             <TableCell className="w-[50px]">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 h-8 w-8"
+                <button
+                    type="button"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 w-8 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600"
+                    style={{ touchAction: 'none' }}
                     {...attributes}
                     {...listeners}
                 >
                     <GripVertical className="w-4 h-4" />
-                </Button>
+                </button>
             </TableCell>
             {children}
         </TableRow>

@@ -39,15 +39,15 @@ function SortableTemplateRow({ item, sortOrder, openEdit, remove, index }) {
             <div className="flex items-start gap-3">
                 {sortOrder === 'manual' && (
                     <div className="flex flex-col gap-1 mt-1">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 -ml-2"
+                        <button
+                            type="button"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 -ml-2"
+                            style={{ touchAction: 'none' }}
                             {...attributes}
                             {...listeners}
                         >
                             <GripVertical className="w-5 h-5" />
-                        </Button>
+                        </button>
                     </div>
                 )}
                 <FileText className="w-5 h-5 text-slate-500 mt-1" />
@@ -147,7 +147,11 @@ export default function ObservationTemplateManager() {
     }, [templates, sortOrder]);
 
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
