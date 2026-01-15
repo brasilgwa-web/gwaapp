@@ -43,16 +43,15 @@ function SortableClientRow({ client, sortOrder, openEditClient, removeClient, se
             <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 w-full">
                 {sortOrder === 'manual' && (
                     <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 -ml-2"
+                        <button
+                            type="button"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 -ml-2"
                             style={{ touchAction: 'none' }} // Critical for mobile functionality
                             {...attributes}
                             {...listeners}
                         >
                             <GripVertical className="w-5 h-5" />
-                        </Button>
+                        </button>
                     </div>
                 )}
                 <div className="bg-blue-100 p-2 rounded-lg text-blue-600 shrink-0"><Building className="w-5 h-5" /></div>
