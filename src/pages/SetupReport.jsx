@@ -88,7 +88,7 @@ export default function SetupReport() {
             setInitialNumber(settings.current_report_number?.toString() || '1');
             setFooterText(settings.footer_text || '');
             setEmailSubject(settings.email_subject_default || 'Relatório de Visita Técnica - {client_name} - {date}');
-            setEmailSubject(settings.email_subject_default || 'Relatório de Visita Técnica - {client_name} - {date}');
+
             setEmailBody(settings.email_body_default || '');
 
             // Cover settings
@@ -232,6 +232,15 @@ export default function SetupReport() {
                 current_report_number: parseInt(initialNumber) || 1,
                 logo_url: logoUrl,
                 footer_text: footerText,
+                email_subject_default: emailSubject,
+                email_body_default: emailBody,
+                cover_enabled: coverEnabled,
+                cover_title: coverTitle,
+                cover_subtitle: coverSubtitle,
+                cover_text: coverText,
+                cover_footer_text: coverFooterText,
+                cover_signature_name: coverSignatureName,
+                cover_signature_role: coverSignatureRole
             });
 
         } catch (error) {
