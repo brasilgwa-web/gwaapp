@@ -50,44 +50,66 @@ function CoverPage({ settings }) {
             {/* Cover Content - Rendered as HTML with preserved formatting */}
             <style dangerouslySetInnerHTML={{
                 __html: `
+                .cover-content * {
+                    margin: 0;
+                    padding: 0;
+                }
                 .cover-content p {
-                    margin-bottom: 1em;
+                    margin-top: 0 !important;
+                    margin-bottom: 1.5em !important;
+                    line-height: 1.6 !important;
+                }
+                .cover-content p:last-child {
+                    margin-bottom: 0 !important;
                 }
                 .cover-content h1 {
-                    margin-bottom: 0.5em;
-                    font-size: 2em;
-                    font-weight: bold;
+                    margin-top: 0.5em !important;
+                    margin-bottom: 0.75em !important;
+                    font-size: 2em !important;
+                    font-weight: bold !important;
+                    line-height: 1.2 !important;
                 }
                 .cover-content h2 {
-                    margin-bottom: 0.5em;
-                    font-size: 1.5em;
-                    font-weight: bold;
+                    margin-top: 0.5em !important;
+                    margin-bottom: 0.75em !important;
+                    font-size: 1.5em !important;
+                    font-weight: bold !important;
+                    line-height: 1.3 !important;
                 }
                 .cover-content h3 {
-                    margin-bottom: 0.5em;
-                    font-size: 1.25em;
-                    font-weight: bold;
+                    margin-top: 0.5em !important;
+                    margin-bottom: 0.75em !important;
+                    font-size: 1.25em !important;
+                    font-weight: bold !important;
+                    line-height: 1.4 !important;
                 }
                 .cover-content ul, .cover-content ol {
-                    margin-bottom: 1em;
-                    padding-left: 2em;
+                    margin-top: 0.5em !important;
+                    margin-bottom: 1em !important;
+                    padding-left: 2em !important;
                 }
                 .cover-content li {
-                    margin-bottom: 0.25em;
+                    margin-bottom: 0.5em !important;
+                    line-height: 1.6 !important;
                 }
                 .cover-content strong {
-                    font-weight: bold;
+                    font-weight: bold !important;
                 }
                 .cover-content em {
-                    font-style: italic;
+                    font-style: italic !important;
                 }
                 .cover-content a {
-                    text-decoration: underline;
+                    text-decoration: underline !important;
                 }
                 .cover-content hr {
-                    margin: 1em 0;
-                    border: none;
-                    border-top: 1px solid rgba(255, 255, 255, 0.3);
+                    margin: 1.5em 0 !important;
+                    border: none !important;
+                    border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+                }
+                .cover-content br {
+                    display: block !important;
+                    content: "" !important;
+                    margin-top: 0.5em !important;
                 }
             ` }} />
             <div
