@@ -47,12 +47,12 @@ function CoverPage({ settings }) {
                 )}
             </div>
 
-            {/* Cover Content - Rendered as HTML */}
+            {/* Cover Content - Rendered as HTML with preserved formatting */}
             <div
-                className="flex-1 prose prose-invert max-w-none"
+                className="flex-1"
                 dangerouslySetInnerHTML={{ __html: coverContent }}
                 style={{
-                    color: 'white',
+                    color: 'inherit',
                 }}
             />
 
