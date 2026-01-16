@@ -51,50 +51,42 @@ function CoverPage({ settings }) {
             <style dangerouslySetInnerHTML={{
                 __html: `
                 .cover-content * {
-                    margin: 0;
-                    padding: 0;
+                    margin: 0 !important;
+                    padding: 0 !important;
                 }
                 .cover-content p {
-                    margin-top: 0 !important;
-                    margin-bottom: 1em !important;
-                    line-height: 1.5 !important;
+                    margin: 0 !important;
+                    line-height: 1.4 !important;
                 }
                 .cover-content p:empty {
-                    min-height: 1em !important;
+                    min-height: 1.4em !important;
                     display: block !important;
                 }
-                .cover-content p:last-child {
-                    margin-bottom: 0 !important;
-                }
                 .cover-content h1 {
-                    margin-top: 0.3em !important;
-                    margin-bottom: 0.5em !important;
+                    margin: 0 !important;
                     font-size: 1.75em !important;
                     font-weight: bold !important;
                     line-height: 1.2 !important;
                 }
                 .cover-content h2 {
-                    margin-top: 0.3em !important;
-                    margin-bottom: 0.5em !important;
+                    margin: 0 !important;
                     font-size: 1.4em !important;
                     font-weight: bold !important;
                     line-height: 1.3 !important;
                 }
                 .cover-content h3 {
-                    margin-top: 0.3em !important;
-                    margin-bottom: 0.5em !important;
+                    margin: 0 !important;
                     font-size: 1.2em !important;
                     font-weight: bold !important;
                     line-height: 1.4 !important;
                 }
                 .cover-content ul, .cover-content ol {
-                    margin-top: 0.5em !important;
-                    margin-bottom: 1em !important;
+                    margin: 0 !important;
                     padding-left: 2em !important;
                 }
                 .cover-content li {
-                    margin-bottom: 0.3em !important;
-                    line-height: 1.5 !important;
+                    margin: 0 !important;
+                    line-height: 1.4 !important;
                 }
                 .cover-content strong {
                     font-weight: bold !important;
@@ -106,18 +98,17 @@ function CoverPage({ settings }) {
                     text-decoration: underline !important;
                 }
                 .cover-content hr {
-                    margin: 1em 0 !important;
+                    margin: 0.5em 0 !important;
                     border: none !important;
                     border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
                 }
                 .cover-content br {
                     display: block !important;
-                    margin: 0.3em 0 !important;
                     content: "" !important;
                 }
             ` }} />
             <div
-                className="flex-1 cover-content overflow-y-auto"
+                className="flex-1 cover-content"
                 dangerouslySetInnerHTML={{ __html: coverContent }}
             />
 
