@@ -15,6 +15,9 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: false, // We use the static public/manifest.json
+      workbox: {
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB (increased for TipTap bundle)
+      }
     })
   ],
   server: {
