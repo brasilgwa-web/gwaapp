@@ -24,11 +24,11 @@ function CoverPage({ settings }) {
     const bgColor = settings?.cover_background_color || '#1e40af';
     const coverContent = settings?.cover_content;
 
-    // Ajustado para caber dentro das margens (190mm de largura útil)
-    // Altura ~260mm para considerar margem superior (10) e inferior (25) de uma A4 (297)
+    // Altura fixa de uma página A4 (297mm) menos margens (10mm superior + 25mm inferior = 35mm)
+    // Resultado: 262mm de altura útil
     return (
         <div
-            className={`w-full min-h-[260mm] text-white flex flex-col p-12 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0 rounded-sm max-w-[210mm]`}
+            className={`w-full h-[262mm] max-h-[262mm] text-white flex flex-col p-12 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0 rounded-sm max-w-[210mm] overflow-hidden`}
             style={{ backgroundColor: bgColor }}
         >
             {/* Header / Logo */}
