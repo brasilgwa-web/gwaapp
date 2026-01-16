@@ -310,7 +310,11 @@ const MenuBar = ({ editor }) => {
 export default function RichTextEditor({ value = '', onChange, placeholder = 'Digite aqui...', minHeight = '150px' }) {
     const editor = useEditor({
         extensions: [
-            StarterKit,
+            StarterKit.configure({
+                hardBreak: {
+                    keepMarks: true,
+                },
+            }),
             Link.configure({
                 openOnClick: false,
                 HTMLAttributes: {

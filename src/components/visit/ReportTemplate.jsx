@@ -58,6 +58,11 @@ function CoverPage({ settings }) {
                     margin-top: 0 !important;
                     margin-bottom: 1.5em !important;
                     line-height: 1.6 !important;
+                    min-height: 1.6em !important;
+                }
+                .cover-content p:empty {
+                    min-height: 1.6em !important;
+                    display: block !important;
                 }
                 .cover-content p:last-child {
                     margin-bottom: 0 !important;
@@ -108,8 +113,8 @@ function CoverPage({ settings }) {
                 }
                 .cover-content br {
                     display: block !important;
+                    margin: 0.5em 0 !important;
                     content: "" !important;
-                    margin-top: 0.5em !important;
                 }
             ` }} />
             <div
