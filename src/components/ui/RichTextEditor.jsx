@@ -5,6 +5,7 @@ import Link from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
+import { FontFamily } from '@tiptap/extension-font-family';
 import Highlight from '@tiptap/extension-highlight';
 import {
     Bold,
@@ -20,9 +21,73 @@ import {
     Heading3,
     Undo,
     Redo,
-    Palette
+    Palette,
+    Type,
+    TextCursorInput
 } from 'lucide-react';
 import { Button } from './button';
+
+const FONT_FAMILIES = [
+    { name: 'Padrão', value: '' },
+    { name: 'Arial', value: 'Arial, sans-serif' },
+    { name: 'Times New Roman', value: 'Times New Roman, serif' },
+    { name: 'Courier New', value: 'Courier New, monospace' },
+    { name: 'Georgia', value: 'Georgia, serif' },
+    { name: 'Verdana', value: 'Verdana, sans-serif' },
+    { name: 'Comic Sans', value: 'Comic Sans MS, cursive' },
+];
+
+const FONT_SIZES = [
+    { name: 'Pequeno', value: '12px' },
+    { name: 'Normal', value: '16px' },
+    { name: 'Médio', value: '20px' },
+    { name: 'Grande', value: '24px' },
+    { name: 'Muito Grande', value: '32px' },
+];
+
+const FontFamilySelector = ({ editor }) => {
+    const currentFont = editor.getAttributes('textStyle').fontFamily || '';
+
+    return (
+        <select
+            value={currentFont}
+            onChange={(e) => {
+                if (e.target.value === '') {
+                    editor.chain().focus().unsetFontFamily().run();
+                } else {
+                    editor.chain().focus().setFontFamily(e.target.value).run();
+                }
+            }}
+            className="h-8 px-2 text-xs border border-slate-300 rounded bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+            {FONT_FAMILIES.map((font) => (
+                <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                    {font.name}
+                </option>
+            ))}
+        </select>
+    );
+};
+
+const FontSizeSelector = ({ editor }) => {
+    const handleSizeChange = (size) => {
+        editor.chain().focus().setMark('textStyle', { fontSize: size }).run();
+    };
+
+    return (
+        <select
+            onChange={(e) => handleSizeChange(e.target.value)}
+            className="h-8 px-2 text-xs border border-slate-300 rounded bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+            <option value="">Tamanho</option>
+            {FONT_SIZES.map((size) => (
+                <option key={size.value} value={size.value}>
+                    {size.name}
+                </option>
+            ))}
+        </select>
+    );
+};
 
 const ColorPicker = ({ editor }) => {
     const [showPicker, setShowPicker] = useState(false);
@@ -117,6 +182,11 @@ const MenuBar = ({ editor }) => {
             >
                 <Italic className="w-4 h-4" />
             </Button>
+
+            <div className="w-px h-6 bg-slate-300 mx-1" />
+
+            <FontFamilySelector editor={editor} />
+            <FontSizeSelector editor={editor} />
 
             <div className="w-px h-6 bg-slate-300 mx-1" />
 
@@ -250,7 +320,24 @@ export default function RichTextEditor({ value = '', onChange, placeholder = 'Di
             TextAlign.configure({
                 types: ['heading', 'paragraph'],
             }),
-            TextStyle,
+            TextStyle.extend({
+                addAttributes() {
+                    return {
+                        ...this.parent?.(),
+                        fontSize: {
+                            default: null,
+                            parseHTML: element => element.style.fontSize,
+                            renderHTML: attributes => {
+                                if (!attributes.fontSize) {
+                                    return {};
+                                }
+                                return { style: `font-size: ${attributes.fontSize}` };
+                            },
+                        },
+                    };
+                },
+            }),
+            FontFamily,
             Color,
             Highlight.configure({
                 multicolor: true,
