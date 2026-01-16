@@ -48,12 +48,51 @@ function CoverPage({ settings }) {
             </div>
 
             {/* Cover Content - Rendered as HTML with preserved formatting */}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .cover-content p {
+                    margin-bottom: 1em;
+                }
+                .cover-content h1 {
+                    margin-bottom: 0.5em;
+                    font-size: 2em;
+                    font-weight: bold;
+                }
+                .cover-content h2 {
+                    margin-bottom: 0.5em;
+                    font-size: 1.5em;
+                    font-weight: bold;
+                }
+                .cover-content h3 {
+                    margin-bottom: 0.5em;
+                    font-size: 1.25em;
+                    font-weight: bold;
+                }
+                .cover-content ul, .cover-content ol {
+                    margin-bottom: 1em;
+                    padding-left: 2em;
+                }
+                .cover-content li {
+                    margin-bottom: 0.25em;
+                }
+                .cover-content strong {
+                    font-weight: bold;
+                }
+                .cover-content em {
+                    font-style: italic;
+                }
+                .cover-content a {
+                    text-decoration: underline;
+                }
+                .cover-content hr {
+                    margin: 1em 0;
+                    border: none;
+                    border-top: 1px solid rgba(255, 255, 255, 0.3);
+                }
+            ` }} />
             <div
-                className="flex-1"
+                className="flex-1 cover-content"
                 dangerouslySetInnerHTML={{ __html: coverContent }}
-                style={{
-                    color: 'inherit',
-                }}
             />
 
             {/* Decorative Lines/Grid */}
