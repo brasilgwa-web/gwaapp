@@ -112,8 +112,8 @@ function CoverPage({ settings }) {
                 dangerouslySetInnerHTML={{ __html: coverContent }}
             />
 
-            {/* Decorative Lines/Grid */}
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20 border-[12px] border-transparent">
+            {/* Decorative Lines/Grid - Hidden */}
+            <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-0 border-[12px] border-transparent">
                 <div className="w-full h-full border border-white"></div>
                 <div className="absolute top-4 left-4 right-4 h-px bg-white"></div>
                 <div className="absolute bottom-4 left-4 right-4 h-px bg-white"></div>
