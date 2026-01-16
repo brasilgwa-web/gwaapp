@@ -27,11 +27,15 @@ function CoverPage({ settings }) {
     const footer = settings?.cover_footer_text || 'Atendimento ao Cliente...';
     const sigName = settings?.cover_signature_name || 'Adriano Carlos Gava';
     const sigRole = settings?.cover_signature_role || 'Gestor - Laboratório de Aguas e Processos de Tratamento';
+    const bgColor = settings?.cover_background_color || '#1e40af';
 
     // Ajustado para caber dentro das margens (190mm de largura útil)
     // Altura ~260mm para considerar margem superior (10) e inferior (25) de uma A4 (297)
     return (
-        <div className={`w-full min-h-[260mm] bg-[#1e3a8a] text-white flex flex-col p-12 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0 rounded-sm ${settings?.logo_url ? '' : ''} max-w-[210mm]`}>
+        <div
+            className={`w-full min-h-[260mm] text-white flex flex-col p-12 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0 rounded-sm ${settings?.logo_url ? '' : ''} max-w-[210mm]`}
+            style={{ backgroundColor: bgColor }}
+        >
             {/* Header / Logo */}
             <div className="border-b border-white/30 pb-4 mb-16">
                 {settings?.logo_url ? (
