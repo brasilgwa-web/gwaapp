@@ -24,23 +24,10 @@ import {
 } from 'lucide-react';
 import { Button } from './button';
 
-const TEXT_COLORS = [
-    { name: 'Preto', value: '#000000' },
-    { name: 'Cinza Escuro', value: '#374151' },
-    { name: 'Cinza', value: '#6b7280' },
-    { name: 'Vermelho', value: '#dc2626' },
-    { name: 'Laranja', value: '#ea580c' },
-    { name: 'Amarelo', value: '#ca8a04' },
-    { name: 'Verde', value: '#059669' },
-    { name: 'Azul', value: '#2563eb' },
-    { name: 'Roxo', value: '#7c3aed' },
-    { name: 'Rosa', value: '#db2777' },
-    { name: 'Branco', value: '#ffffff' },
-];
-
 const ColorPicker = ({ editor }) => {
     const [showPicker, setShowPicker] = useState(false);
     const pickerRef = useRef(null);
+    const colorInputRef = useRef(null);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -60,13 +47,23 @@ const ColorPicker = ({ editor }) => {
 
     const currentColor = editor.getAttributes('textStyle').color || '#000000';
 
+    const handleColorChange = (e) => {
+        const color = e.target.value;
+        editor.chain().focus().setColor(color).run();
+    };
+
+    const handleButtonClick = () => {
+        // Trigger the native color picker
+        colorInputRef.current?.click();
+    };
+
     return (
         <div className="relative" ref={pickerRef}>
             <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowPicker(!showPicker)}
+                onClick={handleButtonClick}
                 className="relative"
             >
                 <Palette className="w-4 h-4" />
@@ -76,39 +73,14 @@ const ColorPicker = ({ editor }) => {
                 />
             </Button>
 
-            {showPicker && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-3 z-50">
-                    <div className="text-xs font-medium text-slate-700 mb-2">Cor do Texto</div>
-                    <div className="grid grid-cols-4 gap-2 w-40">
-                        {TEXT_COLORS.map((color) => (
-                            <button
-                                key={color.value}
-                                type="button"
-                                onClick={() => {
-                                    editor.chain().focus().setColor(color.value).run();
-                                    setShowPicker(false);
-                                }}
-                                className={`h-8 w-8 rounded border-2 transition-all hover:scale-110 ${currentColor === color.value
-                                        ? 'border-blue-500 ring-2 ring-blue-200'
-                                        : 'border-slate-300'
-                                    }`}
-                                style={{ backgroundColor: color.value }}
-                                title={color.name}
-                            />
-                        ))}
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            editor.chain().focus().unsetColor().run();
-                            setShowPicker(false);
-                        }}
-                        className="w-full mt-2 text-xs text-slate-600 hover:text-slate-900 py-1 px-2 rounded hover:bg-slate-100"
-                    >
-                        Remover cor
-                    </button>
-                </div>
-            )}
+            {/* Hidden native color input */}
+            <input
+                ref={colorInputRef}
+                type="color"
+                value={currentColor}
+                onChange={handleColorChange}
+                className="absolute opacity-0 pointer-events-none"
+            />
         </div>
     );
 };
