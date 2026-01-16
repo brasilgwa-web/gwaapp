@@ -156,3 +156,14 @@ button:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  @page {
+    margin: 0;
+    size: A4;
+  }
+  body, html {
+    margin: 0;
+    padding: 0;
+  }
+}
