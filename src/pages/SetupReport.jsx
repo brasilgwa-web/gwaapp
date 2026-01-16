@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 // ... imports
-import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate } from "lucide-react";
+import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate, Palette } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -42,6 +43,7 @@ export default function SetupReport() {
     const [coverFooterText, setCoverFooterText] = useState('');
     const [coverSignatureName, setCoverSignatureName] = useState('');
     const [coverSignatureRole, setCoverSignatureRole] = useState('');
+    const [coverBackgroundColor, setCoverBackgroundColor] = useState('#1e40af');
     const [logoFile, setLogoFile] = useState(null);
     const [logoPreview, setLogoPreview] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -99,6 +101,7 @@ export default function SetupReport() {
             setCoverFooterText(settings.cover_footer_text || 'Atendimento ao Cliente - Para esclarecimentos de suas dúvidas: Fones: (011) 9.8348.9922 (011) 9.8331.7957 - E-mail: atendimento@wgabrasil.com.br');
             setCoverSignatureName(settings.cover_signature_name || 'Adriano Carlos Gava');
             setCoverSignatureRole(settings.cover_signature_role || 'Gestor - Laboratório de Aguas e Processos de Tratamento');
+            setCoverBackgroundColor(settings.cover_background_color || '#1e40af');
             if (settings.logo_url) {
                 setLogoPreview(settings.logo_url);
             }
@@ -240,7 +243,8 @@ export default function SetupReport() {
                 cover_text: coverText,
                 cover_footer_text: coverFooterText,
                 cover_signature_name: coverSignatureName,
-                cover_signature_role: coverSignatureRole
+                cover_signature_role: coverSignatureRole,
+                cover_background_color: coverBackgroundColor
             });
 
         } catch (error) {
@@ -622,14 +626,15 @@ export default function SetupReport() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="emailBody">Corpo do Email (HTML Suportado)</Label>
-                                <div className="text-xs text-slate-500 mb-1">Você pode usar tags HTML básicas para formatar (h1, p, strong, a, etc).</div>
-                                <Textarea
-                                    id="emailBody"
+                                <Label htmlFor="emailBody">Corpo do Email</Label>
+                                <div className="text-xs text-slate-500 mb-1">
+                                    Use o editor para formatar o email. Variáveis dinâmicas: <code className="bg-slate-100 px-1 rounded">{'{client_name}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{date}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{link}'}</code>
+                                </div>
+                                <RichTextEditor
                                     value={emailBody}
-                                    onChange={(e) => setEmailBody(e.target.value)}
-                                    className="min-h-[300px] font-mono text-xs"
-                                    placeholder="<div><h1>Seu Relatório</h1>...</div>"
+                                    onChange={setEmailBody}
+                                    placeholder="<div><h1>Seu Relatório</h1><p>Prezado cliente...</p></div>"
+                                    minHeight="300px"
                                 />
                             </div>
                         </CardContent>
@@ -651,16 +656,61 @@ export default function SetupReport() {
                         {coverEnabled && (
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
+                                    <Label htmlFor="coverBgColor" className="flex items-center gap-2">
+                                        <Palette className="w-4 h-4" />
+                                        Cor de Fundo da Capa
+                                    </Label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            id="coverBgColor"
+                                            type="color"
+                                            value={coverBackgroundColor}
+                                            onChange={(e) => setCoverBackgroundColor(e.target.value)}
+                                            className="h-10 w-20 rounded border border-slate-300 cursor-pointer"
+                                        />
+                                        <Input
+                                            type="text"
+                                            value={coverBackgroundColor}
+                                            onChange={(e) => setCoverBackgroundColor(e.target.value)}
+                                            placeholder="#1e40af"
+                                            className="max-w-[150px] font-mono text-sm"
+                                        />
+                                        <div
+                                            className="h-10 w-32 rounded border border-slate-300"
+                                            style={{ backgroundColor: coverBackgroundColor }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-slate-500">
+                                        Escolha a cor de fundo da capa do relatório (padrão: azul #1e40af)
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
                                     <Label htmlFor="coverTitle">Título Principal</Label>
-                                    <Input id="coverTitle" value={coverTitle} onChange={(e) => setCoverTitle(e.target.value)} placeholder="Ex: Relatório de Ensaio Analítico" />
+                                    <RichTextEditor
+                                        value={coverTitle}
+                                        onChange={setCoverTitle}
+                                        placeholder="Ex: Relatório de Ensaio Analítico"
+                                        minHeight="100px"
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="coverSubtitle">Subtítulo</Label>
-                                    <Input id="coverSubtitle" value={coverSubtitle} onChange={(e) => setCoverSubtitle(e.target.value)} placeholder="Ex: Prezado Cliente" />
+                                    <RichTextEditor
+                                        value={coverSubtitle}
+                                        onChange={setCoverSubtitle}
+                                        placeholder="Ex: Prezado Cliente"
+                                        minHeight="80px"
+                                    />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="coverText">Texto do Corpo</Label>
-                                    <Textarea id="coverText" value={coverText} onChange={(e) => setCoverText(e.target.value)} rows={3} placeholder="Ex: Segue relatórios..." />
+                                    <RichTextEditor
+                                        value={coverText}
+                                        onChange={setCoverText}
+                                        placeholder="Ex: Segue relatórios de ensaios analíticos..."
+                                        minHeight="120px"
+                                    />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -674,7 +724,12 @@ export default function SetupReport() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="coverFooter">Rodapé da Capa</Label>
-                                    <Textarea id="coverFooter" value={coverFooterText} onChange={(e) => setCoverFooterText(e.target.value)} rows={2} placeholder="Ex: Atendimento ao Cliente..." />
+                                    <RichTextEditor
+                                        value={coverFooterText}
+                                        onChange={setCoverFooterText}
+                                        placeholder="Ex: Atendimento ao Cliente..."
+                                        minHeight="100px"
+                                    />
                                 </div>
                             </CardContent>
                         )}
