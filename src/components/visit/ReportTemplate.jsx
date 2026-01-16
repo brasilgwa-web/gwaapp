@@ -21,23 +21,18 @@ function renderMarkdown(text) {
 }
 
 function CoverPage({ settings }) {
-    const title = settings?.cover_title || 'Relatório de Ensaio Analítico';
-    const subtitle = settings?.cover_subtitle || 'Prezado Cliente';
-    const text = settings?.cover_text || 'Segue relatórios de ensaios analíticos para controle de processo referente aos serviços contratados.';
-    const footer = settings?.cover_footer_text || 'Atendimento ao Cliente...';
-    const sigName = settings?.cover_signature_name || 'Adriano Carlos Gava';
-    const sigRole = settings?.cover_signature_role || 'Gestor - Laboratório de Aguas e Processos de Tratamento';
     const bgColor = settings?.cover_background_color || '#1e40af';
+    const coverContent = settings?.cover_content;
 
     // Ajustado para caber dentro das margens (190mm de largura útil)
     // Altura ~260mm para considerar margem superior (10) e inferior (25) de uma A4 (297)
     return (
         <div
-            className={`w-full min-h-[260mm] text-white flex flex-col p-12 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0 rounded-sm ${settings?.logo_url ? '' : ''} max-w-[210mm]`}
+            className={`w-full min-h-[260mm] text-white flex flex-col p-12 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0 rounded-sm max-w-[210mm]`}
             style={{ backgroundColor: bgColor }}
         >
             {/* Header / Logo */}
-            <div className="border-b border-white/30 pb-4 mb-16">
+            <div className="border-b border-white/30 pb-4 mb-8">
                 {settings?.logo_url ? (
                     <img
                         src={settings.logo_url}
@@ -52,30 +47,16 @@ function CoverPage({ settings }) {
                 )}
             </div>
 
-            {/* Title Section */}
-            <div className="mb-16">
-                <h1 className="text-4xl font-medium mb-12">{title}</h1>
-                <h2 className="text-2xl opacity-90 mb-8">{subtitle}</h2>
-                <div className="text-lg opacity-80 max-w-2xl leading-relaxed whitespace-pre-wrap">
-                    {text}
-                </div>
-            </div>
+            {/* Cover Content - Rendered as HTML */}
+            <div
+                className="flex-1 prose prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: coverContent }}
+                style={{
+                    color: 'white',
+                }}
+            />
 
-            {/* Spacer */}
-            <div className="flex-grow"></div>
-
-            {/* Signature Section */}
-            <div className="mb-12">
-                <div className="text-lg font-medium">{sigName}</div>
-                <div className="text-base opacity-80">{sigRole}</div>
-            </div>
-
-            {/* Footer */}
-            <div className="text-[10px] opacity-60 border-t border-white/20 pt-4 whitespace-pre-wrap">
-                {footer}
-            </div>
-
-            {/* Decorative Lines/Grid (Optional to match image) */}
+            {/* Decorative Lines/Grid */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20 border-[12px] border-transparent">
                 <div className="w-full h-full border border-white"></div>
                 <div className="absolute top-4 left-4 right-4 h-px bg-white"></div>
