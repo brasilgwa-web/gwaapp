@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import RichTextEditor from "@/components/ui/RichTextEditor";
+import ColorPicker from "@/components/ui/ColorPicker";
 // ... imports
-import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate, Palette } from "lucide-react";
+import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -37,12 +38,7 @@ export default function SetupReport() {
 
     // Cover States
     const [coverEnabled, setCoverEnabled] = useState(true);
-    const [coverTitle, setCoverTitle] = useState('');
-    const [coverSubtitle, setCoverSubtitle] = useState('');
-    const [coverText, setCoverText] = useState('');
-    const [coverFooterText, setCoverFooterText] = useState('');
-    const [coverSignatureName, setCoverSignatureName] = useState('');
-    const [coverSignatureRole, setCoverSignatureRole] = useState('');
+    const [coverContent, setCoverContent] = useState(''); // Unified cover content
     const [coverBackgroundColor, setCoverBackgroundColor] = useState('#1e40af');
     const [logoFile, setLogoFile] = useState(null);
     const [logoPreview, setLogoPreview] = useState(null);
@@ -95,12 +91,24 @@ export default function SetupReport() {
 
             // Cover settings
             setCoverEnabled(settings.cover_enabled !== false); // Default true
-            setCoverTitle(settings.cover_title || 'Relatório de Ensaio Analítico');
-            setCoverSubtitle(settings.cover_subtitle || 'Prezado Cliente');
-            setCoverText(settings.cover_text || 'Segue relatórios de ensaios analíticos para controle de processo referente aos serviços contratados.');
-            setCoverFooterText(settings.cover_footer_text || 'Atendimento ao Cliente - Para esclarecimentos de suas dúvidas: Fones: (011) 9.8348.9922 (011) 9.8331.7957 - E-mail: atendimento@wgabrasil.com.br');
-            setCoverSignatureName(settings.cover_signature_name || 'Adriano Carlos Gava');
-            setCoverSignatureRole(settings.cover_signature_role || 'Gestor - Laboratório de Aguas e Processos de Tratamento');
+
+            // Build unified cover content from individual fields or use saved content
+            if (settings.cover_content) {
+                setCoverContent(settings.cover_content);
+            } else {
+                // Migrate from old format to new unified format
+                const defaultContent = `
+<h1 style="text-align: center; font-size: 2em; font-weight: bold; margin-bottom: 1em;">${settings.cover_title || 'Relatório de Ensaio Analítico'}</h1>
+<h2 style="text-align: center; font-size: 1.5em; margin-bottom: 1.5em;">${settings.cover_subtitle || 'Prezado Cliente'}</h2>
+<p style="text-align: justify; margin-bottom: 2em;">${settings.cover_text || 'Segue relatórios de ensaios analíticos para controle de processo referente aos serviços contratados.'}</p>
+<p style="text-align: center; margin-top: 3em;"><strong>${settings.cover_signature_name || 'Adriano Carlos Gava'}</strong></p>
+<p style="text-align: center;"><em>${settings.cover_signature_role || 'Gestor - Laboratório de Aguas e Processos de Tratamento'}</em></p>
+<hr style="margin: 2em 0;" />
+<p style="text-align: center; font-size: 0.9em;">${settings.cover_footer_text || 'Atendimento ao Cliente - Para esclarecimentos de suas dúvidas: Fones: (011) 9.8348.9922 (011) 9.8331.7957 - E-mail: atendimento@wgabrasil.com.br'}</p>
+`.trim();
+                setCoverContent(defaultContent);
+            }
+
             setCoverBackgroundColor(settings.cover_background_color || '#1e40af');
             if (settings.logo_url) {
                 setLogoPreview(settings.logo_url);
@@ -238,12 +246,7 @@ export default function SetupReport() {
                 email_subject_default: emailSubject,
                 email_body_default: emailBody,
                 cover_enabled: coverEnabled,
-                cover_title: coverTitle,
-                cover_subtitle: coverSubtitle,
-                cover_text: coverText,
-                cover_footer_text: coverFooterText,
-                cover_signature_name: coverSignatureName,
-                cover_signature_role: coverSignatureRole,
+                cover_content: coverContent,
                 cover_background_color: coverBackgroundColor
             });
 
@@ -655,81 +658,26 @@ export default function SetupReport() {
                         </CardHeader>
                         {coverEnabled && (
                             <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="coverBgColor" className="flex items-center gap-2">
-                                        <Palette className="w-4 h-4" />
-                                        Cor de Fundo da Capa
-                                    </Label>
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            id="coverBgColor"
-                                            type="color"
-                                            value={coverBackgroundColor}
-                                            onChange={(e) => setCoverBackgroundColor(e.target.value)}
-                                            className="h-10 w-20 rounded border border-slate-300 cursor-pointer"
-                                        />
-                                        <Input
-                                            type="text"
-                                            value={coverBackgroundColor}
-                                            onChange={(e) => setCoverBackgroundColor(e.target.value)}
-                                            placeholder="#1e40af"
-                                            className="max-w-[150px] font-mono text-sm"
-                                        />
-                                        <div
-                                            className="h-10 w-32 rounded border border-slate-300"
-                                            style={{ backgroundColor: coverBackgroundColor }}
-                                        />
-                                    </div>
-                                    <p className="text-xs text-slate-500">
-                                        Escolha a cor de fundo da capa do relatório (padrão: azul #1e40af)
-                                    </p>
-                                </div>
+                                <ColorPicker
+                                    value={coverBackgroundColor}
+                                    onChange={setCoverBackgroundColor}
+                                    label="Cor de Fundo da Capa"
+                                />
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="coverTitle">Título Principal</Label>
+                                    <Label htmlFor="coverContent">Conteúdo da Capa</Label>
+                                    <p className="text-xs text-slate-500 mb-2">
+                                        Edite livremente todo o conteúdo da capa. Use a barra de ferramentas para formatar texto, adicionar títulos, listas, links e cores.
+                                    </p>
                                     <RichTextEditor
-                                        value={coverTitle}
-                                        onChange={setCoverTitle}
-                                        placeholder="Ex: Relatório de Ensaio Analítico"
-                                        minHeight="100px"
+                                        value={coverContent}
+                                        onChange={setCoverContent}
+                                        placeholder="Digite o conteúdo completo da capa..."
+                                        minHeight="400px"
                                     />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="coverSubtitle">Subtítulo</Label>
-                                    <RichTextEditor
-                                        value={coverSubtitle}
-                                        onChange={setCoverSubtitle}
-                                        placeholder="Ex: Prezado Cliente"
-                                        minHeight="80px"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="coverText">Texto do Corpo</Label>
-                                    <RichTextEditor
-                                        value={coverText}
-                                        onChange={setCoverText}
-                                        placeholder="Ex: Segue relatórios de ensaios analíticos..."
-                                        minHeight="120px"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="sigName">Nome da Assinatura (Fixo)</Label>
-                                        <Input id="sigName" value={coverSignatureName} onChange={(e) => setCoverSignatureName(e.target.value)} placeholder="Ex: Adriano Carlos Gava" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="sigRole">Cargo da Assinatura (Fixo)</Label>
-                                        <Input id="sigRole" value={coverSignatureRole} onChange={(e) => setCoverSignatureRole(e.target.value)} placeholder="Ex: Gestor..." />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="coverFooter">Rodapé da Capa</Label>
-                                    <RichTextEditor
-                                        value={coverFooterText}
-                                        onChange={setCoverFooterText}
-                                        placeholder="Ex: Atendimento ao Cliente..."
-                                        minHeight="100px"
-                                    />
+                                    <p className="text-xs text-slate-500 mt-2">
+                                        💡 <strong>Dica:</strong> Você pode incluir título, subtítulo, texto principal, assinatura e rodapé tudo em um único editor.
+                                    </p>
                                 </div>
                             </CardContent>
                         )}
