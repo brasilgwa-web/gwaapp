@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Label } from './label';
-import { Palette } from 'lucide-react';
+import { Palette, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from './button';
 
 const PRESET_COLORS = [
     { name: 'Azul WGA', value: '#1e40af' },
@@ -18,58 +19,66 @@ const PRESET_COLORS = [
 ];
 
 export default function ColorPicker({ value, onChange, label = 'Cor' }) {
-    const [showPicker, setShowPicker] = useState(false);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+
+    const selectedColor = PRESET_COLORS.find(c => c.value === value);
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-3">
             <Label className="flex items-center gap-2">
                 <Palette className="w-4 h-4" />
                 {label}
             </Label>
 
-            <div className="flex items-center gap-3">
-                {/* Preview Box */}
-                <button
-                    type="button"
-                    onClick={() => setShowPicker(!showPicker)}
-                    className="h-10 w-20 rounded border-2 border-slate-300 cursor-pointer hover:border-slate-400 transition-colors"
+            {/* Current Selection Display */}
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div
+                    className="h-12 w-12 rounded border-2 border-slate-300 flex-shrink-0"
                     style={{ backgroundColor: value }}
-                    title="Clique para escolher cor"
                 />
-
-                {/* Color Name/Value Display */}
                 <div className="flex-1">
                     <div className="text-sm font-medium text-slate-700">
-                        {PRESET_COLORS.find(c => c.value === value)?.name || 'Cor personalizada'}
+                        {selectedColor?.name || 'Cor personalizada'}
                     </div>
-                    <div className="text-xs text-slate-500 font-mono">{value}</div>
+                    <div className="text-xs text-slate-500">{value}</div>
                 </div>
             </div>
 
-            {/* Color Palette */}
-            {showPicker && (
-                <div className="border border-slate-200 rounded-lg p-4 bg-white shadow-lg">
-                    <div className="mb-3">
-                        <div className="text-sm font-medium text-slate-700 mb-2">Cores Predefinidas</div>
-                        <div className="grid grid-cols-6 gap-2">
-                            {PRESET_COLORS.map((color) => (
-                                <button
-                                    key={color.value}
-                                    type="button"
-                                    onClick={() => {
-                                        onChange(color.value);
-                                        setShowPicker(false);
-                                    }}
-                                    className={`h-10 w-full rounded border-2 transition-all hover:scale-110 ${value === color.value ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-300'
-                                        }`}
-                                    style={{ backgroundColor: color.value }}
-                                    title={color.name}
-                                />
-                            ))}
-                        </div>
-                    </div>
+            {/* Color Palette - Always Visible */}
+            <div className="border border-slate-200 rounded-lg p-4 bg-white">
+                <div className="text-sm font-medium text-slate-700 mb-3">Escolha uma cor:</div>
+                <div className="grid grid-cols-6 gap-2">
+                    {PRESET_COLORS.map((color) => (
+                        <button
+                            key={color.value}
+                            type="button"
+                            onClick={() => onChange(color.value)}
+                            className={`h-12 w-full rounded-lg border-2 transition-all hover:scale-110 hover:shadow-md ${value === color.value
+                                    ? 'border-blue-500 ring-2 ring-blue-200 scale-105'
+                                    : 'border-slate-300'
+                                }`}
+                            style={{ backgroundColor: color.value }}
+                            title={color.name}
+                        />
+                    ))}
+                </div>
+            </div>
 
-                    <div className="border-t border-slate-200 pt-3">
+            {/* Advanced Options - Collapsed by Default */}
+            <div>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="text-xs text-slate-600 hover:text-slate-900"
+                >
+                    {showAdvanced ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
+                    {showAdvanced ? 'Ocultar' : 'Mostrar'} opções avançadas
+                </Button>
+
+                {showAdvanced && (
+                    <div className="mt-2 border border-slate-200 rounded-lg p-4 bg-slate-50">
                         <div className="text-sm font-medium text-slate-700 mb-2">Cor Personalizada</div>
                         <div className="flex items-center gap-2">
                             <input
@@ -86,9 +95,12 @@ export default function ColorPicker({ value, onChange, label = 'Cor' }) {
                                 className="flex-1 h-10 px-3 rounded border border-slate-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                            Use esta opção apenas se precisar de uma cor específica não disponível acima.
+                        </p>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }
