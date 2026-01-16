@@ -28,20 +28,20 @@ function CoverPage({ settings }) {
     // Resultado: 262mm de altura útil
     return (
         <div
-            className={`w-full h-[262mm] max-h-[262mm] text-white flex flex-col p-12 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0 rounded-sm max-w-[210mm] overflow-hidden`}
-            style={{ backgroundColor: bgColor }}
+            className={`w-full h-[262mm] max-h-[262mm] text-white flex flex-col p-8 relative break-after-page print:break-after-page shrink-0 mx-auto mb-8 md:mb-0 rounded-sm max-w-[210mm]`}
+            style={{ backgroundColor: bgColor, overflow: 'hidden' }}
         >
             {/* Header / Logo */}
-            <div className="border-b border-white/30 pb-4 mb-8">
+            <div className="border-b border-white/30 pb-3 mb-6">
                 {settings?.logo_url ? (
                     <img
                         src={settings.logo_url}
                         alt="Logo"
-                        className="h-16 w-auto object-contain"
+                        className="h-12 w-auto object-contain"
                     />
                 ) : (
                     <>
-                        <div className="text-3xl font-bold tracking-wider">WGA BRASIL</div>
+                        <div className="text-2xl font-bold tracking-wider">WGA BRASIL</div>
                         <div className="text-xs tracking-[0.3em] uppercase ml-1 opacity-80">Serviços</div>
                     </>
                 )}
@@ -56,35 +56,34 @@ function CoverPage({ settings }) {
                 }
                 .cover-content p {
                     margin-top: 0 !important;
-                    margin-bottom: 1.5em !important;
-                    line-height: 1.6 !important;
-                    min-height: 1.6em !important;
+                    margin-bottom: 1em !important;
+                    line-height: 1.5 !important;
                 }
                 .cover-content p:empty {
-                    min-height: 1.6em !important;
+                    min-height: 1em !important;
                     display: block !important;
                 }
                 .cover-content p:last-child {
                     margin-bottom: 0 !important;
                 }
                 .cover-content h1 {
-                    margin-top: 0.5em !important;
-                    margin-bottom: 0.75em !important;
-                    font-size: 2em !important;
+                    margin-top: 0.3em !important;
+                    margin-bottom: 0.5em !important;
+                    font-size: 1.75em !important;
                     font-weight: bold !important;
                     line-height: 1.2 !important;
                 }
                 .cover-content h2 {
-                    margin-top: 0.5em !important;
-                    margin-bottom: 0.75em !important;
-                    font-size: 1.5em !important;
+                    margin-top: 0.3em !important;
+                    margin-bottom: 0.5em !important;
+                    font-size: 1.4em !important;
                     font-weight: bold !important;
                     line-height: 1.3 !important;
                 }
                 .cover-content h3 {
-                    margin-top: 0.5em !important;
-                    margin-bottom: 0.75em !important;
-                    font-size: 1.25em !important;
+                    margin-top: 0.3em !important;
+                    margin-bottom: 0.5em !important;
+                    font-size: 1.2em !important;
                     font-weight: bold !important;
                     line-height: 1.4 !important;
                 }
@@ -94,8 +93,8 @@ function CoverPage({ settings }) {
                     padding-left: 2em !important;
                 }
                 .cover-content li {
-                    margin-bottom: 0.5em !important;
-                    line-height: 1.6 !important;
+                    margin-bottom: 0.3em !important;
+                    line-height: 1.5 !important;
                 }
                 .cover-content strong {
                     font-weight: bold !important;
@@ -107,18 +106,18 @@ function CoverPage({ settings }) {
                     text-decoration: underline !important;
                 }
                 .cover-content hr {
-                    margin: 1.5em 0 !important;
+                    margin: 1em 0 !important;
                     border: none !important;
                     border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
                 }
                 .cover-content br {
                     display: block !important;
-                    margin: 0.5em 0 !important;
+                    margin: 0.3em 0 !important;
                     content: "" !important;
                 }
             ` }} />
             <div
-                className="flex-1 cover-content"
+                className="flex-1 cover-content overflow-y-auto"
                 dangerouslySetInnerHTML={{ __html: coverContent }}
             />
 
