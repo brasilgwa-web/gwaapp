@@ -674,6 +674,7 @@ export default function SetupReport() {
                                         onChange={setCoverContent}
                                         placeholder="Digite o conteúdo completo da capa..."
                                         minHeight="400px"
+                                        backgroundColor={coverBackgroundColor}
                                     />
                                     <p className="text-xs text-slate-500 mt-2">
                                         💡 <strong>Dica:</strong> Você pode incluir título, subtítulo, texto principal, assinatura e rodapé tudo em um único editor.

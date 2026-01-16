@@ -307,7 +307,7 @@ const MenuBar = ({ editor }) => {
     );
 };
 
-export default function RichTextEditor({ value = '', onChange, placeholder = 'Digite aqui...', minHeight = '150px' }) {
+export default function RichTextEditor({ value = '', onChange, placeholder = 'Digite aqui...', minHeight = '150px', backgroundColor }) {
     const editor = useEditor({
         extensions: [
             StarterKit.configure({
@@ -367,7 +367,11 @@ export default function RichTextEditor({ value = '', onChange, placeholder = 'Di
             <EditorContent
                 editor={editor}
                 className="prose prose-sm max-w-none p-3 focus:outline-none"
-                style={{ minHeight }}
+                style={{
+                    minHeight,
+                    backgroundColor: backgroundColor || 'white',
+                    color: backgroundColor ? 'white' : 'inherit'
+                }}
             />
         </div>
     );
