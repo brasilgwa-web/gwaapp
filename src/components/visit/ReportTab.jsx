@@ -431,16 +431,26 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             pdf.setFontSize(8);
                             pdf.setTextColor(150, 150, 150);
 
-                            // Footer text removed as requested
-                            // const lines = footerText.split('\n');
-                            // const lineHeight = 3.5;
-                            // const startY = pageHeight - 8 - (lines.length * lineHeight);
+                            // Texto do rodapé centralizado (pode ter múltiplas linhas)
+                            const lines = footerText.split('\n');
+                            const lineHeight = 3.5;
+                            const startY = pageHeight - 8 - (lines.length * lineHeight);
 
-                            // lines.forEach((line, idx) => {
-                            //    const textWidth = pdf.getStringUnitWidth(line) * 8 / pdf.internal.scaleFactor;
-                            //    const xPos = (pageWidth - textWidth) / 2;
-                            //    pdf.text(line, xPos > 10 ? xPos : 10, startY + (idx * lineHeight));
-                            // });
+                            lines.forEach((line, idx) => {
+                                const textWidth = pdf.getStringUnitWidth(line) * 8 / pdf.internal.scaleFactor;
+                                const xPos = (pageWidth - textWidth) / 2;
+                                pdf.text(line, xPos > 10 ? xPos : 10, startY + (idx * lineHeight));
+                            });
+
+                            // --- FORCE DELETE PAGE 2 IF COVER IS ENABLED (Fix layout overflow) ---
+                            // O usuário solicitou explicitamente remover a página 2 sempre que houver capa
+                            if (reportSettings?.cover_enabled !== false && totalPages >= 2) {
+                                try {
+                                    pdf.deletePage(2);
+                                } catch (e) {
+                                    console.warn("Could not delete page 2:", e);
+                                }
+                            }
 
                             // Número da página no canto inferior direito
                             const pageText = `Página ${pageNum} de ${totalPages}`;
