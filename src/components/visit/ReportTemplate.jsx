@@ -28,7 +28,7 @@ function CoverPage({ settings }) {
     // Resultado: 262mm de altura útil
     return (
         <div
-            className={`w-full h-[270mm] max-h-[270mm] text-white flex flex-col p-8 relative shrink-0 mx-auto max-w-[210mm] print:max-w-none print:w-full print:mx-0 print:!bg-transparent`}
+            className={`w-full h-[297mm] max-h-[297mm] text-white flex flex-col p-8 relative shrink-0 mx-auto max-w-[210mm] print:max-w-none print:w-full print:mx-0 print:!bg-transparent`}
             style={{ backgroundColor: bgColor, overflow: 'hidden', marginBottom: 0, pageBreakAfter: 'always' }}
         >
             {/* Header / Logo */}
