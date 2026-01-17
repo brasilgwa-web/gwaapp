@@ -403,7 +403,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const opt = {
-                margin: [10, 10, 25, 10], // [top, left, bottom, right]
+                margin: 0, // MARGIN 0 for Full Bleed Cover
                 filename: `relatorio_${visit.id}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
