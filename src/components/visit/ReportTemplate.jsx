@@ -142,8 +142,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
     // Logo from settings or default
     const logoUrl = reportSettings?.logo_url;
 
-    // Footer text from settings or default
-    const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas\nEste relatório possui validade técnica e foi gerado eletronicamente pelo Sistema WGA.';
+    // Footer text removed as requested
 
 
     const includeCover = reportSettings?.cover_enabled !== false;
@@ -508,10 +507,6 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                     </div>
                 </section>
 
-                {/* Footer */}
-                <footer className="mt-8 text-[9px] text-slate-400 text-center border-t border-slate-100 pt-2 whitespace-pre-wrap">
-                    {footerText}
-                </footer>
             </div >
         </>
     );
