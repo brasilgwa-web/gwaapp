@@ -425,8 +425,15 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         const pageWidth = pdf.internal.pageSize.getWidth();
                         const pageHeight = pdf.internal.pageSize.getHeight();
 
+
+                        const hasCover = reportSettings?.cover_enabled !== false;
+                        const totalContentPages = hasCover ? totalPages - 1 : totalPages;
+
                         // Adicionar rodapé em CADA página
                         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                            // Pular rodapé na capa (página 1) se houver capa
+                            if (hasCover && pageNum === 1) continue;
+
                             pdf.setPage(pageNum);
                             pdf.setFontSize(8);
                             pdf.setTextColor(150, 150, 150);
@@ -445,7 +452,9 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             // --- FORCE DELETE PAGE 2 LOGIC REMOVED ---
 
                             // Número da página no canto inferior direito
-                            const pageText = `Página ${pageNum} de ${totalPages}`;
+                            // Se tiver capa, a página 2 vira "Página 1", etc.
+                            const displayNum = hasCover ? pageNum - 1 : pageNum;
+                            const pageText = `Página ${displayNum} de ${totalContentPages}`;
                             pdf.text(pageText, pageWidth - 35, pageHeight - 5);
                         }
 
