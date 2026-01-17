@@ -28,7 +28,7 @@ function CoverPage({ settings }) {
     // Resultado: 262mm de altura útil
     return (
         <div
-            className={`w-full h-[285mm] max-h-[285mm] text-white flex flex-col p-8 relative shrink-0 mx-auto max-w-[210mm] print:max-w-none print:w-[210mm] print:mx-0 print:!bg-transparent`}
+            className={`w-full h-[270mm] max-h-[270mm] text-white flex flex-col p-8 relative shrink-0 mx-auto max-w-[210mm] print:max-w-none print:w-full print:mx-0 print:!bg-transparent`}
             style={{ backgroundColor: bgColor, overflow: 'hidden', marginBottom: 0, pageBreakAfter: 'always' }}
         >
             {/* Header / Logo */}
@@ -150,17 +150,22 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
 
     return (
         <>
-            {/* Fixed Background for Cover (Print Only hack) */}
+            {/* Dynamic Print Styles for Full Bleed Cover */}
             {includeCover && (
-                <div
-                    className="fixed inset-0 w-full h-full -z-50 hidden print:block"
-                    style={{ backgroundColor: reportSettings?.cover_background_color || '#1e40af' }}
-                />
+                <style>{`
+                    @media print {
+                        body {
+                            background-color: ${reportSettings?.cover_background_color || '#1e40af'} !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+                    }
+                `}</style>
             )}
 
             {includeCover && <CoverPage settings={reportSettings} />}
 
-            <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 ${isPdfGeneration ? 'w-[190mm] max-w-[190mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
+            <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 print:w-full print:max-w-none print:min-h-screen ${isPdfGeneration ? 'w-[190mm] max-w-[190mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
                 {/* Header - Logo à direita */}
                 <header className="mb-4">
