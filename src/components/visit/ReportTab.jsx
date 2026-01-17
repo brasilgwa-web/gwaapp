@@ -442,15 +442,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                                 pdf.text(line, xPos > 10 ? xPos : 10, startY + (idx * lineHeight));
                             });
 
-                            // --- FORCE DELETE PAGE 2 IF COVER IS ENABLED (Fix layout overflow) ---
-                            // O usuário solicitou explicitamente remover a página 2 sempre que houver capa
-                            if (reportSettings?.cover_enabled !== false && totalPages >= 2) {
-                                try {
-                                    pdf.deletePage(2);
-                                } catch (e) {
-                                    console.warn("Could not delete page 2:", e);
-                                }
-                            }
+                            // --- FORCE DELETE PAGE 2 LOGIC REMOVED ---
 
                             // Número da página no canto inferior direito
                             const pageText = `Página ${pageNum} de ${totalPages}`;
