@@ -44,8 +44,11 @@ export default function SetupReport() {
     const [coverImagePreview, setCoverImagePreview] = useState(null); // Custom cover image URL/preview
     const [logoFile, setLogoFile] = useState(null);
     const [logoPreview, setLogoPreview] = useState(null);
+    const [logo2File, setLogo2File] = useState(null); // Second logo
+    const [logo2Preview, setLogo2Preview] = useState(null); // Second logo preview
     const [isUploading, setIsUploading] = useState(false);
     const coverImageInputRef = useRef(null);
+    const logo2InputRef = useRef(null);
 
     // Technical Responsible States
     const [isRespDialogOpen, setIsRespDialogOpen] = useState(false);
@@ -115,6 +118,9 @@ export default function SetupReport() {
             setCoverBackgroundColor(settings.cover_background_color || '#1e40af');
             if (settings.logo_url) {
                 setLogoPreview(settings.logo_url);
+            }
+            if (settings.logo2_url) {
+                setLogo2Preview(settings.logo2_url);
             }
             // Load custom cover image if exists
             if (settings.cover_image_url) {
@@ -263,9 +269,34 @@ export default function SetupReport() {
                 coverImageUrl = coverUrlData.publicUrl;
             }
 
+            // Upload logo 2 if new file selected
+            let logo2Url = settings?.logo2_url || null;
+            if (logo2File) {
+                const fileExt = logo2File.name.split('.').pop();
+                const fileName = `logo2_${Date.now()}.${fileExt}`;
+                const filePath = `logos/${fileName}`;
+
+                const { error: logo2UploadError } = await supabase.storage
+                    .from('public')
+                    .upload(filePath, logo2File, { upsert: true });
+
+                if (logo2UploadError) {
+                    const { error: logo2UploadError2 } = await supabase.storage
+                        .from('uploads')
+                        .upload(filePath, logo2File, { upsert: true });
+                    if (logo2UploadError2) throw logo2UploadError2;
+                    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+                    logo2Url = urlData.publicUrl;
+                } else {
+                    const { data: urlData } = supabase.storage.from('public').getPublicUrl(filePath);
+                    logo2Url = urlData.publicUrl;
+                }
+            }
+
             await saveMutation.mutateAsync({
                 current_report_number: parseInt(initialNumber) || 1,
                 logo_url: logoUrl,
+                logo2_url: logo2Url,
                 footer_text: footerText,
                 email_subject_default: emailSubject,
                 email_body_default: emailBody,
@@ -589,6 +620,87 @@ export default function SetupReport() {
                                             <CheckCircle className="w-3 h-3" />
                                             {logoFile.name}
                                         </p>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Logo 2 Upload (Segundo Logo - Esquerda do Cabeçalho) */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Image className="w-4 h-4 text-orange-500" />
+                                Logo 2 (Lado Esquerdo)
+                            </CardTitle>
+                            <CardDescription>
+                                Segundo logo que aparece ao lado do título do relatório. Geralmente usado para o logo do cliente.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-start gap-6">
+                                {/* Preview */}
+                                <div className="w-32 h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
+                                    {logo2Preview ? (
+                                        <img
+                                            src={logo2Preview}
+                                            alt="Logo 2 Preview"
+                                            className="max-w-full max-h-full object-contain"
+                                        />
+                                    ) : (
+                                        <div className="text-center text-slate-400">
+                                            <Image className="w-8 h-8 mx-auto mb-1" />
+                                            <span className="text-xs">Sem logo</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Upload Button */}
+                                <div className="space-y-2">
+                                    <input
+                                        ref={logo2InputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                setLogo2File(file);
+                                                const reader = new FileReader();
+                                                reader.onloadend = () => setLogo2Preview(reader.result);
+                                                reader.readAsDataURL(file);
+                                            }
+                                        }}
+                                        className="hidden"
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => logo2InputRef.current?.click()}
+                                    >
+                                        <Upload className="w-4 h-4 mr-2" />
+                                        Escolher Logo 2
+                                    </Button>
+                                    <p className="text-xs text-slate-500">
+                                        Recomendado: PNG ou JPG, máximo 500KB
+                                    </p>
+                                    {logo2File && (
+                                        <p className="text-xs text-green-600 flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" />
+                                            {logo2File.name}
+                                        </p>
+                                    )}
+                                    {logo2Preview && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-red-600 hover:text-red-700"
+                                            onClick={() => {
+                                                setLogo2File(null);
+                                                setLogo2Preview(null);
+                                            }}
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-1" />
+                                            Remover
+                                        </Button>
                                     )}
                                 </div>
                             </div>
