@@ -144,7 +144,7 @@ function CoverPage({ settings }) {
     );
 }
 
-export function ReportTemplate({ data, isPdfGeneration = false }) {
+export function ReportTemplate({ data }) {
     const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings } = data;
 
     // Technician and Visit Metadata
@@ -154,478 +154,426 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
     // Custom formatted dates
     const visitDate = visit.visit_date ? new Date(visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date) : new Date();
 
-    // Report number: Use saved number from visit, or generate from settings
-    // Format: YYMM-NNNNNN (e.g., 2601-000001) - sem traço entre ano e mês
+    // Report number
     const reportNumber = visit.report_number ||
         `${format(visitDate, 'yyMM')}-${String(reportSettings?.current_report_number || 1).padStart(6, '0')}`;
 
-    // Logos from settings
+    // Logos
     const logoUrl = reportSettings?.logo_url;
     const logo2Url = reportSettings?.logo2_url;
 
-    // Footer text from settings or default
+    // Footer text
     const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas\nEste relatório possui validade técnica e foi gerado eletronicamente pelo Sistema WGA.';
-
 
     const includeCover = reportSettings?.cover_enabled !== false;
 
     return (
         <>
-            {/* Dynamic Print Styles for Full Bleed Cover */}
-            {includeCover && (
-                <style>{`
-                    @media print {
-                        body {
-                            background-color: ${reportSettings?.cover_background_color || '#1e40af'} !important;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                        }
-                    }
-                `}</style>
-            )}
-
             {includeCover && <CoverPage settings={reportSettings} />}
 
-            <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 print:w-full print:max-w-none ${isPdfGeneration ? 'w-full max-w-[210mm] p-[10mm] pb-[25mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
+            <div className="bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]">
 
-                <table className="w-full">
-                    <thead className="table-header-group">
-                        <tr>
-                            <td className="w-full pb-6">
-                                {/* Header - Título à esquerda, Logos à direita */}
-                                <header>
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h1 className="text-lg font-medium text-slate-700 border-b-2 border-blue-600 pb-1 inline-block">
-                                                Relatório de Atendimento Técnico em Campo
-                                            </h1>
-                                        </div>
-                                        <div className="flex items-center gap-6">
-                                            {/* Logo 1 */}
-                                            {logoUrl && (
-                                                <img src={logoUrl} alt="Logo 1" className="h-12 w-auto max-w-[150px] object-contain" />
-                                            )}
+                {/* Header */}
+                <header className="mb-6">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-lg font-medium text-slate-700 border-b-2 border-blue-600 pb-1 inline-block">
+                                Relatório de Atendimento Técnico em Campo
+                            </h1>
+                        </div>
+                        <div className="flex items-center gap-6">
+                            {logoUrl && (
+                                <img src={logoUrl} alt="Logo 1" className="h-12 w-auto max-w-[150px] object-contain" />
+                            )}
+                            {logo2Url && (
+                                <img src={logo2Url} alt="Logo 2" className="h-12 w-auto max-w-[150px] object-contain" />
+                            )}
+                            {!logoUrl && !logo2Url && (
+                                <>
+                                    <div className="text-blue-600 font-bold text-xl">WGA</div>
+                                    <span className="text-slate-700 font-medium">Brasil</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </header>
 
-                                            {/* Logo 2 */}
-                                            {logo2Url && (
-                                                <img src={logo2Url} alt="Logo 2" className="h-12 w-auto max-w-[150px] object-contain" />
-                                            )}
+                {/* Client Info Grid */}
+                <section className="border-t border-slate-300 pt-3 mb-6">
+                    <div className="flex justify-between items-start">
+                        <div className="space-y-1 text-[11px]">
+                            <div className="flex">
+                                <span className="text-slate-500 w-28">Código do Cliente</span>
+                                <span className="font-medium text-slate-900">{client?.client_code || '-'}</span>
+                            </div>
+                            <div className="flex">
+                                <span className="text-slate-500 w-28">Cliente</span>
+                                <span className="font-medium text-slate-900">{client?.name}</span>
+                            </div>
+                            <div className="flex">
+                                <span className="text-slate-500 w-28">Endereço</span>
+                                <span className="font-medium text-slate-900">{client?.address || '-'}</span>
+                            </div>
+                            <div className="flex">
+                                <span className="text-slate-500 w-28"></span>
+                                <span className="font-medium text-slate-900">{client?.city_state || (primaryLocation ? `${primaryLocation.city} - ${primaryLocation.state}` : '-')}</span>
+                            </div>
+                            <div className="flex">
+                                <span className="text-slate-500 w-28">e-Mail</span>
+                                <span className="font-medium text-slate-900">{client?.email || '-'}</span>
+                            </div>
+                            <div className="flex">
+                                <span className="text-slate-500 w-28">Responsável</span>
+                                <span className="font-medium text-slate-900">{client?.contact_name || '-'}</span>
+                            </div>
+                        </div>
 
-                                            {/* Fallback Text - Only if NO logos */}
-                                            {!logoUrl && !logo2Url && (
-                                                <>
-                                                    <div className="text-blue-600 font-bold text-xl">WGA</div>
-                                                    <span className="text-slate-700 font-medium">Brasil</span>
-                                                </>
-                                            )}
-                                        </div>
+                        <div className="border border-slate-300 px-6 py-4 text-center min-w-[180px]">
+                            <div className="text-xs text-slate-500 mb-1">Relatório Nº</div>
+                            <div className="text-2xl font-bold text-slate-900 tracking-tight">{reportNumber}</div>
+                            <div className="text-[10px] text-slate-400 mt-1">{format(visitDate, "d 'de' MMMM, yyyy", { locale: ptBR })}</div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Tecnico e Horarios */}
+                <section className="bg-slate-50 border border-slate-200 rounded-sm p-3 mb-6 flex text-xs">
+                    <div className="flex-1">
+                        <span className="text-slate-500 block text-[10px] uppercase tracking-wider">Técnico</span>
+                        <span className="font-bold text-slate-800">{techName}</span>
+                    </div>
+                    <div className="flex-1 border-l border-slate-200 pl-4">
+                        <span className="text-slate-500 block text-[10px] uppercase tracking-wider">Chegada</span>
+                        <span className="font-bold text-slate-800">{visit.arrival_time ? visit.arrival_time.substring(0, 5) : '-'}</span>
+                    </div>
+                    <div className="flex-1 border-l border-slate-200 pl-4">
+                        <span className="text-slate-500 block text-[10px] uppercase tracking-wider">Saída</span>
+                        <span className="font-bold text-slate-800">{visit.departure_time ? visit.departure_time.substring(0, 5) : '-'}</span>
+                    </div>
+                    <div className="flex-1 border-l border-slate-200 pl-4">
+                        <span className="text-slate-500 block text-[10px] uppercase tracking-wider">Tempo Dedicado</span>
+                        <span className="font-bold text-slate-800">
+                            {visit.arrival_time && visit.departure_time ? (() => {
+                                const [h1, m1] = visit.arrival_time.split(':').map(Number);
+                                const [h2, m2] = visit.departure_time.split(':').map(Number);
+                                const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+                                const hours = Math.floor(diff / 60);
+                                const minutes = diff % 60;
+                                return `${hours}h ${minutes}m`;
+                            })() : '-'}
+                        </span>
+                    </div>
+                </section>
+
+                {/* 1. Resultados Analíticos */}
+                <section className="mb-8">
+                    <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4 flex items-center gap-2">
+                        <span className="bg-blue-600 w-1 h-4 block rounded-sm"></span>
+                        Resultados Analíticos
+                    </h2>
+
+                    {fullReportStructure?.length === 0 ? (
+                        <p className="text-slate-500 italic text-center py-4">Nenhum resultado registrado.</p>
+                    ) : (
+                        <div className="space-y-6">
+                            {fullReportStructure.map((loc, idx) => (
+                                <div key={idx} className="space-y-4">
+                                    <div className="font-bold text-slate-700 uppercase text-xs tracking-wider border-b border-slate-100 pb-1">
+                                        Local: {loc.location.name}
                                     </div>
-                                </header>
-                            </td>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td className="w-full align-top">
-                                {/* Client Info Grid - Dados do cliente + Número do Relatório */}
-                                <section className="border-t border-slate-300 pt-3 mb-6">
-                                    <div className="flex justify-between items-start">
-                                        {/* Dados do Cliente à Esquerda */}
-                                        <div className="space-y-1 text-[11px]">
-                                            <div className="flex">
-                                                <span className="text-slate-500 w-28">Código do Cliente</span>
-                                                <span className="font-medium text-slate-900">{client?.client_code || '-'}</span>
-                                            </div>
-                                            <div className="flex">
-                                                <span className="text-slate-500 w-28">Cliente</span>
-                                                <span className="font-medium text-slate-900">{client?.name}</span>
-                                            </div>
-                                            <div className="flex">
-                                                <span className="text-slate-500 w-28">Endereço</span>
-                                                <span className="font-medium text-slate-900">{client?.address || '-'}</span>
-                                            </div>
-                                            <div className="flex">
-                                                <span className="text-slate-500 w-28"></span>
-                                                <span className="font-medium text-slate-900">{client?.city_state || (primaryLocation ? `${primaryLocation.city} - ${primaryLocation.state}` : '-')}</span>
-                                            </div>
-                                            <div className="flex">
-                                                <span className="text-slate-500 w-28">e-Mail</span>
-                                                <span className="font-medium text-slate-900">{client?.email || '-'}</span>
-                                            </div>
-                                            <div className="flex">
-                                                <span className="text-slate-500 w-28">Responsável</span>
-                                                <span className="font-medium text-slate-900">{client?.contact_name || '-'}</span>
-                                            </div>
-                                        </div>
 
-                                        {/* Número do Relatório à Direita */}
-                                        <div className="border border-slate-300 px-6 py-4 text-center min-w-[180px]">
-                                            <div className="text-xs text-slate-500 mb-1">Relatório Nº</div>
-                                            <div className="text-2xl font-bold text-slate-900 tracking-tight">{reportNumber}</div>
-                                            <div className="text-[10px] text-slate-400 mt-1">{format(visitDate, "d 'de' MMMM, yyyy", { locale: ptBR })}</div>
-                                        </div>
-                                    </div>
-                                </section>
-
-                                {/* Tecnico e Horarios */}
-                                <section className="bg-slate-50 border border-slate-200 rounded-sm p-3 mb-6 flex text-xs">
-                                    <div className="flex-1">
-                                        <span className="text-slate-500 block text-[10px] uppercase tracking-wider">Técnico</span>
-                                        <span className="font-bold text-slate-800">{techName}</span>
-                                    </div>
-                                    <div className="flex-1 border-l border-slate-200 pl-4">
-                                        <span className="text-slate-500 block text-[10px] uppercase tracking-wider">Chegada</span>
-                                        <span className="font-bold text-slate-800">{visit.arrival_time ? visit.arrival_time.substring(0, 5) : '-'}</span>
-                                    </div>
-                                    <div className="flex-1 border-l border-slate-200 pl-4">
-                                        <span className="text-slate-500 block text-[10px] uppercase tracking-wider">Saída</span>
-                                        <span className="font-bold text-slate-800">{visit.departure_time ? visit.departure_time.substring(0, 5) : '-'}</span>
-                                    </div>
-                                    <div className="flex-1 border-l border-slate-200 pl-4">
-                                        <span className="text-slate-500 block text-[10px] uppercase tracking-wider">Tempo Dedicado</span>
-                                        <span className="font-bold text-slate-800">
-                                            {visit.arrival_time && visit.departure_time ? (() => {
-                                                const [h1, m1] = visit.arrival_time.split(':').map(Number);
-                                                const [h2, m2] = visit.departure_time.split(':').map(Number);
-                                                const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-                                                const hours = Math.floor(diff / 60);
-                                                const minutes = diff % 60;
-                                                return `${hours}h ${minutes}m`;
-                                            })() : '-'}
-                                        </span>
-                                    </div>
-                                </section>
-
-                                {/* 1. Resultados Analíticos (Analytical Results) - V1.1 */}
-                                <section className="mb-8">
-                                    <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4 flex items-center gap-2">
-                                        <span className="bg-blue-600 w-1 h-4 block rounded-sm"></span>
-                                        Resultados Analíticos
-                                    </h2>
-
-                                    {fullReportStructure?.length === 0 ? (
-                                        <p className="text-slate-500 italic text-center py-4">Nenhum resultado registrado.</p>
-                                    ) : (
-                                        <div className="space-y-6">
-                                            {fullReportStructure.map((loc, idx) => (
-                                                <div key={idx} className="space-y-4 break-inside-avoid">
-                                                    <div className="font-bold text-slate-700 uppercase text-xs tracking-wider border-b border-slate-100 pb-1">
-                                                        Local: {loc.location.name}
-                                                    </div>
-
-                                                    {loc.equipments.map((eq, eqIdx) => (
-                                                        <div key={eqIdx} className="mb-4">
-                                                            {/* Equipment Header with Sample Info */}
-                                                            <div className="bg-blue-50/50 px-3 py-2 border border-blue-100 rounded-t-sm flex justify-between items-center text-xs">
-                                                                <div className="font-bold text-blue-900 flex items-center gap-2">
-                                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                                    {eq.equipment.name}
-                                                                </div>
-                                                                <div className="flex gap-4 text-slate-600">
-                                                                    {eq.sample?.collection_time && <span><span className="font-semibold">Coleta:</span> {eq.sample.collection_time.substring(0, 5)}h</span>}
-                                                                    {eq.sample?.complementary_info && <span><span className="font-semibold">Análises comp. em laboratório:</span> {eq.sample.complementary_info}</span>}
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Readings Table */}
-                                                            <div className="overflow-hidden">
-                                                                <table className="w-full text-[10px] border-x border-b border-slate-200">
-                                                                    <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
-                                                                        <tr>
-                                                                            <th className="px-2 py-1.5">Parâmetro</th>
-                                                                            <th className="px-2 py-1.5 text-center">Und.</th>
-                                                                            <th className="px-2 py-1.5 text-center">VMP</th>
-                                                                            <th className="px-2 py-1.5 text-center">LD</th>
-                                                                            <th className="px-2 py-1.5 text-center">LQ</th>
-                                                                            <th className="px-2 py-1.5 text-center">Incerteza</th>
-                                                                            <th className="px-2 py-1.5 text-center">Resultado</th>
-                                                                            <th className="px-2 py-1.5 text-right">Metodologia</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody className="divide-y divide-slate-100">
-                                                                        {eq.tests.map((test, tIdx) => (
-                                                                            <tr key={tIdx} className={tIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
-                                                                                <td className="px-2 py-1 font-medium text-slate-700">{test.name}</td>
-                                                                                <td className="px-2 py-1 text-center text-slate-500">{test.unit || '-'}</td>
-                                                                                <td className="px-2 py-1 text-center font-mono text-slate-500 text-[10px]">{test.min_value} - {test.max_value}</td>
-                                                                                <td className="px-2 py-1 text-center text-slate-400">{test.ld || '-'}</td>
-                                                                                <td className="px-2 py-1 text-center text-slate-400">{test.lq || '-'}</td>
-                                                                                <td className="px-2 py-1 text-center text-slate-400 text-[10px]">{test.method_uncertainty || '-'}</td>
-                                                                                <td className="px-2 py-1 text-center font-bold">
-                                                                                    {test.result ? (
-                                                                                        <span className={test.result.status_light === 'red' ? 'text-red-600' : test.result.status_light === 'green' ? 'text-green-600' : 'text-yellow-600'}>
-                                                                                            {test.result.measured_value}
-                                                                                        </span>
-                                                                                    ) : '-'}
-                                                                                </td>
-                                                                                <td className="px-2 py-1 text-right text-[9px] text-slate-400 truncate max-w-[80px]" title={test.methodology}>
-                                                                                    {test.methodology || '-'}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                    {loc.equipments.map((eq, eqIdx) => (
+                                        <div key={eqIdx} className="mb-4">
+                                            <div className="bg-blue-50/50 px-3 py-2 border border-blue-100 rounded-t-sm flex justify-between items-center text-xs">
+                                                <div className="font-bold text-blue-900 flex items-center gap-2">
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                    {eq.equipment.name}
                                                 </div>
-                                            ))}
+                                                <div className="flex gap-4 text-slate-600">
+                                                    {eq.sample?.collection_time && <span><span className="font-semibold">Coleta:</span> {eq.sample.collection_time.substring(0, 5)}h</span>}
+                                                    {eq.sample?.complementary_info && <span><span className="font-semibold">Análises comp. em laboratório:</span> {eq.sample.complementary_info}</span>}
+                                                </div>
+                                            </div>
+
+                                            <div className="overflow-hidden">
+                                                <table className="w-full text-[10px] border-x border-b border-slate-200">
+                                                    <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
+                                                        <tr>
+                                                            <th className="px-2 py-1.5">Parâmetro</th>
+                                                            <th className="px-2 py-1.5 text-center">Und.</th>
+                                                            <th className="px-2 py-1.5 text-center">VMP</th>
+                                                            <th className="px-2 py-1.5 text-center">LD</th>
+                                                            <th className="px-2 py-1.5 text-center">LQ</th>
+                                                            <th className="px-2 py-1.5 text-center">Incerteza</th>
+                                                            <th className="px-2 py-1.5 text-center">Resultado</th>
+                                                            <th className="px-2 py-1.5 text-right">Metodologia</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {eq.tests.map((test, tIdx) => (
+                                                            <tr key={tIdx} className={tIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
+                                                                <td className="px-2 py-1 font-medium text-slate-700">{test.name}</td>
+                                                                <td className="px-2 py-1 text-center text-slate-500">{test.unit || '-'}</td>
+                                                                <td className="px-2 py-1 text-center font-mono text-slate-500 text-[10px]">{test.min_value} - {test.max_value}</td>
+                                                                <td className="px-2 py-1 text-center text-slate-400">{test.ld || '-'}</td>
+                                                                <td className="px-2 py-1 text-center text-slate-400">{test.lq || '-'}</td>
+                                                                <td className="px-2 py-1 text-center text-slate-400 text-[10px]">{test.method_uncertainty || '-'}</td>
+                                                                <td className="px-2 py-1 text-center font-bold">
+                                                                    {test.result ? (
+                                                                        <span className={test.result.status_light === 'red' ? 'text-red-600' : test.result.status_light === 'green' ? 'text-green-600' : 'text-yellow-600'}>
+                                                                            {test.result.measured_value}
+                                                                        </span>
+                                                                    ) : '-'}
+                                                                </td>
+                                                                <td className="px-2 py-1 text-right text-[9px] text-slate-400 truncate max-w-[80px]" title={test.methodology}>
+                                                                    {test.methodology || '-'}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <div className="mt-4 text-[9px] text-slate-500 border-t border-slate-100 pt-2">
+                        <span className="font-semibold text-slate-700">Legenda:</span> VMP - Valor Máximo Permitido | LQ - Limite de Quantificação | LD - Limite Mínimo Detectável | Incerteza: Percentual de Incerteza Expandida
+                    </div>
+                </section>
+
+                {/* 2. Quadro de Dosagens */}
+                <section className="mb-8">
+                    <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4 flex items-center gap-2">
+                        <span className="bg-green-600 w-1 h-4 block rounded-sm"></span>
+                        Quadro de Dosagens e Estoques
+                    </h2>
+
+                    {fullReportStructure?.some(l => l.equipments.some(e => e.dosages?.some(d => d.product))) ? (
+                        <div className="space-y-6">
+                            {fullReportStructure.map((loc, idx) => (
+                                <div key={idx} className="space-y-4">
+                                    {loc.equipments.map((eq, eqIdx) => {
+                                        const activeDosages = eq.dosages.filter(d => d.product);
+                                        if (activeDosages.length === 0) return null;
+
+                                        return (
+                                            <div key={eqIdx} className="bg-white border border-slate-200 rounded-sm overflow-hidden text-xs mb-2">
+                                                <div className="bg-green-50 px-3 py-2 border-b border-green-100 font-bold text-green-900 border-l-4 border-l-green-600">
+                                                    {loc.location.name} - {eq.equipment.name}
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full min-w-[400px]">
+                                                        <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
+                                                            <tr>
+                                                                <th className="px-3 py-1.5 w-1/3">Produto Químico</th>
+                                                                <th className="px-3 py-1.5 text-center">Unidade</th>
+                                                                <th className="px-3 py-1.5 text-center">Estoque Local (Kg/L)</th>
+                                                                <th className="px-3 py-1.5 text-center">Dosagem Aplicada</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {activeDosages.map((item, dIdx) => (
+                                                                <tr key={dIdx} className="hover:bg-slate-50">
+                                                                    <td className="px-3 py-1.5">
+                                                                        <div className="font-medium text-slate-700">{item.product.name}</div>
+                                                                        {item.complementary_info && (
+                                                                            <div className="text-[10px] text-blue-600 mt-0.5">{item.complementary_info}</div>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-3 py-1.5 text-center text-slate-500">{item.product.unit}</td>
+                                                                    <td className="px-3 py-1.5 text-center font-bold text-slate-700">{item.record?.current_stock ?? '-'}</td>
+                                                                    <td className="px-3 py-1.5 text-center font-bold text-slate-700">{item.record?.dosage_applied ?? '-'}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-slate-500 italic text-center py-2 text-xs">Nenhum registro de dosagem.</p>
+                    )}
+                </section>
+
+                {/* 3. Descargas e Drenagens */}
+                {visit.discharges_drainages && (
+                    <section className="mb-6">
+                        <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Descargas e Drenagens</h2>
+                        <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify">
+                            {visit.discharges_drainages}
+                        </div>
+                    </section>
+                )}
+
+                {/* 4. Analise Técnica */}
+                <section className="mb-6">
+                    <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Análise Técnica</h2>
+                    <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify min-h-[60px]">
+                        {visit.observations ? renderMarkdown(visit.observations) : "Sem observações técnicas."}
+                    </div>
+                </section>
+
+                {/* 5. Observações Gerais */}
+                <section className="mb-8">
+                    <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Observações Gerais</h2>
+                    <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify min-h-[60px]">
+                        {visit.general_observations ? renderMarkdown(visit.general_observations) : "Sem observações gerais."}
+                    </div>
+                </section>
+
+                {/* 6. Photos Gallery */}
+                {photos && photos.length > 0 && (
+                    <section className="mb-8">
+                        <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4">Registro Fotográfico</h2>
+                        <div className="grid grid-cols-2 gap-4">
+                            {photos.map(p => (
+                                <div key={p.id} className="aspect-video bg-slate-100 rounded border border-slate-200 overflow-hidden relative">
+                                    <img
+                                        src={p.photo_url}
+                                        className="w-full h-full object-cover"
+                                        alt="Evidência"
+                                        crossOrigin="anonymous"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* 7. Comentários/Orientações */}
+                {fullReportStructure?.length > 0 && (
+                    <section className="mb-8">
+                        <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4">Comentários/Orientações</h2>
+                        <div className="bg-slate-50 p-4 rounded border border-slate-200 text-[10px] text-justify space-y-3 leading-relaxed">
+                            <p className="font-bold">Observações Gerais</p>
+                            <p>Neste momento, este relatório apresenta exclusivamente os resultados analíticos obtidos.</p>
+                            <p>Análises complementares que não fazem parte do escopo contratado devem ser solicitadas ao setores técnico-comercial da WGA Brasil para o envio do orçamento e aprovação.</p>
+                            <p>Recomenda-se seguir as orientações repassadas durante as visitas técnicas presenciais da equipe da WGA Brasil.</p>
+
+                            <p className="font-semibold mt-2">Destacamos a importância de:</p>
+                            <ul className="list-disc pl-5 space-y-1">
+                                <li>Verificar atentamente os parâmetros sinalizados no sistema de farol (verde, amarelo e vermelho), dando prioridade às ações corretivas nos indicadores em amarelo (atenção) e vermelho (crítico);</li>
+                                <li>Manter a aplicação dos produtos conforme as dosagens recomendadas pela engenharia da WGA Brasil;</li>
+                                <li>Realizar as purgas operacionais de acordo com o plano de operação definido;</li>
+                                <li>Manusear e armazenar os produtos químicos, especialmente os produtos NALCO, com todos os cuidados de segurança previstos nas fichas de informações de segurança dos produtos (SDS);</li>
+                                <li>Manter o acompanhamento dos parâmetros operacionais e enviar periodicamente os dados à WGA Brasil para controle e atualização de recomendações.</li>
+                            </ul>
+
+                            <hr className="border-slate-300 my-3" />
+
+                            <p className="font-bold">NOTAS IMPORTANTES</p>
+                            <ul className="list-none space-y-2 mt-1">
+                                <li>- Antes de efetuar qualquer operação com Produtos NALCO (transferência/ transporte/reposição), ler atentamente a FDS (FICHA DE SEGURANÇA DE PRODUTOS QUÍMICOS) dos mesmos;</li>
+                                <li>1. Não descartar resíduos em áreas inapropriadas, certificar que as bombonas vazias sejam enviadas para local específico para descarte;</li>
+                                <li>2. Não reutilize embalagens químicas, a reação com produtos incompatíveis podem acarretar acidentes;</li>
+                                <li>3. Ao checar sistemas de dosagens, certifique-se o funcionamento das bombas dosadoras, caso seja necessário, efetue a remoção de ar nas linhas pelo respiro da bomba, localizada na lado posterior da bomba, certifique-se de retomar a dosagem via fechamento do respiro (válvula 3 vias);</li>
+                                <li>4. Registre quaisquer ocorrência pertinente à operação, utilização, reposição e demanda de químicos para os sistemas assistidos e entre em contato pelos canais de comunicação informados: atendimento@wgabrasil.com.br; adriano@wgabrasil.com.br ou Cel. (11) 9.634,8922 (11) 9.8331.7957.</li>
+                            </ul>
+
+                            <p className="mt-2"><span className="font-bold">CARACTERISTICA DA AMOSTRA ANÁLISE VISUAL:</span> Quando reportado a presença de resíduos não filtráveis recomenda-se que os procedimentos de trabalho sejam confirmados, e se as abertura de válvulas de purga na garrafa de nivel, fornalha e corpo principal da Caldeira estão sendo realizadas corretamente. Este procecimento é necessário para evitar o acúmulo de sedimentos e formação de depósitos e incrustações que possam afetar a segurança do equipamento.</p>
+
+                            <p><span className="font-bold">TRASAR:</span> É uma leitura de fluorescência obtida proporcionalmente à concentração do produto na amostra lida, na qual contém uma substância trasante que permite que o mesmo seja monitorado com precisão de 0,1 mg/l, no entanto a fluorescência não deve ser considerada no Balanço de Cátions e Ânions dissolvidos na água.</p>
+
+                            <hr className="border-slate-300 my-3" />
+
+                            <p>Em caso de dúvidas, entrar em contato com nosso serviço de atendimento a Clientes através de nosso telefone: (11) 9.6348.9922 e/ou através dos seguintes E-mails: atendimento@wgabrasil.com.br; laboratorio1@wgabrasil.com.br</p>
+
+                            <p>A ocorrência de resultados fora dos padrões não necessariamente representa riscos para o sistema, desde que, não sejam sistêmicos. Pequenas variações podem ocorrer nos itens de tratamento, motivado, principalmente pelas oscilações na qualidade de água de reposição e/ou alimentação.</p>
+
+                            <p>É importante saber que, em todos os casos anômalos, ações corretivas devem ser implantadas, seguidas posteriormente de novas análises para constatação da regularidade da situação e do quadro analítico.</p>
+
+                            <hr className="border-slate-300 my-3" />
+
+                            <p className="font-bold">Metodologia Analítica:</p>
+                            <ul className="list-inside space-y-1">
+                                <li>- Procedimento para coletas: PR. 8.5.2 Revisão 02 (IDENTIFICAÇÃO, RASTREABILIDADE, COLETA E PRESERVAÇÃO DO PRODUTO).</li>
+                                <li>- As análises foram executadas dentro do prazo de validade de cada parâmetro segundo guia de coleta de preservação de amostras.</li>
+                                <li>- NR: Não referido; ND= Não detectado; LMD= Limite Mínimo de Detecção; LAP= Laboratório de Apoio; * = A/C: Análise em Campo; IE = Índice de Incerteza Analítica Expandida;</li>
+                            </ul>
+
+                            <p className="font-bold mt-2">"OS RESULTADOS REFEREM-SE EXCLUSIVAMENTE À AMOSTRA ANALISADA, COMO RECEBIDA".</p>
+                            <p>As amostras analisadas ficam em retenção por 15 dias, após este período são descartadas, salvo aquelas que são analisadas diariamente.</p>
+                            <p>O excedente da amostra não utilizada nos ensaios poderá retornará ao cliente para o destino adequado.</p>
+
+                            <hr className="border-slate-300 my-3" />
+
+                            <p>A WGA BRASIL garantem a qualidade de seus produtos e serviços analíticos, não se responsabilizando pelo uso inadequado dos produtos e orientações</p>
+                            <p>A WGA BRASIL não se responsabiliza por quaisquer danos indiretos e ou consequenciais, negligenciais, impericiais, imprudenciais ou omissões, incluindo, porém nao se limitando a perda de lucros e ou produção.</p>
+                            <p className="uppercase">A INTEGRIDADE DOS RESULTADOS REPORTADOS NESTE RELATÓRIO DE ENSAIO É GARANTIDA, MANTIDA E CONTROLADA NA DATA BASE DO SISTEMA DE ADMINISTRAÇÃO DE LAUDOS.</p>
+
+                            <div className="mt-4 text-center font-semibold italic">
+                                <p>"Este Relatório de Ensaio somente pode ser reproduzido na sua totalidade e sem alterações"</p>
+                                <p>"A reprodução parcial requer aprovação escrita do Laboratório."</p>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* Signatures */}
+                <section className="mt-12 pt-8 border-t border-slate-200">
+                    <div className="flex justify-between items-start gap-12 text-center">
+                        <div className="flex-1 flex flex-col items-center space-y-8">
+                            {/* Technician */}
+                            <div className="flex flex-col items-center w-full">
+                                <div className="h-16 mb-2 flex items-end justify-center w-full">
+                                    {techSignature ? (
+                                        <img src={techSignature} className="max-h-full" alt="Assinatura Técnico" crossOrigin="anonymous" />
+                                    ) : (<div className="w-32 h-px bg-slate-300"></div>)}
+                                </div>
+                                <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
+                                    <p className="font-bold text-xs uppercase">{techName}</p>
+                                    <p className="text-[9px] text-slate-500">Vistoriador Técnico</p>
+                                    {technicianUser?.crq && (
+                                        <p className="text-[9px] text-slate-600 font-medium">{technicianUser.crq}</p>
                                     )}
+                                </div>
+                            </div>
 
-                                    {/* Legenda */}
-                                    <div className="mt-4 text-[9px] text-slate-500 border-t border-slate-100 pt-2 break-inside-avoid">
-                                        <span className="font-semibold text-slate-700">Legenda:</span> VMP - Valor Máximo Permitido | LQ - Limite de Quantificação | LD - Limite Mínimo Detectável | Incerteza: Percentual de Incerteza Expandida
+                            {/* Technical Responsible */}
+                            {data.selectedTechnicalResponsible && (
+                                <div className="flex flex-col items-center w-full">
+                                    <div className="h-16 mb-2 flex items-end justify-center w-full">
+                                        {data.selectedTechnicalResponsible.signature_url ? (
+                                            <img src={data.selectedTechnicalResponsible.signature_url} className="max-h-full" alt="Assinatura Responsável" crossOrigin="anonymous" />
+                                        ) : (<div className="w-32 h-px bg-slate-300"></div>)}
                                     </div>
-                                </section>
-
-                                {/* 2. Quadro de Dosagens e Estoques (Dosage Board) - V1.1 */}
-                                <section className="mb-8">
-                                    <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4 flex items-center gap-2">
-                                        <span className="bg-green-600 w-1 h-4 block rounded-sm"></span>
-                                        Quadro de Dosagens e Estoques
-                                    </h2>
-
-                                    {fullReportStructure?.some(l => l.equipments.some(e => e.dosages?.some(d => d.product))) ? (
-                                        <div className="space-y-6">
-                                            {fullReportStructure.map((loc, idx) => (
-                                                <div key={idx} className="space-y-4">
-                                                    {loc.equipments.map((eq, eqIdx) => {
-                                                        // Show ALL configured products for this equipment (not just modified ones)
-                                                        const activeDosages = eq.dosages.filter(d => d.product);
-                                                        if (activeDosages.length === 0) return null;
-
-                                                        return (
-                                                            <div key={eqIdx} className="bg-white border border-slate-200 rounded-sm overflow-hidden text-xs mb-2">
-                                                                <div className="bg-green-50 px-3 py-2 border-b border-green-100 font-bold text-green-900 border-l-4 border-l-green-600">
-                                                                    {loc.location.name} - {eq.equipment.name}
-                                                                </div>
-                                                                <div className="overflow-x-auto">
-                                                                    <table className="w-full min-w-[400px]">
-                                                                        <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
-                                                                            <tr>
-                                                                                <th className="px-3 py-1.5 w-1/3">Produto Químico</th>
-                                                                                <th className="px-3 py-1.5 text-center">Unidade</th>
-                                                                                <th className="px-3 py-1.5 text-center">Estoque Local (Kg/L)</th>
-                                                                                <th className="px-3 py-1.5 text-center">Dosagem Aplicada</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody className="divide-y divide-slate-100">
-                                                                            {activeDosages.map((item, dIdx) => (
-                                                                                <tr key={dIdx} className="hover:bg-slate-50">
-                                                                                    <td className="px-3 py-1.5">
-                                                                                        <div className="font-medium text-slate-700">{item.product.name}</div>
-                                                                                        {item.complementary_info && (
-                                                                                            <div className="text-[10px] text-blue-600 mt-0.5">{item.complementary_info}</div>
-                                                                                        )}
-                                                                                    </td>
-                                                                                    <td className="px-3 py-1.5 text-center text-slate-500">{item.product.unit}</td>
-                                                                                    <td className="px-3 py-1.5 text-center font-bold text-slate-700">{item.record?.current_stock ?? '-'}</td>
-                                                                                    <td className="px-3 py-1.5 text-center font-bold text-slate-700">{item.record?.dosage_applied ?? '-'}</td>
-                                                                                </tr>
-                                                                            ))}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-slate-500 italic text-center py-2 text-xs">Nenhum registro de dosagem.</p>
-                                    )}
-                                </section>
-
-                                {/* 3. Descargas e Drenagens - V1.1 */}
-                                {
-                                    visit.discharges_drainages && (
-                                        <section className="mb-6">
-                                            <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Descargas e Drenagens</h2>
-                                            <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify">
-                                                {visit.discharges_drainages}
-                                            </div>
-                                        </section>
-                                    )
-                                }
-
-                                {/* 4. Analise Técnica (Observações) */}
-                                <section className="mb-6">
-                                    <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Análise Técnica</h2>
-                                    <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify min-h-[60px]">
-                                        {visit.observations ? renderMarkdown(visit.observations) : "Sem observações técnicas."}
+                                    <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
+                                        <p className="font-bold text-xs uppercase">{data.selectedTechnicalResponsible.name}</p>
+                                        <p className="text-[9px] text-slate-500">Responsável Técnico - WGA Brasil</p>
+                                        <p className="text-[9px] text-slate-600 font-medium">{data.selectedTechnicalResponsible.crq}</p>
                                     </div>
-                                </section>
+                                </div>
+                            )}
+                        </div>
 
-                                {/* 5. Observações Gerais - V1.1 */}
-                                <section className="mb-8">
-                                    <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Observações Gerais</h2>
-                                    <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify min-h-[60px]">
-                                        {visit.general_observations ? renderMarkdown(visit.general_observations) : "Sem observações gerais."}
-                                    </div>
-                                </section>
+                        {/* Client Signature */}
+                        <div className="flex-1 flex flex-col items-center">
+                            <div className="h-16 mb-2 flex items-end justify-center w-full">
+                                {visit.client_signature_url ? (
+                                    <img src={visit.client_signature_url} className="max-h-full" alt="Assinatura Cliente" crossOrigin="anonymous" />
+                                ) : (<div className="text-[10px] text-slate-300 italic">Não assinado</div>)}
+                            </div>
+                            <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
+                                <p className="font-bold text-xs uppercase">{client?.contact_name || 'Cliente'}</p>
+                                <p className="text-[9px] text-slate-500">Responsável no Local</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-                                {/* 6. Photos Gallery */}
-                                {
-                                    photos && photos.length > 0 && (
-                                        <section className="mb-8">
-                                            <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4">Registro Fotográfico</h2>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {photos.map(p => (
-                                                    <div key={p.id} className="aspect-video bg-slate-100 rounded border border-slate-200 overflow-hidden relative">
-                                                        <img
-                                                            src={p.photo_url}
-                                                            className="w-full h-full object-cover"
-                                                            alt="Evidência"
-                                                            crossOrigin="anonymous"
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )
-                                }
-
-                                {/* 7. Comentários/Orientações - V1.1 */}
-                                {fullReportStructure?.length > 0 && (
-                                    <section className="mb-8">
-                                        <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4">Comentários/Orientações</h2>
-                                        <div className="bg-slate-50 p-4 rounded border border-slate-200 text-[10px] text-justify space-y-3 leading-relaxed">
-                                            <p className="font-bold">Observações Gerais</p>
-                                            <p>Neste momento, este relatório apresenta exclusivamente os resultados analíticos obtidos.</p>
-                                            <p>Análises complementares que não fazem parte do escopo contratado devem ser solicitadas ao setores técnico-comercial da WGA Brasil para o envio do orçamento e aprovação.</p>
-                                            <p>Recomenda-se seguir as orientações repassadas durante as visitas técnicas presenciais da equipe da WGA Brasil.</p>
-
-                                            <p className="font-semibold mt-2">Destacamos a importância de:</p>
-                                            <ul className="list-disc pl-5 space-y-1">
-                                                <li>Verificar atentamente os parâmetros sinalizados no sistema de farol (verde, amarelo e vermelho), dando prioridade às ações corretivas nos indicadores em amarelo (atenção) e vermelho (crítico);</li>
-                                                <li>Manter a aplicação dos produtos conforme as dosagens recomendadas pela engenharia da WGA Brasil;</li>
-                                                <li>Realizar as purgas operacionais de acordo com o plano de operação definido;</li>
-                                                <li>Manusear e armazenar os produtos químicos, especialmente os produtos NALCO, com todos os cuidados de segurança previstos nas fichas de informações de segurança dos produtos (SDS);</li>
-                                                <li>Manter o acompanhamento dos parâmetros operacionais e enviar periodicamente os dados à WGA Brasil para controle e atualização de recomendações.</li>
-                                            </ul>
-
-                                            <hr className="border-slate-300 my-3" />
-
-                                            <p className="font-bold">NOTAS IMPORTANTES</p>
-                                            <ul className="list-none space-y-2 mt-1">
-                                                <li>- Antes de efetuar qualquer operação com Produtos NALCO (transferência/ transporte/reposição), ler atentamente a FDS (FICHA DE SEGURANÇA DE PRODUTOS QUÍMICOS) dos mesmos;</li>
-                                                <li>1. Não descartar resíduos em áreas inapropriadas, certificar que as bombonas vazias sejam enviadas para local específico para descarte;</li>
-                                                <li>2. Não reutilize embalagens químicas, a reação com produtos incompatíveis podem acarretar acidentes;</li>
-                                                <li>3. Ao checar sistemas de dosagens, certifique-se o funcionamento das bombas dosadoras, caso seja necessário, efetue a remoção de ar nas linhas pelo respiro da bomba, localizada na lado posterior da bomba, certifique-se de retomar a dosagem via fechamento do respiro (válvula 3 vias);</li>
-                                                <li>4. Registre quaisquer ocorrência pertinente à operação, utilização, reposição e demanda de químicos para os sistemas assistidos e entre em contato pelos canais de comunicação informados: atendimento@wgabrasil.com.br; adriano@wgabrasil.com.br ou Cel. (11) 9.634,8922 (11) 9.8331.7957.</li>
-                                            </ul>
-
-                                            <p className="mt-2"><span className="font-bold">CARACTERISTICA DA AMOSTRA ANÁLISE VISUAL:</span> Quando reportado a presença de resíduos não filtráveis recomenda-se que os procedimentos de trabalho sejam confirmados, e se as abertura de válvulas de purga na garrafa de nivel, fornalha e corpo principal da Caldeira estão sendo realizadas corretamente. Este procecimento é necessário para evitar o acúmulo de sedimentos e formação de depósitos e incrustações que possam afetar a segurança do equipamento.</p>
-
-                                            <p><span className="font-bold">TRASAR:</span> É uma leitura de fluorescência obtida proporcionalmente à concentração do produto na amostra lida, na qual contém uma substância trasante que permite que o mesmo seja monitorado com precisão de 0,1 mg/l, no entanto a fluorescência não deve ser considerada no Balanço de Cátions e Ânions dissolvidos na água.</p>
-
-                                            <hr className="border-slate-300 my-3" />
-
-                                            <p>Em caso de dúvidas, entrar em contato com nosso serviço de atendimento a Clientes através de nosso telefone: (11) 9.6348.9922 e/ou através dos seguintes E-mails: atendimento@wgabrasil.com.br; laboratorio1@wgabrasil.com.br</p>
-
-                                            <p>A ocorrência de resultados fora dos padrões não necessariamente representa riscos para o sistema, desde que, não sejam sistêmicos. Pequenas variações podem ocorrer nos itens de tratamento, motivado, principalmente pelas oscilações na qualidade de água de reposição e/ou alimentação.</p>
-
-                                            <p>É importante saber que, em todos os casos anômalos, ações corretivas devem ser implantadas, seguidas posteriormente de novas análises para constatação da regularidade da situação e do quadro analítico.</p>
-
-                                            <hr className="border-slate-300 my-3" />
-
-                                            <p className="font-bold">Metodologia Analítica:</p>
-                                            <ul className="list-inside space-y-1">
-                                                <li>- Procedimento para coletas: PR. 8.5.2 Revisão 02 (IDENTIFICAÇÃO, RASTREABILIDADE, COLETA E PRESERVAÇÃO DO PRODUTO).</li>
-                                                <li>- As análises foram executadas dentro do prazo de validade de cada parâmetro segundo guia de coleta de preservação de amostras.</li>
-                                                <li>- NR: Não referido; ND= Não detectado; LMD= Limite Mínimo de Detecção; LAP= Laboratório de Apoio; * = A/C: Análise em Campo; IE = Índice de Incerteza Analítica Expandida;</li>
-                                            </ul>
-
-                                            <p className="font-bold mt-2">"OS RESULTADOS REFEREM-SE EXCLUSIVAMENTE À AMOSTRA ANALISADA, COMO RECEBIDA".</p>
-                                            <p>As amostras analisadas ficam em retenção por 15 dias, após este período são descartadas, salvo aquelas que são analisadas diariamente.</p>
-                                            <p>O excedente da amostra não utilizada nos ensaios poderá retornará ao cliente para o destino adequado.</p>
-
-                                            <hr className="border-slate-300 my-3" />
-
-                                            <p>A WGA BRASIL garantem a qualidade de seus produtos e serviços analíticos, não se responsabilizando pelo uso inadequado dos produtos e orientações</p>
-                                            <p>A WGA BRASIL não se responsabiliza por quaisquer danos indiretos e ou consequenciais, negligenciais, impericiais, imprudenciais ou omissões, incluindo, porém nao se limitando a perda de lucros e ou produção.</p>
-                                            <p className="uppercase">A INTEGRIDADE DOS RESULTADOS REPORTADOS NESTE RELATÓRIO DE ENSAIO É GARANTIDA, MANTIDA E CONTROLADA NA DATA BASE DO SISTEMA DE ADMINISTRAÇÃO DE LAUDOS.</p>
-
-                                            <div className="mt-4 text-center font-semibold italic">
-                                                <p>"Este Relatório de Ensaio somente pode ser reproduzido na sua totalidade e sem alterações"</p>
-                                                <p>"A reprodução parcial requer aprovação escrita do Laboratório."</p>
-                                            </div>
-                                        </div>
-                                    </section>
-                                )}
-
-                                {/* Signatures */}
-                                <section className="mt-12 pt-8 border-t border-slate-200">
-                                    <div className="flex justify-between items-start gap-12 text-center">
-
-                                        {/* Left: Technical Signatures (Stacked) */}
-                                        <div className="flex-1 flex flex-col items-center space-y-8">
-
-                                            {/* 1. Technician */}
-                                            <div className="flex flex-col items-center w-full">
-                                                <div className="h-16 mb-2 flex items-end justify-center w-full">
-                                                    {techSignature ? (
-                                                        <img src={techSignature} className="max-h-full" alt="Assinatura Técnico" crossOrigin="anonymous" />
-                                                    ) : (<div className="w-32 h-px bg-slate-300"></div>)}
-                                                </div>
-                                                <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
-                                                    <p className="font-bold text-xs uppercase">{techName}</p>
-                                                    <p className="text-[9px] text-slate-500">Vistoriador Técnico</p>
-                                                    {technicianUser?.crq && (
-                                                        <p className="text-[9px] text-slate-600 font-medium">{technicianUser.crq}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* 2. Selected Technical Responsible (if any) */}
-                                            {data.selectedTechnicalResponsible && (
-                                                <div className="flex flex-col items-center w-full">
-                                                    <div className="h-16 mb-2 flex items-end justify-center w-full">
-                                                        {data.selectedTechnicalResponsible.signature_url ? (
-                                                            <img src={data.selectedTechnicalResponsible.signature_url} className="max-h-full" alt="Assinatura Responsável" crossOrigin="anonymous" />
-                                                        ) : (<div className="w-32 h-px bg-slate-300"></div>)}
-                                                    </div>
-                                                    <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
-                                                        <p className="font-bold text-xs uppercase">{data.selectedTechnicalResponsible.name}</p>
-                                                        <p className="text-[9px] text-slate-500">Responsável Técnico - WGA Brasil</p>
-                                                        <p className="text-[9px] text-slate-600 font-medium">{data.selectedTechnicalResponsible.crq}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                        </div>
-
-                                        {/* Right: Client Signature */}
-                                        <div className="flex-1 flex flex-col items-center">
-                                            <div className="h-16 mb-2 flex items-end justify-center w-full">
-                                                {visit.client_signature_url ? (
-                                                    <img src={visit.client_signature_url} className="max-h-full" alt="Assinatura Cliente" crossOrigin="anonymous" />
-                                                ) : (<div className="text-[10px] text-slate-300 italic">Não assinado</div>)}
-                                            </div>
-                                            <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
-                                                <p className="font-bold text-xs uppercase">{client?.contact_name || 'Cliente'}</p>
-                                                <p className="text-[9px] text-slate-500">Responsável no Local</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </section>
-                            </td>
-                        </tr>
-                    </tbody>
-                    <tfoot className="table-footer-group">
-                        <tr>
-                            <td>
-                                {/* Footer */}
-                                <footer className="mt-8 text-[9px] text-slate-400 text-center border-t border-slate-100 pt-2 whitespace-pre-wrap">
-                                    {footerText}
-                                </footer>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
+                {/* Web Footer */}
+                <footer className="mt-12 text-[9px] text-slate-400 text-center border-t border-slate-100 pt-6 whitespace-pre-wrap">
+                    {footerText}
+                </footer>
             </div >
         </>
     );
 }
+

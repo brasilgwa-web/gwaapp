@@ -18,8 +18,8 @@ import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle,
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useReportData } from '@/hooks/useReportData';
-import { ReportTemplate } from '@/components/visit/ReportTemplate';
-import html2pdf from 'html2pdf.js';
+import { pdf } from '@react-pdf/renderer';
+import ReportPdf from './ReportPdf';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from "@/lib/utils";
@@ -96,7 +96,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     // UI States
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSending, setIsSending] = useState(false);
-    const [isPreviewing, setIsPreviewing] = useState(false);
     const [showSignatureDialog, setShowSignatureDialog] = useState(false);
     const [uploadStatus, setUploadStatus] = useState('');
 
@@ -171,7 +170,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             let equipmentDataText = '';
             if (freshReportData?.fullReportStructure?.length > 0) {
                 freshReportData.fullReportStructure.forEach(location => {
-                    equipmentDataText += `\n\nðŸ“ LOCAL: ${location.name}\n`;
+                    equipmentDataText += `\n\nðŸ“  LOCAL: ${location.name}\n`;
                     location.equipments?.forEach(eq => {
                         equipmentDataText += `\n  ðŸ”§ EQUIPAMENTO: ${eq.equipment.name}\n`;
                         if (eq.sample?.collection_time) {
@@ -179,7 +178,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         }
                         if (eq.tests?.length > 0) {
                             eq.tests.forEach(test => {
-                                const status = test.result?.status_light === 'red' ? 'ðŸ”´ CRÃTICO' :
+                                const status = test.result?.status_light === 'red' ? 'ðŸ”´ CRÃ TICO' :
                                     test.result?.status_light === 'yellow' ? 'ðŸŸ¡ ALERTA' : 'ðŸŸ¢ OK';
                                 const value = test.result?.measured_value ?? 'N/R';
                                 const range = `${test.min_value || '-'} a ${test.max_value || '-'}`;
@@ -367,27 +366,17 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         });
         if (!confirmed) return;
 
-        const { data } = await refetchReport();
-
-        if (!data) {
-            await alert({ title: 'Aguarde', message: 'Aguarde o carregamento completo dos dados do relatório.', type: 'info' });
-            return;
-        }
-
-        // Set previewing to true to render the hidden PDF template
-        setIsPreviewing(true);
-
-        // Wait for React to render the offscreen template, then generate PDF
-        setTimeout(() => {
-            handleConfirmSend();
-        }, 500);
+        await handleConfirmSend();
     };
 
     const handleConfirmSend = async () => {
         setIsSending(true);
-        setUploadStatus('Carregando configurações...');
+        setUploadStatus('Carregando dados e configurações...');
 
         try {
+            const { data } = await refetchReport();
+            if (!data) throw new Error('Falha ao carregar dados do relatório.');
+
             // 1. Fetch Report Settings Global
             const { data: reportSettings } = await supabase
                 .from('report_settings')
@@ -395,73 +384,24 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 .limit(1)
                 .single();
 
-            setUploadStatus('Gerando PDF...');
+            setUploadStatus('Gerando PDF Nativo...');
 
-            const element = document.getElementById('report-preview-content');
-            if (!element) throw new Error("Template de pré-visualização não encontrado");
+            // --- REACT-PDF GENERATION ---
+            // Generate Blob using the new ReportPdf component
+            const blob = await pdf(<ReportPdf data={data} settings={reportSettings} />).toBlob();
 
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const opt = {
-                margin: 0, // MARGIN 0 for Full Bleed Cover
-                filename: `relatorio_${visit.id}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            // Obter texto do rodapé das configurações ANTES de gerar o PDF
-            const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
-
-            // Gerar PDF e adicionar rodapé usando callback
+            // Convert blob to base64 for existing Drive API
             const pdfBase64 = await new Promise((resolve, reject) => {
-                html2pdf()
-                    .set(opt)
-                    .from(element)
-                    .toPdf()
-                    .get('pdf')
-                    .then((pdf) => {
-                        const totalPages = pdf.internal.getNumberOfPages();
-                        const pageWidth = pdf.internal.pageSize.getWidth();
-                        const pageHeight = pdf.internal.pageSize.getHeight();
-
-
-                        const hasCover = reportSettings?.cover_enabled !== false;
-                        const totalContentPages = hasCover ? totalPages - 1 : totalPages;
-
-                        // Adicionar rodapé em CADA página
-                        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-                            // Pular rodapé na capa (página 1) se houver capa
-                            if (hasCover && pageNum === 1) continue;
-
-                            pdf.setPage(pageNum);
-                            pdf.setFontSize(8);
-                            pdf.setTextColor(150, 150, 150);
-
-                            // Texto do rodapé centralizado (pode ter múltiplas linhas)
-                            const lines = footerText.split('\n');
-                            const lineHeight = 3.5;
-                            const startY = pageHeight - 8 - (lines.length * lineHeight);
-
-                            lines.forEach((line, idx) => {
-                                const textWidth = pdf.getStringUnitWidth(line) * 8 / pdf.internal.scaleFactor;
-                                const xPos = (pageWidth - textWidth) / 2;
-                                pdf.text(line, xPos > 10 ? xPos : 10, startY + (idx * lineHeight));
-                            });
-
-                            // --- FORCE DELETE PAGE 2 LOGIC REMOVED ---
-
-                            // Número da página no canto inferior direito
-                            // Se tiver capa, a página 2 vira "Página 1", etc.
-                            const displayNum = hasCover ? pageNum - 1 : pageNum;
-                            const pageText = `Página ${displayNum} de ${totalContentPages}`;
-                            pdf.text(pageText, pageWidth - 35, pageHeight - 5);
-                        }
-
-                        resolve(pdf.output('datauristring'));
-                    })
-                    .catch(reject);
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = () => {
+                    // Extract base64 part
+                    const base64data = reader.result?.toString().split(',')[1];
+                    resolve(base64data);
+                };
+                reader.onerror = reject;
             });
+            // ----------------------------
 
             let safeDate = new Date();
             if (visit.visit_date) {
@@ -477,7 +417,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             let driveLink = null;
 
             if (driveFolderId) {
-                setUploadStatus('Enviando para o Google Drive...');
+                setUploadStatus('Enviando para o Google Drive (~100KB)...');
                 const uploadRes = await fetch('/api/upload-drive', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -558,7 +498,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             await alert({ title: 'Sucesso!', message: 'Relatório enviado e salvo com sucesso.', type: 'success' });
             Logger.info('USER_ACTION', 'Report sent successfully', { visitId: visit.id, email: visit.client?.email });
             updateMutation.mutate({ status: 'synced' });
-            setIsPreviewing(false);
 
         } catch (error) {
             console.error("Process Error:", error);
@@ -572,15 +511,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
     return (
         <div className="space-y-6 pb-20 relative">
-
-            {/* Hidden Offscreen Container for PDF Generation - Not visible to user */}
-            {isPreviewing && (
-                <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
-                    <div id="report-preview-content" className="bg-white w-[210mm] min-h-[297mm]">
-                        {reportData && <ReportTemplate data={reportData} isPdfGeneration={true} />}
-                    </div>
-                </div>
-            )}
 
             {/* Loading Dialog - Shows progress during PDF generation/send */}
             <Dialog open={isSending} onOpenChange={() => { }}>
