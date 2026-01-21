@@ -23,7 +23,26 @@ function renderMarkdown(text) {
 function CoverPage({ settings }) {
     const bgColor = settings?.cover_background_color || '#1e40af';
     const coverContent = settings?.cover_content;
+    const coverImageUrl = settings?.cover_image_url;
 
+    // If custom cover image exists, render it as full-page
+    if (coverImageUrl) {
+        return (
+            <div
+                className="w-full h-[296mm] max-h-[296mm] flex items-center justify-center shrink-0 mx-auto max-w-[210mm] print:max-w-none print:w-full print:mx-0"
+                style={{ overflow: 'hidden', marginBottom: 0, pageBreakAfter: 'always', backgroundColor: '#fff' }}
+            >
+                <img
+                    src={coverImageUrl}
+                    alt="Capa do Relatório"
+                    className="w-full h-full object-contain"
+                    style={{ maxWidth: '210mm', maxHeight: '296mm' }}
+                />
+            </div>
+        );
+    }
+
+    // Fallback to editor content
     // Altura fixa de uma página A4 (297mm) menos margens (10mm superior + 25mm inferior = 35mm)
     // Resultado: 262mm de altura útil
     return (

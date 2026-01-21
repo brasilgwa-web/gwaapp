@@ -40,9 +40,12 @@ export default function SetupReport() {
     const [coverEnabled, setCoverEnabled] = useState(true);
     const [coverContent, setCoverContent] = useState(''); // Unified cover content
     const [coverBackgroundColor, setCoverBackgroundColor] = useState('#1e40af');
+    const [coverImageFile, setCoverImageFile] = useState(null); // Custom cover image file
+    const [coverImagePreview, setCoverImagePreview] = useState(null); // Custom cover image URL/preview
     const [logoFile, setLogoFile] = useState(null);
     const [logoPreview, setLogoPreview] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+    const coverImageInputRef = useRef(null);
 
     // Technical Responsible States
     const [isRespDialogOpen, setIsRespDialogOpen] = useState(false);
@@ -112,6 +115,10 @@ export default function SetupReport() {
             setCoverBackgroundColor(settings.cover_background_color || '#1e40af');
             if (settings.logo_url) {
                 setLogoPreview(settings.logo_url);
+            }
+            // Load custom cover image if exists
+            if (settings.cover_image_url) {
+                setCoverImagePreview(settings.cover_image_url);
             }
         }
     }, [settings]);
@@ -239,6 +246,23 @@ export default function SetupReport() {
                 }
             }
 
+            // Upload cover image if new file selected
+            let coverImageUrl = settings?.cover_image_url || null;
+            if (coverImageFile) {
+                const fileExt = coverImageFile.name.split('.').pop();
+                const fileName = `cover_${Date.now()}.${fileExt}`;
+                const filePath = `covers/${fileName}`;
+
+                const { error: coverUploadError } = await supabase.storage
+                    .from('uploads')
+                    .upload(filePath, coverImageFile, { upsert: true });
+
+                if (coverUploadError) throw coverUploadError;
+
+                const { data: coverUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+                coverImageUrl = coverUrlData.publicUrl;
+            }
+
             await saveMutation.mutateAsync({
                 current_report_number: parseInt(initialNumber) || 1,
                 logo_url: logoUrl,
@@ -247,7 +271,8 @@ export default function SetupReport() {
                 email_body_default: emailBody,
                 cover_enabled: coverEnabled,
                 cover_content: coverContent,
-                cover_background_color: coverBackgroundColor
+                cover_background_color: coverBackgroundColor,
+                cover_image_url: coverImageUrl
             });
 
         } catch (error) {
@@ -657,28 +682,122 @@ export default function SetupReport() {
                             </div>
                         </CardHeader>
                         {coverEnabled && (
-                            <CardContent className="space-y-4">
-                                <ColorPicker
-                                    value={coverBackgroundColor}
-                                    onChange={setCoverBackgroundColor}
-                                    label="Cor de Fundo da Capa"
-                                />
+                            <CardContent className="space-y-6">
+                                {/* Cover Image Upload - Priority Option */}
+                                <div className="border-2 border-dashed border-green-300 rounded-lg p-4 bg-green-50">
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex-1">
+                                            <Label className="text-base font-semibold text-green-800 flex items-center gap-2">
+                                                <Upload className="w-5 h-5" />
+                                                Capa Personalizada (Prioridade)
+                                            </Label>
+                                            <p className="text-sm text-green-700 mt-1 mb-3">
+                                                Faça upload de uma imagem PNG/JPG para usar como capa.
+                                                <strong> Se uma imagem for enviada, ela terá prioridade sobre o editor abaixo.</strong>
+                                            </p>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="coverContent">Conteúdo da Capa</Label>
-                                    <p className="text-xs text-slate-500 mb-2">
-                                        Edite livremente todo o conteúdo da capa. Use a barra de ferramentas para formatar texto, adicionar títulos, listas, links e cores.
-                                    </p>
-                                    <RichTextEditor
-                                        value={coverContent}
-                                        onChange={setCoverContent}
-                                        placeholder="Digite o conteúdo completo da capa..."
-                                        minHeight="400px"
-                                        backgroundColor={coverBackgroundColor}
+                                            <input
+                                                ref={coverImageInputRef}
+                                                type="file"
+                                                accept="image/png,image/jpeg,image/jpg"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        setCoverImageFile(file);
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setCoverImagePreview(reader.result);
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+
+                                            <div className="flex items-center gap-3">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => coverImageInputRef.current?.click()}
+                                                    className="bg-white border-green-400 text-green-700 hover:bg-green-100"
+                                                >
+                                                    <Upload className="w-4 h-4 mr-2" />
+                                                    {coverImagePreview ? 'Trocar Capa' : 'Upload de Capa'}
+                                                </Button>
+
+                                                {coverImagePreview && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setCoverImageFile(null);
+                                                            setCoverImagePreview(null);
+                                                        }}
+                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                    >
+                                                        <Trash2 className="w-4 h-4 mr-2" />
+                                                        Remover
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Preview */}
+                                        {coverImagePreview && (
+                                            <div className="w-40 h-56 border rounded-lg overflow-hidden shadow-md bg-white flex-shrink-0">
+                                                <img
+                                                    src={coverImagePreview}
+                                                    alt="Preview da capa"
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {coverImagePreview && (
+                                        <div className="mt-3 bg-green-100 border border-green-300 rounded-md px-3 py-2">
+                                            <p className="text-sm text-green-800 flex items-center gap-2">
+                                                <CheckCircle className="w-4 h-4" />
+                                                <strong>Capa personalizada ativa!</strong> Esta imagem será usada como capa do relatório.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Divider */}
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <span className="w-full border-t border-slate-200" />
+                                    </div>
+                                    <div className="relative flex justify-center text-xs uppercase">
+                                        <span className="bg-white px-2 text-slate-500">
+                                            {coverImagePreview ? 'Ou edite o conteúdo alternativo' : 'Ou use o editor abaixo'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Editor Fallback */}
+                                <div className={coverImagePreview ? 'opacity-50' : ''}>
+                                    <ColorPicker
+                                        value={coverBackgroundColor}
+                                        onChange={setCoverBackgroundColor}
+                                        label="Cor de Fundo da Capa"
                                     />
-                                    <p className="text-xs text-slate-500 mt-2">
-                                        💡 <strong>Dica:</strong> Você pode incluir título, subtítulo, texto principal, assinatura e rodapé tudo em um único editor.
-                                    </p>
+
+                                    <div className="space-y-2 mt-4">
+                                        <Label htmlFor="coverContent">Conteúdo da Capa {coverImagePreview && <span className="text-slate-400">(não será usado enquanto a imagem acima estiver ativa)</span>}</Label>
+                                        <p className="text-xs text-slate-500 mb-2">
+                                            Edite livremente todo o conteúdo da capa. Use a barra de ferramentas para formatar texto, adicionar títulos, listas, links e cores.
+                                        </p>
+                                        <RichTextEditor
+                                            value={coverContent}
+                                            onChange={setCoverContent}
+                                            placeholder="Digite o conteúdo completo da capa..."
+                                            minHeight="400px"
+                                            backgroundColor={coverBackgroundColor}
+                                        />
+                                        <p className="text-xs text-slate-500 mt-2">
+                                            💡 <strong>Dica:</strong> Você pode incluir título, subtítulo, texto principal, assinatura e rodapé tudo em um único editor.
+                                        </p>
+                                    </div>
                                 </div>
                             </CardContent>
                         )}
