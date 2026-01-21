@@ -385,6 +385,24 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
     const handleConfirmSend = async () => {
         setIsSending(true);
+
+        // Helper para converter imagem para Base64
+        const getBase64FromUrl = async (url) => {
+            if (!url) return null;
+            try {
+                const data = await fetch(url);
+                const blob = await data.blob();
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = () => resolve(reader.result);
+                });
+            } catch (error) {
+                console.error("Erro convertendo imagem:", error);
+                return null;
+            }
+        };
+
         setUploadStatus('Carregando configurações...');
 
         try {
@@ -395,6 +413,10 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 .limit(1)
                 .single();
 
+            setUploadStatus('Preparando imagens...');
+            const logo1Base64 = await getBase64FromUrl(reportSettings?.logo_url);
+            const logo2Base64 = await getBase64FromUrl(reportSettings?.logo2_url);
+
             setUploadStatus('Gerando PDF...');
 
             const element = document.getElementById('report-preview-content');
@@ -403,18 +425,19 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const opt = {
-                margin: [0, 0, 20, 0], // Margem inferior de 20mm
+                margin: [30, 0, 20, 0], // Top: 30mm (Header), Bottom: 20mm (Footer)
                 filename: `relatorio_${visit.id}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // Obter texto do rodapé das configurações ANTES de gerar o PDF
+            // Configs
             const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
             const coverBg = reportSettings?.cover_background_color || '#1e40af';
+            const reportTitle = "Relatório de Atendimento Técnico em Campo";
 
-            // Gerar PDF e adicionar rodapé usando callback
+            // Gerar PDF
             const pdfBase64 = await new Promise((resolve, reject) => {
                 html2pdf()
                     .set(opt)
@@ -428,23 +451,70 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         const hasCover = reportSettings?.cover_enabled !== false;
                         const totalContentPages = hasCover ? totalPages - 1 : totalPages;
 
-                        // Adicionar rodapé em CADA página e corrigir capa
                         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
                             pdf.setPage(pageNum);
 
-                            // Tratamento da Capa (Página 1 se houver capa)
+                            // --- CAPA (Página 1) ---
                             if (hasCover && pageNum === 1) {
-                                // Pinta a área da margem inferior com a cor de fundo da capa
+                                // Pinta margens Top/Bottom com a cor da capa para "Full Bleed"
                                 pdf.setFillColor(coverBg);
-                                pdf.rect(0, pageHeight - 20, pageWidth, 20, 'F');
+                                pdf.rect(0, 0, pageWidth, 30, 'F'); // Top Margin Paint
+                                pdf.rect(0, pageHeight - 20, pageWidth, 20, 'F'); // Bottom Margin Paint
                                 continue;
                             }
 
-                            // Rodapé nas outras páginas
-                            pdf.setFontSize(8);
-                            pdf.setTextColor(150, 150, 150);
+                            // --- CABEÇALHO (Páginas > 1) ---
+                            // Área útil do Top Margin é 30mm. Vamos desenhar nela.
 
-                            // Texto do rodapé centralizado
+                            // Título à Esquerda
+                            pdf.setFontSize(14);
+                            pdf.setTextColor(51, 65, 85); // Slate-700
+                            pdf.setFont("helvetica", "bold");
+                            const titleY = 18;
+                            pdf.text(reportTitle, 10, titleY);
+
+                            // Linha abaixo do título
+                            pdf.setDrawColor(37, 99, 235); // Blue-600
+                            pdf.setLineWidth(0.5);
+                            const titleWidth = pdf.getStringUnitWidth(reportTitle) * 14 / pdf.internal.scaleFactor;
+                            pdf.line(10, titleY + 2, 10 + titleWidth, titleY + 2); // Sublinha apenas o título
+
+                            // Logos à Direita
+                            const logoY = 8;
+                            const logoH = 12; // Altura fixa 12mm
+                            let currentX = pageWidth - 10; // Começa da direita
+
+                            // Logo 2 (Mais à direita)
+                            if (logo2Base64) {
+                                const imgProps = pdf.getImageProperties(logo2Base64);
+                                const logoW = (imgProps.width * logoH) / imgProps.height;
+                                currentX -= logoW;
+                                pdf.addImage(logo2Base64, 'PNG', currentX, logoY, logoW, logoH);
+                                currentX -= 6; // Espaço entre logos
+                            } else {
+                                // Fallback Texto WGA Brasil se não tiver logo 2
+                                if (!logo1Base64) {
+                                    pdf.setFontSize(14);
+                                    pdf.setTextColor(37, 99, 235); // Blue
+                                    pdf.text("WGA", pageWidth - 35, 18);
+                                    pdf.setTextColor(51, 65, 85);
+                                    pdf.text("Brasil", pageWidth - 22, 18);
+                                }
+                            }
+
+                            // Logo 1 (À esquerda do Logo 2)
+                            if (logo1Base64) {
+                                const imgProps = pdf.getImageProperties(logo1Base64);
+                                const logoW = (imgProps.width * logoH) / imgProps.height;
+                                currentX -= logoW;
+                                pdf.addImage(logo1Base64, 'PNG', currentX, logoY, logoW, logoH);
+                            }
+
+                            // --- RODAPÉ ---
+                            pdf.setFontSize(8);
+                            pdf.setTextColor(150, 150, 150); // Slate-400
+                            pdf.setFont("helvetica", "normal");
+
                             const lines = footerText.split('\n');
                             const lineHeight = 3.5;
                             const startY = pageHeight - 15 - (lines.length * lineHeight);
@@ -455,7 +525,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                                 pdf.text(line, xPos > 10 ? xPos : 10, startY + (idx * lineHeight));
                             });
 
-                            // Número da página no canto inferior direito
+                            // Paginação
                             const displayNum = hasCover ? pageNum - 1 : pageNum;
                             const pageText = `Página ${displayNum} de ${totalContentPages}`;
                             pdf.text(pageText, pageWidth - 35, pageHeight - 10);

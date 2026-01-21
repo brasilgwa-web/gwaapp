@@ -29,7 +29,7 @@ function CoverPage({ settings }) {
     if (coverImageUrl) {
         return (
             <div
-                className="w-full h-[296mm] max-h-[296mm] print:h-[275mm] print:max-h-[275mm] flex items-center justify-center shrink-0 mx-auto max-w-[210mm] print:max-w-none print:w-full print:mx-0"
+                className="w-full h-[296mm] max-h-[296mm] print:h-[275mm] print:max-h-[275mm] print:-mt-[30mm] flex items-center justify-center shrink-0 mx-auto max-w-[210mm] print:max-w-none print:w-full print:mx-0"
                 style={{ overflow: 'hidden', marginBottom: 0, pageBreakAfter: 'always', backgroundColor: '#fff' }}
             >
                 <img
@@ -188,7 +188,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
             <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 print:w-full print:max-w-none print:min-h-screen ${isPdfGeneration ? 'w-full max-w-[210mm] p-[10mm] pb-[40mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
                 {/* Header - Título à esquerda, Logos à direita */}
-                <header className="mb-4">
+                <header className="mb-4 print:hidden">
                     <div className="flex justify-between items-start">
                         <div>
                             <h1 className="text-lg font-medium text-slate-700 border-b-2 border-blue-600 pb-1 inline-block">
