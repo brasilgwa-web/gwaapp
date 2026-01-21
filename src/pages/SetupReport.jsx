@@ -253,24 +253,14 @@ export default function SetupReport() {
                 const fileName = `cover_${Date.now()}.${fileExt}`;
                 const filePath = `covers/${fileName}`;
 
-                // Try 'public' bucket first, fallback to 'uploads'
                 const { error: coverUploadError } = await supabase.storage
-                    .from('public')
+                    .from('uploads')
                     .upload(filePath, coverImageFile, { upsert: true });
 
-                if (coverUploadError) {
-                    // Fallback to 'uploads' bucket
-                    const { error: coverUploadError2 } = await supabase.storage
-                        .from('uploads')
-                        .upload(filePath, coverImageFile, { upsert: true });
-                    if (coverUploadError2) throw coverUploadError2;
+                if (coverUploadError) throw coverUploadError;
 
-                    const { data: coverUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
-                    coverImageUrl = coverUrlData.publicUrl;
-                } else {
-                    const { data: coverUrlData } = supabase.storage.from('public').getPublicUrl(filePath);
-                    coverImageUrl = coverUrlData.publicUrl;
-                }
+                const { data: coverUrlData } = supabase.storage.from('uploads').getPublicUrl(filePath);
+                coverImageUrl = coverUrlData.publicUrl;
             }
 
             await saveMutation.mutateAsync({
