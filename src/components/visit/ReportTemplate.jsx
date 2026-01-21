@@ -29,14 +29,14 @@ function CoverPage({ settings }) {
     if (coverImageUrl) {
         return (
             <div
-                className="w-full h-[297mm] shrink-0 mx-auto max-w-[210mm] print:max-w-none print:w-full print:mx-0"
-                style={{ overflow: 'hidden', margin: 0, padding: 0, pageBreakAfter: 'always', border: 'none' }}
+                className="w-full h-[296mm] max-h-[296mm] flex items-center justify-center shrink-0 mx-auto max-w-[210mm] print:max-w-none print:w-full print:mx-0"
+                style={{ overflow: 'hidden', marginBottom: 0, pageBreakAfter: 'always', backgroundColor: '#fff' }}
             >
                 <img
                     src={coverImageUrl}
                     alt="Capa do Relatório"
-                    className="w-full h-full"
-                    style={{ objectFit: 'fill', display: 'block', border: 'none' }}
+                    className="w-full h-full object-contain"
+                    style={{ maxWidth: '210mm', maxHeight: '296mm' }}
                 />
             </div>
         );
