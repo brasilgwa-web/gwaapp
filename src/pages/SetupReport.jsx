@@ -631,10 +631,10 @@ export default function SetupReport() {
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Image className="w-4 h-4 text-orange-500" />
-                                Logo 2 (Lado Esquerdo)
+                                Logo 2 (Lado Direito)
                             </CardTitle>
                             <CardDescription>
-                                Segundo logo que aparece ao lado do título do relatório. Geralmente usado para o logo do cliente.
+                                Segundo logo que aparece ao lado do título do relatório.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
