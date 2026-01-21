@@ -186,7 +186,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
 
             {includeCover && <CoverPage settings={reportSettings} />}
 
-            <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 print:w-full print:max-w-none print:min-h-screen ${isPdfGeneration ? 'w-full max-w-[210mm] p-[10mm] pb-[25mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
+            <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 print:w-full print:max-w-none ${isPdfGeneration ? 'w-full max-w-[210mm] p-[10mm] pb-[25mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
                 <table className="w-full">
                     <thead className="table-header-group">
@@ -297,7 +297,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                 </section>
 
                                 {/* 1. Resultados Analíticos (Analytical Results) - V1.1 */}
-                                <section className="mb-8 break-inside-avoid">
+                                <section className="mb-8">
                                     <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4 flex items-center gap-2">
                                         <span className="bg-blue-600 w-1 h-4 block rounded-sm"></span>
                                         Resultados Analíticos
@@ -380,7 +380,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                 </section>
 
                                 {/* 2. Quadro de Dosagens e Estoques (Dosage Board) - V1.1 */}
-                                <section className="mb-8 break-inside-avoid">
+                                <section className="mb-8">
                                     <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4 flex items-center gap-2">
                                         <span className="bg-green-600 w-1 h-4 block rounded-sm"></span>
                                         Quadro de Dosagens e Estoques
@@ -441,7 +441,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                 {/* 3. Descargas e Drenagens - V1.1 */}
                                 {
                                     visit.discharges_drainages && (
-                                        <section className="mb-6 break-inside-avoid">
+                                        <section className="mb-6">
                                             <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Descargas e Drenagens</h2>
                                             <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify">
                                                 {visit.discharges_drainages}
@@ -451,7 +451,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                 }
 
                                 {/* 4. Analise Técnica (Observações) */}
-                                <section className="mb-6 break-inside-avoid">
+                                <section className="mb-6">
                                     <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Análise Técnica</h2>
                                     <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify min-h-[60px]">
                                         {visit.observations ? renderMarkdown(visit.observations) : "Sem observações técnicas."}
@@ -459,7 +459,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                 </section>
 
                                 {/* 5. Observações Gerais - V1.1 */}
-                                <section className="mb-8 break-inside-avoid">
+                                <section className="mb-8">
                                     <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">Observações Gerais</h2>
                                     <div className="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-justify min-h-[60px]">
                                         {visit.general_observations ? renderMarkdown(visit.general_observations) : "Sem observações gerais."}
@@ -469,7 +469,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                 {/* 6. Photos Gallery */}
                                 {
                                     photos && photos.length > 0 && (
-                                        <section className="mb-8 break-inside-avoidPage">
+                                        <section className="mb-8">
                                             <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4">Registro Fotográfico</h2>
                                             <div className="grid grid-cols-2 gap-4">
                                                 {photos.map(p => (
@@ -489,7 +489,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
 
                                 {/* 7. Comentários/Orientações - V1.1 */}
                                 {fullReportStructure?.length > 0 && (
-                                    <section className="mb-8 break-inside-avoidPage">
+                                    <section className="mb-8">
                                         <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4">Comentários/Orientações</h2>
                                         <div className="bg-slate-50 p-4 rounded border border-slate-200 text-[10px] text-justify space-y-3 leading-relaxed">
                                             <p className="font-bold">Observações Gerais</p>
@@ -557,7 +557,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                                 )}
 
                                 {/* Signatures */}
-                                <section className="mt-12 pt-8 border-t border-slate-200 break-inside-avoid">
+                                <section className="mt-12 pt-8 border-t border-slate-200">
                                     <div className="flex justify-between items-start gap-12 text-center">
 
                                         {/* Left: Technical Signatures (Stacked) */}
@@ -614,12 +614,17 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                             </td>
                         </tr>
                     </tbody>
+                    <tfoot className="table-footer-group">
+                        <tr>
+                            <td>
+                                {/* Footer */}
+                                <footer className="mt-8 text-[9px] text-slate-400 text-center border-t border-slate-100 pt-2 whitespace-pre-wrap">
+                                    {footerText}
+                                </footer>
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
-
-                {/* Footer */}
-                <footer className="mt-8 text-[9px] text-slate-400 text-center border-t border-slate-100 pt-2 whitespace-pre-wrap">
-                    {footerText}
-                </footer>
             </div >
         </>
     );
