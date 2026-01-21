@@ -2,6 +2,7 @@
 import React from 'react';
 import { formatDateAsLocal } from '@/lib/utils';
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // Helper para converter markdown básico em HTML
 function renderMarkdown(text) {
