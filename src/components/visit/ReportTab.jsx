@@ -403,7 +403,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const opt = {
-                margin: 0, // MARGIN 0 for Full Bleed Cover
+                margin: [0, 0, 20, 0], // Margem inferior de 20mm
                 filename: `relatorio_${visit.id}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, logging: false },
@@ -412,6 +412,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             // Obter texto do rodapé das configurações ANTES de gerar o PDF
             const footerText = reportSettings?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
+            const coverBg = reportSettings?.cover_background_color || '#1e40af';
 
             // Gerar PDF e adicionar rodapé usando callback
             const pdfBase64 = await new Promise((resolve, reject) => {
@@ -424,24 +425,29 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         const totalPages = pdf.internal.getNumberOfPages();
                         const pageWidth = pdf.internal.pageSize.getWidth();
                         const pageHeight = pdf.internal.pageSize.getHeight();
-
-
                         const hasCover = reportSettings?.cover_enabled !== false;
                         const totalContentPages = hasCover ? totalPages - 1 : totalPages;
 
-                        // Adicionar rodapé em CADA página
+                        // Adicionar rodapé em CADA página e corrigir capa
                         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-                            // Pular rodapé na capa (página 1) se houver capa
-                            if (hasCover && pageNum === 1) continue;
-
                             pdf.setPage(pageNum);
+
+                            // Tratamento da Capa (Página 1 se houver capa)
+                            if (hasCover && pageNum === 1) {
+                                // Pinta a área da margem inferior com a cor de fundo da capa
+                                pdf.setFillColor(coverBg);
+                                pdf.rect(0, pageHeight - 20, pageWidth, 20, 'F');
+                                continue;
+                            }
+
+                            // Rodapé nas outras páginas
                             pdf.setFontSize(8);
                             pdf.setTextColor(150, 150, 150);
 
-                            // Texto do rodapé centralizado (pode ter múltiplas linhas)
+                            // Texto do rodapé centralizado
                             const lines = footerText.split('\n');
                             const lineHeight = 3.5;
-                            const startY = pageHeight - 8 - (lines.length * lineHeight);
+                            const startY = pageHeight - 15 - (lines.length * lineHeight);
 
                             lines.forEach((line, idx) => {
                                 const textWidth = pdf.getStringUnitWidth(line) * 8 / pdf.internal.scaleFactor;
@@ -449,13 +455,10 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                                 pdf.text(line, xPos > 10 ? xPos : 10, startY + (idx * lineHeight));
                             });
 
-                            // --- FORCE DELETE PAGE 2 LOGIC REMOVED ---
-
                             // Número da página no canto inferior direito
-                            // Se tiver capa, a página 2 vira "Página 1", etc.
                             const displayNum = hasCover ? pageNum - 1 : pageNum;
                             const pageText = `Página ${displayNum} de ${totalContentPages}`;
-                            pdf.text(pageText, pageWidth - 35, pageHeight - 5);
+                            pdf.text(pageText, pageWidth - 35, pageHeight - 10);
                         }
 
                         resolve(pdf.output('datauristring'));
