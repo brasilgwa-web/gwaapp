@@ -185,7 +185,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
 
             {includeCover && <CoverPage settings={reportSettings} />}
 
-            <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 print:w-full print:max-w-none print:min-h-screen ${isPdfGeneration ? 'w-full max-w-[210mm] p-[10mm] pb-[40mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
+            <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 print:w-full print:max-w-none print:min-h-screen print:p-[10mm] print:pb-[40mm] ${isPdfGeneration ? 'w-full max-w-[210mm] p-[10mm] pb-[40mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
                 {/* Header - Título à esquerda, Logos à direita */}
                 <header className="mb-4">
