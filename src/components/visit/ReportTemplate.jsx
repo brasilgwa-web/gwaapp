@@ -191,7 +191,7 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
                     <div className="flex justify-between items-start">
                         <div>
                             <h1 className="text-lg font-medium text-slate-700 border-b-2 border-blue-600 pb-1 inline-block">
-                                Laboratório de Serviços Analíticos
+                                Relatório de Atendimento Técnico em Campo
                             </h1>
                         </div>
                         <div className="flex items-center gap-2">
