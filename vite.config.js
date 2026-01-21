@@ -16,7 +16,7 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: false, // We use the static public/manifest.json
       workbox: {
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB (increased for TipTap bundle)
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB (increased for PDF bundle)
       }
     })
   ],
