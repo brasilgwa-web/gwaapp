@@ -428,7 +428,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 margin: [30, 0, 20, 0], // Top: 30mm (Header), Bottom: 20mm (Footer)
                 filename: `relatorio_${visit.id}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
+                html2canvas: { scale: 1.5, useCORS: true, logging: false },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
@@ -562,8 +562,19 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 });
 
                 if (!uploadRes.ok) {
-                    console.error("Drive upload failed", await uploadRes.json());
-                    alert("Aviso: Falha ao salvar no Google Drive. Verifique o ID da pasta.");
+                    let errorMessage = "Erro desconhecido";
+                    try {
+                        const errorData = await uploadRes.json();
+                        errorMessage = errorData.message || JSON.stringify(errorData);
+                    } catch (e) {
+                        errorMessage = await uploadRes.text(); // Fallback for non-JSON errors (like 413 Payload Too Large)
+                    }
+                    console.error("Drive upload failed", errorMessage);
+                    if (errorMessage.includes("Too Large") || uploadRes.status === 413) {
+                        await alert({ title: 'Aviso', message: 'O relatório é muito grande para salvar automaticamente no Google Drive. Ele será enviado por e-mail.', type: 'warning' });
+                    } else {
+                        await alert({ title: 'Aviso', message: `Falha ao salvar no Google Drive: ${errorMessage}`, type: 'warning' });
+                    }
                 } else {
                     const responseData = await uploadRes.json();
                     driveLink = responseData.webViewLink;
