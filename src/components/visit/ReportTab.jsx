@@ -564,14 +564,19 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 if (!uploadRes.ok) {
                     let errorMessage = "Erro desconhecido";
                     try {
-                        const errorData = await uploadRes.json();
-                        errorMessage = errorData.message || JSON.stringify(errorData);
+                        const errorText = await uploadRes.text();
+                        try {
+                            const errorData = JSON.parse(errorText);
+                            errorMessage = errorData.message || JSON.stringify(errorData);
+                        } catch {
+                            errorMessage = errorText; // Use raw text if not JSON (e.g. 413 HTML response)
+                        }
                     } catch (e) {
-                        errorMessage = await uploadRes.text(); // Fallback for non-JSON errors (like 413 Payload Too Large)
+                        errorMessage = "Falha ao ler detalhes do erro";
                     }
                     console.error("Drive upload failed", errorMessage);
                     if (errorMessage.includes("Too Large") || uploadRes.status === 413) {
-                        await alert({ title: 'Aviso', message: 'O relatório é muito grande para salvar automaticamente no Google Drive. Ele será enviado por e-mail.', type: 'warning' });
+                        await alert({ title: 'Relatório Muito Grande', message: 'O arquivo PDF é muito pesado para ser enviado ao Google Drive automaticamente. O processo será finalizado e o relatório enviado por e-mail.', type: 'warning' });
                     } else {
                         await alert({ title: 'Aviso', message: `Falha ao salvar no Google Drive: ${errorMessage}`, type: 'warning' });
                     }
