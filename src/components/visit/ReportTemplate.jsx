@@ -187,23 +187,27 @@ export function ReportTemplate({ data, isPdfGeneration = false }) {
 
             <div className={`bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 print:w-full print:max-w-none print:min-h-screen ${isPdfGeneration ? 'w-full max-w-[210mm] p-[10mm] pb-[25mm]' : 'p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]'}`}>
 
-                {/* Header - Logo 1 à esquerda, Logo 2 à direita */}
+                {/* Header - Título à esquerda, Logos à direita */}
                 <header className="mb-4">
                     <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-4">
+                        <div>
                             <h1 className="text-lg font-medium text-slate-700 border-b-2 border-blue-600 pb-1 inline-block">
                                 Relatório de Atendimento Técnico em Campo
                             </h1>
-                            {/* Logo 1 - Ao lado do título */}
-                            {logoUrl && (
-                                <img src={logoUrl} alt="Logo 1" className="h-10 w-auto object-contain" />
-                            )}
                         </div>
-                        <div className="flex items-center gap-2">
-                            {/* Logo 2 - Lado direito */}
-                            {logo2Url ? (
-                                <img src={logo2Url} alt="Logo 2" className="h-10 w-auto object-contain" />
-                            ) : (
+                        <div className="flex items-center gap-6">
+                            {/* Logo 1 */}
+                            {logoUrl && (
+                                <img src={logoUrl} alt="Logo 1" className="h-12 w-auto max-w-[150px] object-contain" />
+                            )}
+
+                            {/* Logo 2 */}
+                            {logo2Url && (
+                                <img src={logo2Url} alt="Logo 2" className="h-12 w-auto max-w-[150px] object-contain" />
+                            )}
+
+                            {/* Fallback Text - Only if NO logos */}
+                            {!logoUrl && !logo2Url && (
                                 <>
                                     <div className="text-blue-600 font-bold text-xl">WGA</div>
                                     <span className="text-slate-700 font-medium">Brasil</span>
