@@ -253,7 +253,7 @@ Responda em português brasileiro:`);
                         Chave da API Gemini
                     </CardTitle>
                     <CardDescription>
-                        Configure a chave da API do Gemini. Se não informada, será usada a chave do arquivo .env
+                        Configure a chave da API do Gemini para usar a IA.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -277,7 +277,7 @@ Responda em português brasileiro:`);
                             </button>
                         </div>
                         <p className="text-xs text-slate-500">
-                            Deixe em branco para usar a chave configurada no servidor (.env)
+                            Insira sua chave da API do Google AI Studio (Gemini).
                         </p>
                     </div>
                     {apiKey && (
