@@ -325,20 +325,10 @@ Responda em português brasileiro:`);
                     </div>
 
                     {/* Actions */}
-                    <div className="flex justify-between items-center pt-4 border-t">
+                    <div className="flex justify-start pt-4 border-t">
                         <Button variant="outline" onClick={handleReset}>
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Restaurar Padrão
-                        </Button>
-                        <Button onClick={handleSaveAll} disabled={saveMutation.isPending}>
-                            {saveMutation.isPending ? (
-                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            ) : isSaved ? (
-                                <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" />
-                            ) : (
-                                <Save className="w-4 h-4 mr-2" />
-                            )}
-                            {isSaved ? 'Salvo!' : 'Salvar Tudo'}
                         </Button>
                     </div>
 
@@ -390,7 +380,7 @@ Responda em português brasileiro:`);
                     </div>
 
                     {/* Actions */}
-                    <div className="flex justify-end pt-2 border-t">
+                    <div className="flex justify-start pt-2 border-t">
                         <Button variant="outline" onClick={handleResetChatPrompt}>
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Restaurar Padrão
@@ -398,6 +388,20 @@ Responda em português brasileiro:`);
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Save All Button - Fixed at bottom */}
+            <div className="flex justify-end pt-4">
+                <Button onClick={handleSaveAll} disabled={saveMutation.isPending} size="lg">
+                    {saveMutation.isPending ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : isSaved ? (
+                        <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" />
+                    ) : (
+                        <Save className="w-4 h-4 mr-2" />
+                    )}
+                    {isSaved ? 'Salvo!' : 'Salvar Tudo'}
+                </Button>
+            </div>
         </div>
     );
 }
