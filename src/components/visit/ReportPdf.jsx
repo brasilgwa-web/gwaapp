@@ -291,15 +291,18 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#e2e8f0',
         flexDirection: 'row',
-        justifyContent: 'space-around',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
     },
     signatureBlock: {
         alignItems: 'center',
-        width: 200,
+        width: '45%',
+        marginBottom: 24,
     },
     signatureImage: {
         height: 50,
         marginBottom: 4,
+        objectFit: 'contain',
     },
     signatureLine: {
         width: '100%',
@@ -667,7 +670,7 @@ const ReportPdf = ({ data, settings }) => {
 
                 {/* --- SIGNATURES --- */}
                 <View style={styles.signaturesSection}>
-                    {/* Tech */}
+                    {/* Tech (Top Left) */}
                     <View style={styles.signatureBlock}>
                         {techSignature && <Image src={techSignature} style={styles.signatureImage} />}
                         <View style={styles.signatureLine}>
@@ -677,19 +680,7 @@ const ReportPdf = ({ data, settings }) => {
                         </View>
                     </View>
 
-                    {/* Technical Responsible */}
-                    {data.selectedTechnicalResponsible && (
-                        <View style={styles.signatureBlock}>
-                            {data.selectedTechnicalResponsible.signature_url && <Image src={data.selectedTechnicalResponsible.signature_url} style={styles.signatureImage} />}
-                            <View style={styles.signatureLine}>
-                                <Text style={styles.signatureName}>{data.selectedTechnicalResponsible.name}</Text>
-                                <Text style={styles.signatureRole}>Responsável Técnico - WGA Brasil</Text>
-                                <Text style={styles.signatureRole}>{data.selectedTechnicalResponsible.crq}</Text>
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Client */}
+                    {/* Client (Top Right) */}
                     <View style={styles.signatureBlock}>
                         {visit.client_signature_url ? (
                             <Image src={visit.client_signature_url} style={styles.signatureImage} />
@@ -700,8 +691,19 @@ const ReportPdf = ({ data, settings }) => {
                             <Text style={styles.signatureName}>{client?.contact_name || 'Cliente'}</Text>
                             <Text style={styles.signatureRole}>Responsável no Local</Text>
                         </View>
-
                     </View>
+
+                    {/* Technical Responsible (Bottom Left) */}
+                    {data.selectedTechnicalResponsible && (
+                        <View style={styles.signatureBlock}>
+                            {data.selectedTechnicalResponsible.signature_url && <Image src={data.selectedTechnicalResponsible.signature_url} style={styles.signatureImage} />}
+                            <View style={styles.signatureLine}>
+                                <Text style={styles.signatureName}>{data.selectedTechnicalResponsible.name}</Text>
+                                <Text style={styles.signatureRole}>Responsável Técnico - WGA Brasil</Text>
+                                <Text style={styles.signatureRole}>{data.selectedTechnicalResponsible.crq}</Text>
+                            </View>
+                        </View>
+                    )}
                 </View>
 
                 {renderFooter()}
