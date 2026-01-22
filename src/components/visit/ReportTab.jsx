@@ -39,6 +39,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [clientAbsent, setClientAbsent] = useState(visit.client_absent || false);
     const [showObsPreview, setShowObsPreview] = useState(true);
     const [technicalResponsibleId, setTechnicalResponsibleId] = useState(visit.technical_responsible_id || '');
+    const [aiValidated, setAiValidated] = useState(false);
 
     // Helper para converter markdown básico em HTML
     const renderMarkdown = (text) => {
@@ -653,6 +654,19 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             disabled={readOnly}
                         />
                     )}
+
+                    {!readOnly && (
+                        <div className="mt-4 flex items-center space-x-2 p-3 bg-blue-50 border border-blue-100 rounded-md">
+                            <Checkbox
+                                id="aiValidation"
+                                checked={aiValidated}
+                                onCheckedChange={setAiValidated}
+                            />
+                            <Label htmlFor="aiValidation" className="text-sm font-medium text-blue-900 cursor-pointer">
+                                Declaro que validei e ajustei se necessário o laudo fornecido pela IA
+                            </Label>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -773,7 +787,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     </Button>
                 )}
 
-                <Button className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleOpenPreview()} disabled={isSending || isLoadingReport}>
+                <Button className="w-full md:flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleOpenPreview()} disabled={isSending || isLoadingReport || (!readOnly && !aiValidated)} title={!readOnly && !aiValidated ? "Valide a análise técnica para continuar" : ""}>
                     {isSending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (readOnly ? <MonitorUp className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />)}
                     {readOnly ? "Reenviar e Salvar no Drive" : "Finalizar, Enviar e Salvar"}
                 </Button>
@@ -782,3 +796,4 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         </div>
     );
 }
+
