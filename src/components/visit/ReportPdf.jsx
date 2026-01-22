@@ -54,9 +54,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: 600,
         color: '#334155', // slate-700
-        borderBottomWidth: 2,
-
-        paddingBottom: 2,
         maxWidth: '55%', // Reverted to 55%
     },
     headerLogos: {
