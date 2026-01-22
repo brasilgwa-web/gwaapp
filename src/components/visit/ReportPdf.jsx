@@ -117,31 +117,35 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginBottom: 15,
-        borderTopWidth: 1,
-        borderTopColor: '#cbd5e1', // slate-300
         paddingTop: 10,
     },
     clientInfoColumn: {
         flex: 1,
+        paddingRight: 20,
     },
     clientRow: {
         flexDirection: 'row',
-        marginBottom: 2,
+        marginBottom: 4,
     },
     clientLabel: {
-        width: 80,
+        width: 100, // Increased width
+        fontSize: 9,
         color: '#64748b', // slate-500
     },
     clientValue: {
         flex: 1,
-        fontWeight: 500,
+        fontSize: 9,
+        fontWeight: 600, // bolder
+        color: '#0f172a', // slate-900
     },
     reportNumberBox: {
         borderWidth: 1,
-        borderColor: '#cbd5e1', // slate-300
-        padding: 8,
+        borderColor: '#94a3b8', // darker border
+        padding: 10,
         alignItems: 'center',
-        minWidth: 120,
+        justifyContent: 'center',
+        minWidth: 140,
+        height: 60,
     },
     reportNumberLabel: {
         fontSize: 8,
@@ -149,7 +153,7 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     reportNumberValue: {
-        fontSize: 16,
+        fontSize: 18, // Larger
         fontWeight: 700,
         color: '#0f172a', // slate-900
     },
@@ -164,15 +168,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#f8fafc', // slate-50
         borderWidth: 1,
         borderColor: '#e2e8f0', // slate-200
-        padding: 8,
-        borderRadius: 2,
+        padding: 10,
+        borderRadius: 4,
         marginBottom: 15,
     },
     timeCol: {
         flex: 1,
         borderLeftWidth: 1,
         borderLeftColor: '#e2e8f0',
-        paddingLeft: 8,
+        paddingLeft: 12,
     },
     firstTimeCol: {
         flex: 1,
@@ -180,14 +184,16 @@ const styles = StyleSheet.create({
         paddingLeft: 0,
     },
     timeLabel: {
-        fontSize: 8,
-        color: '#64748b',
+        fontSize: 7,
+        color: '#64748b', // slate-500
         textTransform: 'uppercase',
-        marginBottom: 2,
+        fontWeight: 600,
+        marginBottom: 4,
     },
     timeValue: {
+        fontSize: 10,
         fontWeight: 700,
-        color: '#1e293b',
+        color: '#1e293b', // slate-800
     },
     // Tables
     table: {
@@ -322,7 +328,9 @@ const MarkdownText = ({ text }) => {
 };
 
 const ReportPdf = ({ data, settings }) => {
-    const { visit, client, reportNumber, fullReportStructure, photos, techName, techSignature, primaryLocation, technicianUser } = data;
+    const { visit, client, fullReportStructure, photos, techName, techSignature, primaryLocation, technicianUser } = data;
+    // Fallback for reportNumber
+    const reportNumber = data.reportNumber || visit.report_number || 'PENDENTE';
     const footerText = settings?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
     const logoUrl = settings?.logo_url;
     const logo2Url = settings?.logo2_url;
