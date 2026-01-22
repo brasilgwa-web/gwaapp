@@ -177,7 +177,7 @@ export function ReportTemplate({ data }) {
                 <header className="mb-6">
                     <div className="flex justify-between items-start">
                         <div>
-                            <h1 className="text-lg font-medium text-slate-700 border-b-2 border-blue-600 pb-1 inline-block">
+                            <h1 className="text-lg font-medium text-slate-700 pb-1 inline-block">
                                 Relatório de Atendimento Técnico em Campo
                             </h1>
                         </div>
