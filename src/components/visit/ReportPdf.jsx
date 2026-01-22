@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     headerTitle: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: 600,
         color: '#334155', // slate-700
         borderBottomWidth: 2,
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
         // gap removed (not supported in all versions)
     },
     logo: {
-        height: 48, // h-12 approx
+        height: 36, // h-12 approx
         width: 'auto',
         maxWidth: 150,
         objectFit: 'contain',
