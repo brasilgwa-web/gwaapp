@@ -215,7 +215,9 @@ export default function Layout() {
         </Button>
         <div className="flex items-center gap-2">
           {reportSettings?.logo_url ? (
-            <img src={reportSettings.logo_url} alt="Logo" className="h-8 w-auto" />
+            <div className="bg-white/95 p-1.5 rounded-lg shadow-sm border border-slate-100">
+              <img src={reportSettings.logo_url} alt="Logo" className="h-8 w-auto mix-blend-multiply" />
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <div className="bg-blue-600 p-2 rounded-lg">
@@ -236,7 +238,9 @@ export default function Layout() {
           <div className="flex flex-col h-full">
             <div className="p-6 border-b border-slate-800 hidden lg:flex items-center gap-3">
               {reportSettings?.logo_url ? (
-                <img src={reportSettings.logo_url} alt="Logo" className="h-10 w-auto" />
+                <div className="bg-white/95 p-2 rounded-lg shadow-sm w-full flex justify-center border border-slate-100">
+                  <img src={reportSettings.logo_url} alt="Logo" className="h-10 w-auto object-contain mix-blend-multiply" />
+                </div>
               ) : (
                 <>
                   <div className="bg-blue-600 p-2 rounded-lg">
@@ -247,7 +251,7 @@ export default function Layout() {
               )}
             </div>
 
-            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
               {navigation.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
