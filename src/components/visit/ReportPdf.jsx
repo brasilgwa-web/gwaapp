@@ -18,8 +18,8 @@ Font.register({
 // Styles
 const styles = StyleSheet.create({
     page: {
-        paddingTop: 30, // Header space
-        paddingBottom: 60, // Footer space
+        paddingTop: 100, // Increased to avoid header overlap
+        paddingBottom: 80, // Increased for footer
         paddingHorizontal: 40,
         fontFamily: 'Inter',
         fontSize: 9,
@@ -39,11 +39,11 @@ const styles = StyleSheet.create({
         top: 0,
         left: 40,
         right: 40,
-        height: 60, // height of header
+        height: 80, // Increased height
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        paddingTop: 20,
+        paddingTop: 30, // More top padding
         marginBottom: 20,
     },
     headerTitle: {
@@ -57,13 +57,14 @@ const styles = StyleSheet.create({
     headerLogos: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        // gap removed (not supported in all versions)
     },
     logo: {
         height: 48, // h-12 approx
         width: 'auto',
         maxWidth: 150,
         objectFit: 'contain',
+        marginLeft: 10, // Replacement for gap
     },
     footer: {
         position: 'absolute',
@@ -99,13 +100,13 @@ const styles = StyleSheet.create({
         paddingBottom: 2,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4
+        // gap removed
     },
     sectionIndicator: {
         width: 4,
         height: 12,
         borderRadius: 2,
-        marginRight: 4,
+        marginRight: 6, // Increased spacing
     },
     // Client Grid
     clientGrid: {
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
     photoGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        // gap removed
     },
     photoContainer: {
         width: '48%',
@@ -265,6 +266,8 @@ const styles = StyleSheet.create({
         borderColor: '#e2e8f0',
         borderRadius: 4,
         overflow: 'hidden',
+        marginBottom: 10, // Replacement for vertical gap
+        marginRight: '2%', // Replacement for horizontal gap (approx)
     },
     photoImage: {
         width: '100%',
@@ -452,7 +455,7 @@ const ReportPdf = ({ data, settings }) => {
                                                 <View style={styles.dot} />
                                                 <Text>{eq.equipment.name}</Text>
                                             </View>
-                                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                                            <View style={{ flexDirection: 'row' }}>
                                                 {eq.sample?.collection_time && <Text style={{ color: '#475569', fontSize: 8 }}>Coleta: {eq.sample.collection_time.substring(0, 5)}h</Text>}
                                             </View>
                                         </View>
