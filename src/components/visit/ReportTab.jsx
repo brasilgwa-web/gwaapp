@@ -41,6 +41,9 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [technicalResponsibleId, setTechnicalResponsibleId] = useState(visit.technical_responsible_id || '');
     const [aiValidated, setAiValidated] = useState(false);
 
+    // Signature Pad Ref
+    const signaturePadRef = useRef(null);
+
     // Helper para converter markdown básico em HTML
     const renderMarkdown = (text) => {
         if (!text) return null;
@@ -346,6 +349,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     };
 
     // PDF & Email Logic
+    // signaturePadRef is defined at the top
+
     const handleOpenPreview = async () => {
         // Validation: If user has no CRQ, Technical Responsible is MANDATORY
         if (needsTechnicalResponsible && !technicalResponsibleId) {
@@ -356,6 +361,24 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             });
             return;
         }
+
+        // Auto-save Client Signature Logic
+        if (!readOnly && !clientAbsent && !visit.client_signature_url && signaturePadRef.current) {
+            const unsavedSig = signaturePadRef.current.getSignatureData();
+            if (unsavedSig) {
+                // We have a drawing but it wasn't saved yet
+                // Optimistically save it before confirming
+                try {
+                    await updateMutation.mutateAsync({
+                        client_signature_url: unsavedSig,
+                        service_end_time: new Date().toISOString()
+                    });
+                } catch (err) {
+                    console.error("Auto-save signature failed", err);
+                }
+            }
+        }
+
         // Simple confirmation instead of preview
         const actionLabel = readOnly ? "reenviar e salvar" : "finalizar, enviar e salvar";
         const confirmed = await confirm({
@@ -769,7 +792,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                         readOnly ? (
                             visit.client_signature_url ? <img src={visit.client_signature_url} className="h-24 border rounded bg-slate-50" alt="Assinatura" /> : <p className="text-slate-400 italic">Não assinado</p>
                         ) : (
-                            <SignaturePad savedUrl={visit.client_signature_url} onSave={handleSaveSignature} />
+                            <SignaturePad
+                                ref={signaturePadRef}
+                                savedUrl={visit.client_signature_url}
+                                onSave={handleSaveSignature}
+                            />
                         )
                     )}
                 </CardContent>

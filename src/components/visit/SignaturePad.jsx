@@ -1,12 +1,25 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Button } from "@/components/ui/button";
 import { Eraser, Check } from "lucide-react";
 
-export default function SignaturePad({ onSave, savedUrl }) {
+const SignaturePad = forwardRef(({ onSave, savedUrl }, ref) => {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [hasDrawing, setHasDrawing] = useState(false);
+
+    useImperativeHandle(ref, () => ({
+        getSignatureData: () => {
+            if (!hasDrawing && !savedUrl) return null;
+            // If already savedUrl, return it (though parent likely has it)
+            if (savedUrl) return savedUrl;
+
+            const canvas = canvasRef.current;
+            if (!canvas) return null;
+            return canvas.toDataURL('image/png');
+        },
+        hasUnsavedSignature: () => hasDrawing && !savedUrl
+    }));
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -157,4 +170,6 @@ export default function SignaturePad({ onSave, savedUrl }) {
             )}
         </div>
     );
-}
+});
+
+export default SignaturePad;

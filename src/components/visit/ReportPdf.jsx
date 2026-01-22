@@ -57,13 +57,13 @@ const styles = StyleSheet.create({
         borderBottomWidth: 2,
         borderBottomColor: '#2563eb', // blue-600
         paddingBottom: 2,
-        maxWidth: '45%', // Prevent title from extending into logo area
+        maxWidth: '55%', // Increased to 55% as requested
     },
     headerLogos: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        maxWidth: '50%', // Ensure logos don't take more than half the space
+        maxWidth: '40%', // Reduced to 40% as requested
         // gap removed (not supported in all versions)
     },
     logo: {
