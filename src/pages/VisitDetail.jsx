@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2, Beaker } from "lucide-react";
+import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2, Beaker, Bot } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from '@/lib/utils';
@@ -17,6 +17,7 @@ import ReadingsTab from "../components/visit/ReadingsTab";
 import ReportTab from "../components/visit/ReportTab";
 import DosageBoardTab from "../components/visit/DosageBoardTab";
 import { Card, CardContent } from "@/components/ui/card";
+import AIChat from "../components/visit/AIChat";
 
 
 // ... imports
@@ -27,6 +28,7 @@ export default function VisitDetailPage() {
     const [activeTab, setActiveTab] = useState('readings');
     const { user } = useAuth();
     const [isEditOpen, setIsEditOpen] = useState(false); // Edit Modal State
+    const [showChat, setShowChat] = useState(false);
 
     React.useEffect(() => {
         // Component loaded
@@ -138,15 +140,26 @@ export default function VisitDetailPage() {
                 </div>
                 {/* Edit Button */}
                 {!isReadOnly && (
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="text-blue-600 border-blue-200 bg-blue-50"
-                        title="Editar Detalhes"
-                        onClick={() => setIsEditOpen(true)}
-                    >
-                        <Save className="w-5 h-5" />
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            className={`border-purple-200 text-purple-700 hover:bg-purple-50 ${showChat ? 'bg-purple-100 ring-2 ring-purple-400' : ''}`}
+                            onClick={() => setShowChat(!showChat)}
+                            title="Assistente IA"
+                        >
+                            <Bot className="w-5 h-5 mr-2" />
+                            <span className="hidden md:inline">Pergunte a IA</span>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="text-blue-600 border-blue-200 bg-blue-50"
+                            title="Editar Detalhes"
+                            onClick={() => setIsEditOpen(true)}
+                        >
+                            <Save className="w-5 h-5" />
+                        </Button>
+                    </div>
                 )}
             </div>
 
@@ -247,6 +260,15 @@ export default function VisitDetailPage() {
                     </Button>
                 </div>
             </Tabs>
+
+            {/* AI Chat Global Component */}
+            <AIChat
+                isOpen={showChat}
+                onClose={() => setShowChat(false)}
+                visit={visit}
+                results={testResults || []}
+                dosages={[]} // Passed empty for now as it requires complex fetching
+            />
         </div>
     );
 }

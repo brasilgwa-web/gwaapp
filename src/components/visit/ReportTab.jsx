@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // ... imports ...
-import AIChat from "./AIChat";
+// ... imports ...
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
     if (!visit) return null;
@@ -31,9 +31,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [showObsPreview, setShowObsPreview] = useState(true);
     const [technicalResponsibleId, setTechnicalResponsibleId] = useState(visit.technical_responsible_id || '');
     const [aiValidated, setAiValidated] = useState(false);
-
-    // AI Chat State
-    const [showChat, setShowChat] = useState(false);
 
     // Signature Pad Ref
     const signaturePadRef = useRef(null);
