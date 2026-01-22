@@ -331,9 +331,14 @@ const MarkdownText = ({ text }) => {
 };
 
 const ReportPdf = ({ data, settings }) => {
-    const { visit, client, fullReportStructure, photos, techName, techSignature, primaryLocation, technicianUser } = data;
+    const { visit, client, fullReportStructure, photos, primaryLocation, technicianUser } = data;
     // Fallback for reportNumber
     const reportNumber = data.reportNumber || visit.report_number || 'PENDENTE';
+
+    // Resolve Technician Info
+    const techName = data.techName || technicianUser?.name || 'Técnico WGA';
+    const techSignature = data.techSignature || technicianUser?.signature_url;
+
     const footerText = settings?.footer_text || 'WGA Brasil Tratamento de Águas - Este relatório possui validade técnica.';
     const logoUrl = settings?.logo_url;
     const logo2Url = settings?.logo2_url;
