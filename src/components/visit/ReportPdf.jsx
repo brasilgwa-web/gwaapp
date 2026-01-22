@@ -55,23 +55,23 @@ const styles = StyleSheet.create({
         fontWeight: 600,
         color: '#334155', // slate-700
         borderBottomWidth: 2,
-        borderBottomColor: '#2563eb', // blue-600
+
         paddingBottom: 2,
-        maxWidth: '55%', // Increased to 55% as requested
+        maxWidth: '55%', // Reverted to 55%
     },
     headerLogos: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        maxWidth: '40%', // Reduced to 40% as requested
+        maxWidth: '40%', // Reverted to 40%
         // gap removed (not supported in all versions)
     },
     logo: {
-        height: 45, // Slightly taller as per "logos maiores" hint, but constrained by resize
+        height: 45, // Reverted
         width: 'auto',
-        maxWidth: 120, // Max width per logo to fit 2 side-by-side
-        objectFit: 'contain', // Ensures aspect ratio is preserved
-        marginLeft: 10, // Replacement for gap
+        maxWidth: 120, // Reverted
+        objectFit: 'contain',
+        marginLeft: 10,
     },
     footer: {
         position: 'absolute',

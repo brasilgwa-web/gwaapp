@@ -202,4 +202,66 @@ Responda em português brasileiro:`;
     }
 }
 
-export default { generateTechnicalAnalysis };
+export async function chatWithAI(messages, contextData) {
+    if (!GEMINI_API_KEY) throw new Error('API key não configurada');
+
+    const aiSettings = await getAISettings();
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model}:generateContent`;
+
+    // System instruction (context)
+    const systemInstruction = `
+Você é um assistente técnico especialista em tratamento de águas da WGA Brasil.
+Seu objetivo é ajudar o técnico de campo com dúvidas sobre o relatório, análises químicas, dosagens ou interpretação de resultados.
+
+CONTEXTO DA VISITA ATUAL:
+Cliente: ${contextData.client?.name || 'N/A'}
+Resultados:
+${contextData.resultsText || 'N/A'}
+Dosagens:
+${contextData.dosagesText || 'N/A'}
+
+Responda de forma curta, direta e técnica.
+`;
+
+    // Format messages for Gemini API
+    // First message should include system instruction or be a "user" message pretending to be system if using standard generateContent
+    // But better to prepend system text to the first user message or use "system" role if supported (Gemini 1.5 Pro supports system instructions via separate field, but let's stick to simple prompting for now)
+
+    const contents = messages.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+    }));
+
+    // Hack: Prepend system instruction to the very first message context if it's new
+    // Or simpler: Just prepend it to the latest message? No.
+    // Let's add the system context to the first prompt or as a developer instruction.
+    // For simplicity in this `generateContent` endpoint:
+    if (contents.length > 0 && contents[0].role === 'user') {
+        contents[0].parts[0].text = systemInstruction + "\n\n" + contents[0].parts[0].text;
+    } else if (contents.length === 0) {
+        // Should not accept empty start, but just in case
+        contents.push({ role: 'user', parts: [{ text: systemInstruction + "\n\nOlá" }] });
+    }
+
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: contents,
+            generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 1000,
+            }
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || 'Erro no chat IA');
+    }
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
+}
+
+export default { generateTechnicalAnalysis, chatWithAI };
