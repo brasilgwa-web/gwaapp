@@ -209,7 +209,7 @@ export async function chatWithAI(messages, contextData) {
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model}:generateContent`;
 
     // System instruction (context)
-    const systemInstruction = `
+    const systemInstructionText = `
 Você é um assistente técnico especialista em tratamento de águas da WGA Brasil.
 Seu objetivo é ajudar o técnico de campo com dúvidas sobre o relatório, análises químicas, dosagens ou interpretação de resultados.
 
@@ -227,6 +227,7 @@ Você deve responder EXCLUSIVAMENTE sobre os seguintes temas:
 
 IMPORTANTE:
 - Para qualquer assunto fora destes tópicos listados acima, você deve responder educadamente que: "Desculpe, não tenho informações sobre este assunto. Meu foco é exclusivamente em tratamento de águas e serviços da WGA Brasil."
+- NÃO responda a perguntas de conhecimentos gerais, história (ex: quem descobriu o Brasil), política, entretenimento, etc.
 - Reafirme seu objetivo principal se o usuário insistir.
 - Mantenha o tom profissional e técnico.
 
@@ -240,24 +241,17 @@ ${contextData.dosagesText || 'N/A'}
 Responda de forma curta, direta e técnica.
 `;
 
-    // Format messages for Gemini API
-    // First message should include system instruction or be a "user" message pretending to be system if using standard generateContent
-    // But better to prepend system text to the first user message or use "system" role if supported (Gemini 1.5 Pro supports system instructions via separate field, but let's stick to simple prompting for now)
-
     const contents = messages.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }]
     }));
 
-    // Hack: Prepend system instruction to the very first message context if it's new
-    // Or simpler: Just prepend it to the latest message? No.
-    // Let's add the system context to the first prompt or as a developer instruction.
-    // For simplicity in this `generateContent` endpoint:
-    if (contents.length > 0 && contents[0].role === 'user') {
-        contents[0].parts[0].text = systemInstruction + "\n\n" + contents[0].parts[0].text;
-    } else if (contents.length === 0) {
-        // Should not accept empty start, but just in case
-        contents.push({ role: 'user', parts: [{ text: systemInstruction + "\n\nOlá" }] });
+    // Reinforcement: Add a scope reminder to the last user message
+    if (contents.length > 0) {
+        const lastMsg = contents[contents.length - 1];
+        if (lastMsg.role === 'user') {
+            lastMsg.parts[0].text += "\n\n(Lembrete: Responda apenas se estiver no escopo de tratamento de águas/WGA. Caso contrário, recuse.)";
+        }
     }
 
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -265,8 +259,11 @@ Responda de forma curta, direta e técnica.
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             contents: contents,
+            systemInstruction: {
+                parts: [{ text: systemInstructionText }]
+            },
             generationConfig: {
-                temperature: 0.7,
+                temperature: 0.5, // Reduced temperature for more deterministic/strict behavior
                 maxOutputTokens: 1000,
             }
         })
