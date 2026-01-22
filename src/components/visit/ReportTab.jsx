@@ -13,8 +13,17 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// ... imports ...
-// ... imports ...
+import { useReportData } from '@/hooks/useReportData';
+import { pdf } from '@react-pdf/renderer';
+import ReportPdf from './ReportPdf';
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { formatDateAsLocal } from "@/lib/utils";
+import { Logger } from "@/lib/logger";
+import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock, Eye, EyeOff, PenTool } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import SignaturePad from "./SignaturePad";
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
     if (!visit) return null;
