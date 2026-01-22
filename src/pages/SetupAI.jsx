@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bot, Save, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Bot, Save, RefreshCw, AlertTriangle, CheckCircle2, Key, MessageSquare, Eye, EyeOff } from "lucide-react";
 
 const AVAILABLE_MODELS = [
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Rápido)' },
@@ -23,6 +23,9 @@ export default function SetupAI() {
     const [prompt, setPrompt] = useState('');
     const [model, setModel] = useState('gemini-2.5-flash');
     const [maxTokens, setMaxTokens] = useState('2048');
+    const [apiKey, setApiKey] = useState('');
+    const [chatPrompt, setChatPrompt] = useState('');
+    const [showApiKey, setShowApiKey] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
 
     // Fetch current AI settings
@@ -47,10 +50,14 @@ export default function SetupAI() {
             const promptSetting = settings.find(s => s.setting_key === 'technical_analysis_prompt');
             const modelSetting = settings.find(s => s.setting_key === 'gemini_model');
             const tokensSetting = settings.find(s => s.setting_key === 'max_output_tokens');
+            const apiKeySetting = settings.find(s => s.setting_key === 'gemini_api_key');
+            const chatPromptSetting = settings.find(s => s.setting_key === 'chat_system_prompt');
 
             if (promptSetting?.setting_value) setPrompt(promptSetting.setting_value);
             if (modelSetting?.setting_value) setModel(modelSetting.setting_value);
             if (tokensSetting?.setting_value) setMaxTokens(tokensSetting.setting_value);
+            if (apiKeySetting?.setting_value) setApiKey(apiKeySetting.setting_value);
+            if (chatPromptSetting?.setting_value) setChatPrompt(chatPromptSetting.setting_value);
         }
     }, [settings]);
 
@@ -93,12 +100,53 @@ export default function SetupAI() {
                 value: prompt,
                 description: 'Prompt usado para gerar análise técnica automática via Gemini AI'
             });
+            // Salvar API key apenas se preenchida
+            if (apiKey.trim()) {
+                await saveMutation.mutateAsync({
+                    key: 'gemini_api_key',
+                    value: apiKey.trim(),
+                    description: 'Chave da API do Gemini (sobrescreve .env)'
+                });
+            }
+            // Salvar prompt do chat apenas se preenchido
+            if (chatPrompt.trim()) {
+                await saveMutation.mutateAsync({
+                    key: 'chat_system_prompt',
+                    value: chatPrompt.trim(),
+                    description: 'Prompt do sistema para o assistente de chat'
+                });
+            }
             setIsSaved(true);
             setTimeout(() => setIsSaved(false), 2000);
         } catch (err) {
             // Error handled in mutation
         }
     };
+
+    const DEFAULT_CHAT_PROMPT = `Você é um assistente técnico especialista em tratamento de águas da WGA Brasil.
+Seu objetivo é ajudar o técnico de campo com dúvidas sobre o relatório, análises químicas, dosagens ou interpretação de resultados.
+
+ESCOPO DE ATUAÇÃO E ASSUNTOS PERMITIDOS:
+Você deve responder EXCLUSIVAMENTE sobre os seguintes temas:
+1. WGA Limpeza de Reservatórios
+2. Análises de Água
+3. 3D TRASAR da Nalco
+4. Tratamento de potabilidade
+5. Tratamento de Água de Caldeiras
+6. Tratamento de Água de Resfriamento
+7. Tratamento de Efluentes
+8. Biotecnologia
+9. Economia e Reuso de Água
+
+IMPORTANTE:
+- Para qualquer assunto fora destes tópicos, responda educadamente que não pode ajudar com esse assunto.
+- Mantenha o tom profissional e técnico.
+- Responda de forma curta, direta e técnica.
+
+VARIÁVEIS DISPONÍVEIS:
+{{client_name}} - Nome do cliente
+{{results}} - Resultados analíticos
+{{dosages}} - Dosagens aplicadas`;
 
     const handleReset = () => {
         setModel('gemini-2.5-flash');
@@ -132,6 +180,10 @@ FORMATO:
 - Finalize com recomendações práticas
 
 Responda em português brasileiro:`);
+    };
+
+    const handleResetChatPrompt = () => {
+        setChatPrompt(DEFAULT_CHAT_PROMPT);
     };
 
     if (isLoading) {
@@ -190,6 +242,52 @@ Responda em português brasileiro:`);
                             <p className="text-xs text-slate-500">Controla o tamanho da resposta (recomendado: 2048).</p>
                         </div>
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* API Key Card */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Key className="w-5 h-5 text-amber-600" />
+                        Chave da API Gemini
+                    </CardTitle>
+                    <CardDescription>
+                        Configure a chave da API do Gemini. Se não informada, será usada a chave do arquivo .env
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="apiKey">API Key</Label>
+                        <div className="relative">
+                            <Input
+                                id="apiKey"
+                                type={showApiKey ? "text" : "password"}
+                                value={apiKey}
+                                onChange={(e) => setApiKey(e.target.value)}
+                                placeholder="AIza..."
+                                className="pr-10 font-mono"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowApiKey(!showApiKey)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            >
+                                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                            Deixe em branco para usar a chave configurada no servidor (.env)
+                        </p>
+                    </div>
+                    {apiKey && (
+                        <div className="bg-green-50 p-3 rounded-lg border border-green-200 flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <span className="text-sm text-green-700">
+                                Usando chave personalizada ({apiKey.substring(0, 8)}...)
+                            </span>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -252,6 +350,51 @@ Responda em português brasileiro:`);
                             Modelo atual: <code className="bg-amber-100 px-1 rounded">{model}</code> |
                             Tokens: <code className="bg-amber-100 px-1 rounded">{maxTokens}</code>
                         </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Chat Prompt Card */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 text-blue-600" />
+                        Prompt do Assistente de Chat
+                    </CardTitle>
+                    <CardDescription>
+                        Configure o comportamento do assistente de chat durante as visitas técnicas.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {/* Variables Reference */}
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                        <h4 className="font-semibold text-blue-800 text-sm mb-2">Variáveis Disponíveis:</h4>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-blue-700">
+                            <div><code className="bg-blue-100 px-1 rounded">{"{{client_name}}"}</code> Nome do cliente</div>
+                            <div><code className="bg-blue-100 px-1 rounded">{"{{results}}"}</code> Resultados analíticos</div>
+                            <div><code className="bg-blue-100 px-1 rounded">{"{{dosages}}"}</code> Dosagens aplicadas</div>
+                        </div>
+                    </div>
+
+                    {/* Chat Prompt Editor */}
+                    <div className="space-y-2">
+                        <Label htmlFor="chatPrompt" className="text-sm font-medium">Prompt do Sistema</Label>
+                        <Textarea
+                            id="chatPrompt"
+                            value={chatPrompt}
+                            onChange={(e) => setChatPrompt(e.target.value)}
+                            rows={12}
+                            className="font-mono text-sm"
+                            placeholder="Digite o prompt do sistema para o chat assistente..."
+                        />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-end pt-2 border-t">
+                        <Button variant="outline" onClick={handleResetChatPrompt}>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Restaurar Padrão
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

@@ -19,7 +19,13 @@ async function getAISettings() {
 
         if (error) {
             console.warn('Could not load AI settings from DB, using defaults:', error);
-            return { model: DEFAULT_MODEL, maxTokens: DEFAULT_MAX_TOKENS, prompt: null };
+            return {
+                model: DEFAULT_MODEL,
+                maxTokens: DEFAULT_MAX_TOKENS,
+                prompt: null,
+                apiKey: GEMINI_API_KEY,
+                chatPrompt: null
+            };
         }
 
         const settings = {};
@@ -30,22 +36,32 @@ async function getAISettings() {
         return {
             model: settings.gemini_model || DEFAULT_MODEL,
             maxTokens: parseInt(settings.max_output_tokens) || DEFAULT_MAX_TOKENS,
-            prompt: settings.technical_analysis_prompt || null
+            prompt: settings.technical_analysis_prompt || null,
+            // Usar API key do banco se disponível, senão usar do .env
+            apiKey: settings.gemini_api_key || GEMINI_API_KEY,
+            chatPrompt: settings.chat_system_prompt || null
         };
     } catch (e) {
         console.warn('Error fetching AI settings:', e);
-        return { model: DEFAULT_MODEL, maxTokens: DEFAULT_MAX_TOKENS, prompt: null };
+        return {
+            model: DEFAULT_MODEL,
+            maxTokens: DEFAULT_MAX_TOKENS,
+            prompt: null,
+            apiKey: GEMINI_API_KEY,
+            chatPrompt: null
+        };
     }
 }
 
 export async function generateTechnicalAnalysis(visitData) {
-    if (!GEMINI_API_KEY) {
-        console.error('VITE_GEMINI_API_KEY not configured');
-        throw new Error('API key não configurada. Configure VITE_GEMINI_API_KEY no .env');
+    // Load settings from DB (including API key)
+    const aiSettings = await getAISettings();
+
+    if (!aiSettings.apiKey) {
+        console.error('API key not configured');
+        throw new Error('API key não configurada. Configure nas Configurações de IA ou no arquivo .env');
     }
 
-    // Load settings from DB
-    const aiSettings = await getAISettings();
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model}:generateContent`;
 
     const { client, results, dosages, observations, equipmentDataText } = visitData;
@@ -141,7 +157,7 @@ Responda em português brasileiro:`;
     // Função para fazer request com retry
     const makeRequest = async (attempt = 1, maxAttempts = 3, delayMs = 3000) => {
         try {
-            const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            const response = await fetch(`${GEMINI_API_URL}?key=${aiSettings.apiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -203,14 +219,15 @@ Responda em português brasileiro:`;
 }
 
 export async function chatWithAI(messages, contextData) {
-    if (!GEMINI_API_KEY) throw new Error('API key não configurada');
-
+    // Load settings from DB (including API key and chat prompt)
     const aiSettings = await getAISettings();
+
+    if (!aiSettings.apiKey) throw new Error('API key não configurada');
+
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model}:generateContent`;
 
-    // System instruction (context)
-    const systemInstructionText = `
-Você é um assistente técnico especialista em tratamento de águas da WGA Brasil.
+    // Default system prompt
+    const DEFAULT_CHAT_PROMPT = `Você é um assistente técnico especialista em tratamento de águas da WGA Brasil.
 Seu objetivo é ajudar o técnico de campo com dúvidas sobre o relatório, análises químicas, dosagens ou interpretação de resultados.
 
 ESCOPO DE ATUAÇÃO E ASSUNTOS PERMITIDOS:
@@ -231,14 +248,26 @@ IMPORTANTE:
 - Reafirme seu objetivo principal se o usuário insistir.
 - Mantenha o tom profissional e técnico.
 
+Responda de forma curta, direta e técnica.`;
+
+    // Use custom prompt from DB if available, otherwise use default
+    let basePrompt = aiSettings.chatPrompt || DEFAULT_CHAT_PROMPT;
+
+    // Replace variables in custom prompt
+    basePrompt = basePrompt
+        .replace(/\{\{client_name\}\}/gi, contextData.client?.name || 'N/A')
+        .replace(/\{\{results\}\}/gi, contextData.resultsText || 'N/A')
+        .replace(/\{\{dosages\}\}/gi, contextData.dosagesText || 'N/A');
+
+    // System instruction with context
+    const systemInstructionText = `${basePrompt}
+
 CONTEXTO DA VISITA ATUAL:
 Cliente: ${contextData.client?.name || 'N/A'}
 Resultados:
 ${contextData.resultsText || 'N/A'}
 Dosagens:
 ${contextData.dosagesText || 'N/A'}
-
-Responda de forma curta, direta e técnica.
 `;
 
     const contents = messages.map(msg => ({
@@ -254,7 +283,7 @@ Responda de forma curta, direta e técnica.
         }
     }
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`${GEMINI_API_URL}?key=${aiSettings.apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
