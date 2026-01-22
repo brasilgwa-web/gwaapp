@@ -26,6 +26,68 @@ const dataURLtoBlob = (dataurl) => {
     return new Blob([u8arr], { type: mime });
 };
 
+// Reusable Image Upload Component
+const ImageUploadCard = ({ title, description, icon: Icon, previewUrl, onFileSelect, file, inputRef, buttonLabel = "Escolher Imagem" }) => (
+    <Card>
+        <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+                {Icon && <Icon className="w-4 h-4 text-purple-500" />}
+                {title}
+            </CardTitle>
+            <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <div className="flex items-start gap-6">
+                {/* Preview */}
+                <div className="w-32 h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
+                    {previewUrl ? (
+                        <img
+                            src={previewUrl}
+                            alt="Preview"
+                            className="max-w-full max-h-full object-contain"
+                        />
+                    ) : (
+                        <div className="text-center text-slate-400">
+                            <Image className="w-8 h-8 mx-auto mb-1" />
+                            <span className="text-xs">Sem imagem</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Upload Button */}
+                <div className="space-y-2">
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) onFileSelect(file);
+                        }}
+                        className="hidden"
+                    />
+                    <Button
+                        variant="outline"
+                        onClick={() => inputRef.current?.click()}
+                    >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {buttonLabel}
+                    </Button>
+                    <p className="text-xs text-slate-500">
+                        Recomendado: PNG ou JPG, máximo 500KB
+                    </p>
+                    {file && (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            {file.name}
+                        </p>
+                    )}
+                </div>
+            </div>
+        </CardContent>
+    </Card>
+);
+
 export default function SetupReport() {
     const queryClient = useQueryClient();
     const { alert, confirm } = useConfirm();
@@ -207,13 +269,12 @@ export default function SetupReport() {
         onError: (err) => alert({ title: 'Erro', message: err.message, type: 'error' })
     });
 
-    const handleLogoChange = (e) => {
-        const file = e.target.files?.[0];
+    const handleFileSelect = (file, setFile, setPreview) => {
         if (file) {
-            setLogoFile(file);
+            setFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
-                setLogoPreview(reader.result);
+                setPreview(reader.result);
             };
             reader.readAsDataURL(file);
         }
@@ -568,144 +629,27 @@ export default function SetupReport() {
                     </Card>
 
                     {/* Logo Upload */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Image className="w-4 h-4 text-purple-500" />
-                                Logo do Relatório
-                            </CardTitle>
-                            <CardDescription>
-                                Faça upload do logo que será exibido nos relatórios PDF.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-start gap-6">
-                                {/* Preview */}
-                                <div className="w-32 h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
-                                    {logoPreview ? (
-                                        <img
-                                            src={logoPreview}
-                                            alt="Logo Preview"
-                                            className="max-w-full max-h-full object-contain"
-                                        />
-                                    ) : (
-                                        <div className="text-center text-slate-400">
-                                            <Image className="w-8 h-8 mx-auto mb-1" />
-                                            <span className="text-xs">Sem logo</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Upload Button */}
-                                <div className="space-y-2">
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleLogoChange}
-                                        className="hidden"
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => fileInputRef.current?.click()}
-                                    >
-                                        <Upload className="w-4 h-4 mr-2" />
-                                        Escolher Imagem
-                                    </Button>
-                                    <p className="text-xs text-slate-500">
-                                        Recomendado: PNG ou JPG, máximo 500KB
-                                    </p>
-                                    {logoFile && (
-                                        <p className="text-xs text-green-600 flex items-center gap-1">
-                                            <CheckCircle className="w-3 h-3" />
-                                            {logoFile.name}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <ImageUploadCard
+                        title="Logo do Relatório"
+                        description="Faça upload do logo que será exibido nos relatórios PDF."
+                        icon={Image}
+                        previewUrl={logoPreview}
+                        onFileSelect={(f) => handleFileSelect(f, setLogoFile, setLogoPreview)}
+                        file={logoFile}
+                        inputRef={fileInputRef}
+                    />
 
                     {/* Logo 2 Upload (Segundo Logo - Esquerda do Cabeçalho) */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Image className="w-4 h-4 text-orange-500" />
-                                Logo 2 (Lado Direito)
-                            </CardTitle>
-                            <CardDescription>
-                                Segundo logo que aparece ao lado do título do relatório.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-start gap-6">
-                                {/* Preview */}
-                                <div className="w-32 h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
-                                    {logo2Preview ? (
-                                        <img
-                                            src={logo2Preview}
-                                            alt="Logo 2 Preview"
-                                            className="max-w-full max-h-full object-contain"
-                                        />
-                                    ) : (
-                                        <div className="text-center text-slate-400">
-                                            <Image className="w-8 h-8 mx-auto mb-1" />
-                                            <span className="text-xs">Sem logo</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Upload Button */}
-                                <div className="space-y-2">
-                                    <input
-                                        ref={logo2InputRef}
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) {
-                                                setLogo2File(file);
-                                                const reader = new FileReader();
-                                                reader.onloadend = () => setLogo2Preview(reader.result);
-                                                reader.readAsDataURL(file);
-                                            }
-                                        }}
-                                        className="hidden"
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => logo2InputRef.current?.click()}
-                                    >
-                                        <Upload className="w-4 h-4 mr-2" />
-                                        Escolher Logo 2
-                                    </Button>
-                                    <p className="text-xs text-slate-500">
-                                        Recomendado: PNG ou JPG, máximo 500KB
-                                    </p>
-                                    {logo2File && (
-                                        <p className="text-xs text-green-600 flex items-center gap-1">
-                                            <CheckCircle className="w-3 h-3" />
-                                            {logo2File.name}
-                                        </p>
-                                    )}
-                                    {logo2Preview && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="text-red-600 hover:text-red-700"
-                                            onClick={() => {
-                                                setLogo2File(null);
-                                                setLogo2Preview(null);
-                                            }}
-                                        >
-                                            <Trash2 className="w-4 h-4 mr-1" />
-                                            Remover
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <ImageUploadCard
+                        title="Logo 2 (Lado Direito)"
+                        description="Segundo logo que aparece ao lado do título do relatório."
+                        icon={Image}
+                        previewUrl={logo2Preview}
+                        onFileSelect={(f) => handleFileSelect(f, setLogo2File, setLogo2Preview)}
+                        file={logo2File}
+                        inputRef={logo2InputRef}
+                        buttonLabel="Escolher Logo 2"
+                    />
 
                     {/* Footer Text */}
                     <Card>
