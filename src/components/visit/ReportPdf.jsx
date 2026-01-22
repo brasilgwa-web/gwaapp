@@ -444,7 +444,7 @@ const ReportPdf = ({ data, settings }) => {
                 </View>
 
                 {/* --- ANALYTICAL RESULTS --- */}
-                <View style={styles.section} break>
+                <View style={styles.section}>
                     <View style={styles.sectionTitle}>
                         <View style={{ ...styles.sectionIndicator, backgroundColor: '#2563eb' }} />
                         <Text>Resultados Analíticos</Text>
@@ -515,7 +515,7 @@ const ReportPdf = ({ data, settings }) => {
                 </View>
 
                 {/* --- DOSAGES --- */}
-                <View style={styles.section} break>
+                <View style={styles.section}>
                     <View style={styles.sectionTitle}>
                         <View style={{ ...styles.sectionIndicator, backgroundColor: '#16a34a' }} />
                         <Text>Quadro de Dosagens e Estoques</Text>
@@ -563,7 +563,7 @@ const ReportPdf = ({ data, settings }) => {
 
                 {/* --- DISCHARGES --- */}
                 {visit.discharges_drainages && (
-                    <View style={styles.section} break>
+                    <View style={styles.section}>
                         <View style={styles.sectionTitle}>
                             <Text>Descargas e Drenagens</Text>
                         </View>
@@ -574,7 +574,7 @@ const ReportPdf = ({ data, settings }) => {
                 )}
 
                 {/* --- TECH ANALYSIS --- */}
-                <View style={styles.section} break>
+                <View style={styles.section}>
                     <View style={styles.sectionTitle}>
                         <Text>Análise Técnica</Text>
                     </View>
@@ -584,7 +584,7 @@ const ReportPdf = ({ data, settings }) => {
                 </View>
 
                 {/* --- GENERAL OBS --- */}
-                <View style={styles.section} break>
+                <View style={styles.section}>
                     <View style={styles.sectionTitle}>
                         <Text>Observações Gerais</Text>
                     </View>
@@ -595,7 +595,7 @@ const ReportPdf = ({ data, settings }) => {
 
                 {/* --- PHOTOS --- */}
                 {photos && photos.length > 0 && (
-                    <View style={styles.section} break>
+                    <View style={styles.section}>
                         <View style={styles.sectionTitle}>
                             <Text>Registro Fotográfico</Text>
                         </View>
@@ -611,7 +611,7 @@ const ReportPdf = ({ data, settings }) => {
 
                 {/* --- COMMENTS / ORIENTATIONS (Fixed Text) --- */}
                 {fullReportStructure?.length > 0 && (
-                    <View style={styles.section} break>
+                    <View style={styles.section}>
                         <View style={styles.sectionTitle}>
                             <Text>Comentários/Orientações</Text>
                         </View>
@@ -666,7 +666,7 @@ const ReportPdf = ({ data, settings }) => {
                 )}
 
                 {/* --- SIGNATURES --- */}
-                <View style={styles.signaturesSection} break>
+                <View style={styles.signaturesSection}>
                     {/* Tech */}
                     <View style={styles.signatureBlock}>
                         {techSignature && <Image src={techSignature} style={styles.signatureImage} />}
