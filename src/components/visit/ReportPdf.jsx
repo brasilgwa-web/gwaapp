@@ -31,9 +31,12 @@ const styles = StyleSheet.create({
         margin: 0,
     },
     coverImage: {
-        width: '100%',
+        position: 'absolute',
+        minWidth: '100%',
+        minHeight: '100%',
+        display: 'block',
         height: '100%',
-        objectFit: 'cover', // Ensures full bleed
+        width: '100%',
     },
     header: {
         position: 'absolute',
