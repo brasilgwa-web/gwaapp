@@ -57,17 +57,20 @@ const styles = StyleSheet.create({
         borderBottomWidth: 2,
         borderBottomColor: '#2563eb', // blue-600
         paddingBottom: 2,
+        maxWidth: '45%', // Prevent title from extending into logo area
     },
     headerLogos: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'flex-end',
+        maxWidth: '50%', // Ensure logos don't take more than half the space
         // gap removed (not supported in all versions)
     },
     logo: {
-        height: 36, // h-12 approx
+        height: 45, // Slightly taller as per "logos maiores" hint, but constrained by resize
         width: 'auto',
-        maxWidth: 150,
-        objectFit: 'contain',
+        maxWidth: 120, // Max width per logo to fit 2 side-by-side
+        objectFit: 'contain', // Ensures aspect ratio is preserved
         marginLeft: 10, // Replacement for gap
     },
     footer: {
