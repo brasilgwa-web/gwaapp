@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
         height: 80, // Increased height
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        alignItems: 'flex-end', // Aligns title underline with logos bottom
         paddingTop: 30, // More top padding
         marginBottom: 20,
     },
