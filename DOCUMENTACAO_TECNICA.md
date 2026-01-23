@@ -306,5 +306,5 @@ npm run preview
 ---
 
 *Documento criado em: Dezembro 2024*
-*Atualizado em: Janeiro 2025*
-*Versão do Sistema: 1.4.0*
+*Atualizado em: Janeiro 2026*
+*Versão do Sistema: 1.0.25*

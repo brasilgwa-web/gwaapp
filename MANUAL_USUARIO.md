@@ -1,7 +1,7 @@
 # 📱 WGA Brasil - Manual do Usuário
 
 > **Sistema de Gerenciamento de Visitas Técnicas**
-> Versão 1.3.0
+> Versão 1.0.25
 
 ---
 
@@ -612,4 +612,4 @@ Em caso de problemas, entre em contato com o administrador do sistema.
 ---
 
 *Manual do Usuário - WGA Brasil*
-*Versão 1.3.0 | Dezembro 2024*
+*Versão 1.0.25 | Janeiro 2026*
