@@ -1,0 +1,714 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WGA Brasil - Manual do Usuário</title>
+    
+<style>
+    body {
+        font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+        line-height: 1.6;
+        color: #24292f;
+        background-color: #ffffff;
+        max-width: 896px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    h1, h2, h3, h4, h5, h6 { margin-top: 24px; margin-bottom: 16px; font-weight: 600; line-height: 1.25; }
+    h1 { font-size: 2em; padding-bottom: 0.3em; border-bottom: 1px solid #eaecef; }
+    h2 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 1px solid #eaecef; }
+    h3 { font-size: 1.25em; }
+    p { margin-top: 0; margin-bottom: 16px; }
+    code { font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace; background-color: #f6f8fa; padding: 0.2em 0.4em; border-radius: 6px; font-size: 85%; }
+    pre { background-color: #f6f8fa; padding: 16px; overflow: auto; border-radius: 6px; }
+    pre code { background-color: transparent; padding: 0; }
+    blockquote { padding: 0 1em; color: #6a737d; border-left: 0.25em solid #dfe2e5; margin: 0 0 16px 0; }
+    table { display: block; width: 100%; overflow: auto; border-spacing: 0; border-collapse: collapse; margin-bottom: 16px; }
+    table tr { background-color: #fff; border-top: 1px solid #c6cbd1; }
+    table tr:nth-child(2n) { background-color: #f6f8fa; }
+    table th, table td { padding: 6px 13px; border: 1px solid #dfe2e5; }
+    table th { font-weight: 600; }
+    img { max-width: 100%; box-sizing: content-box; background-color: #fff; }
+    hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: #e1e4e8; border: 0; }
+    a { color: #0969da; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .header { text-align: center; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #eaecef; }
+    .footer { margin-top: 4rem; text-align: center; font-size: 0.8rem; color: #6a737d; }
+</style>
+
+</head>
+<body>
+    <div class="content">
+        <h1>📱 WGA Brasil - Manual do Usuário</h1>
+<blockquote>
+<p><strong>Sistema de Gerenciamento de Visitas Técnicas</strong>
+Versão 1.3.0</p>
+</blockquote>
+<hr>
+<h2>📑 Índice</h2>
+<ol>
+<li><a href="#introdu%C3%A7%C3%A3o">Introdução</a></li>
+<li><a href="#primeiro-uso-e-configura%C3%A7%C3%A3o-inicial">Primeiro Uso e Configuração Inicial</a></li>
+<li><a href="#acesso-ao-sistema">Acesso ao Sistema</a></li>
+<li><a href="#dashboard">Dashboard</a></li>
+<li><a href="#visitas-t%C3%A9cnicas">Visitas Técnicas</a></li>
+<li><a href="#detalhes-da-visita">Detalhes da Visita</a></li>
+<li><a href="#clientes">Clientes</a></li>
+<li><a href="#equipamentos">Equipamentos</a></li>
+<li><a href="#testesensaios">Testes/Ensaios</a></li>
+<li><a href="#produtos">Produtos</a></li>
+<li><a href="#templates-de-observa%C3%A7%C3%A3o">Templates de Observação</a></li>
+<li><a href="#configura%C3%A7%C3%A3o-de-ia">Configuração de IA</a></li>
+<li><a href="#assistente-ia-chatbot">Assistente IA (Chatbot)</a></li>
+<li><a href="#gerenciamento-de-usu%C3%A1rios">Gerenciamento de Usuários</a></li>
+<li><a href="#meu-perfil">Meu Perfil</a></li>
+</ol>
+<hr>
+<h2>📖 Introdução</h2>
+<p>O <strong>WGA Brasil</strong> é um sistema completo para gerenciamento de visitas técnicas de tratamento de água. Ele permite:</p>
+<ul>
+<li>✅ Registrar visitas e leituras em campo</li>
+<li>✅ Controlar dosagens de produtos químicos</li>
+<li>✅ Tirar e anexar fotos</li>
+<li>✅ Gerar relatórios automáticos com IA</li>
+<li>✅ Enviar relatórios por email</li>
+<li>✅ Salvar relatórios no Google Drive</li>
+<li>✅ Gerenciar estoque de produtos por cliente</li>
+</ul>
+<hr>
+<h2>🚀 Primeiro Uso e Configuração Inicial</h2>
+<blockquote>
+<p>⚠️ <strong>Importante:</strong> O sistema possui dependências funcionais entre os cadastros. Siga a ordem abaixo para evitar problemas.</p>
+</blockquote>
+<h3>Ordem de Configuração</h3>
+<p>Para que o sistema funcione corretamente, os cadastros devem ser feitos <strong>nesta ordem</strong>:</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│  1. TESTES          →  Definir os ensaios/análises que serão    │
+│                        realizados (pH, Cloro, Condutividade...) │
+├─────────────────────────────────────────────────────────────────┤
+│  2. PRODUTOS        →  Cadastrar produtos químicos que serão    │
+│                        dosados (Biocida, Antiincrustante...)    │
+├─────────────────────────────────────────────────────────────────┤
+│  3. EQUIPAMENTOS    →  Criar tipos de equipamentos e associar   │
+│                        os testes e produtos padrão              │
+├─────────────────────────────────────────────────────────────────┤
+│  4. CLIENTES        →  Cadastrar os clientes                    │
+├─────────────────────────────────────────────────────────────────┤
+│  5. LOCAIS          →  Criar locais/unidades dentro do cliente  │
+├─────────────────────────────────────────────────────────────────┤
+│  6. EQUIPAMENTOS    →  Adicionar equipamentos em cada local     │
+│     NO LOCAL           do cliente                               │
+├─────────────────────────────────────────────────────────────────┤
+│  7. VISITAS         →  Agora você pode criar visitas técnicas!  │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3>Dependências Funcionais</h3>
+<table>
+<thead>
+<tr>
+<th>Para fazer...</th>
+<th>Você precisa antes ter...</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Registrar <strong>leituras</strong> em uma visita</td>
+<td>Equipamentos com testes associados no local</td>
+</tr>
+<tr>
+<td>Registrar <strong>dosagens</strong> em uma visita</td>
+<td>Equipamentos com produtos associados no local</td>
+</tr>
+<tr>
+<td>Criar <strong>visita</strong> para um cliente</td>
+<td>Cliente com pelo menos um local cadastrado</td>
+</tr>
+<tr>
+<td>Adicionar <strong>equipamento</strong> no local</td>
+<td>Tipo de equipamento cadastrado</td>
+</tr>
+<tr>
+<td>Associar <strong>teste</strong> a equipamento</td>
+<td>Teste cadastrado em Cadastros &gt; Testes</td>
+</tr>
+<tr>
+<td>Associar <strong>produto</strong> a equipamento</td>
+<td>Produto cadastrado em Cadastros &gt; Produtos</td>
+</tr>
+<tr>
+<td>Controlar <strong>estoque</strong> do cliente</td>
+<td>Produto cadastrado e adicionado ao estoque do cliente</td>
+</tr>
+</tbody></table>
+<h3>Guia Rápido: Primeira Configuração</h3>
+<p><strong>Passo 1:</strong> Cadastrar Testes</p>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>Testes</strong></li>
+<li>Cadastre os testes que você realiza (ex: pH, Condutividade, Cloro Livre)</li>
+<li>Defina as faixas ideais e limites críticos</li>
+</ol>
+<p><strong>Passo 2:</strong> Cadastrar Produtos</p>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>Produtos</strong></li>
+<li>Cadastre os produtos químicos (ex: Biocida, Antiincrustante)</li>
+</ol>
+<p><strong>Passo 3:</strong> Criar Tipos de Equipamentos</p>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>Equipamentos</strong></li>
+<li>Crie tipos como &quot;Torre de Resfriamento&quot;, &quot;Caldeira&quot;</li>
+<li>Associe os testes e produtos padrão a cada tipo</li>
+</ol>
+<p><strong>Passo 4:</strong> Cadastrar Cliente</p>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>Clientes</strong></li>
+<li>Adicione o cliente com nome, email, telefone</li>
+</ol>
+<p><strong>Passo 5:</strong> Criar Local no Cliente</p>
+<ol>
+<li>Dentro do cliente, clique em <strong>+ Adicionar Local</strong></li>
+<li>Dê um nome (ex: &quot;Matriz&quot;, &quot;Torre 1&quot;)</li>
+</ol>
+<p><strong>Passo 6:</strong> Adicionar Equipamentos no Local</p>
+<ol>
+<li>Selecione o local do cliente</li>
+<li>Clique em <strong>+ Adicionar Equipamento</strong></li>
+<li>Escolha o tipo (os testes/produtos serão herdados)</li>
+<li>Personalize os testes/produtos se necessário</li>
+</ol>
+<p><strong>Passo 7:</strong> Pronto! Criar Visita</p>
+<ol>
+<li>Vá em <strong>Visitas</strong> &gt; <strong>+ Nova Visita</strong></li>
+<li>Selecione o cliente e data</li>
+<li>Os equipamentos e testes aparecerão automaticamente</li>
+</ol>
+<blockquote>
+<p>💡 <strong>Dica:</strong> Se os testes ou dosagens não aparecem em uma visita, verifique se o equipamento do local tem testes/produtos associados.</p>
+</blockquote>
+<hr>
+<h2>🔐 Acesso ao Sistema</h2>
+<h3>Login</h3>
+<ol>
+<li>Acesse <code>https://gwaapp.vercel.app</code></li>
+<li>Digite seu <strong>Email</strong> e <strong>Senha</strong></li>
+<li>Clique em <strong>Entrar</strong></li>
+</ol>
+<p><img src="docs/images/login.png" alt="Tela de Login"></p>
+<blockquote>
+<p>💡 Se esqueceu a senha, entre em contato com o administrador.</p>
+</blockquote>
+<h3>Primeiro Acesso</h3>
+<p>Novos usuários precisam ser aprovados por um administrador antes de acessar o sistema.</p>
+<hr>
+<h2>📊 Dashboard</h2>
+<p>O Dashboard exibe indicadores e estatísticas das visitas.</p>
+<p><img src="docs/images/dashboard.png" alt="Dashboard Executivo"></p>
+<h3>Filtros Disponíveis</h3>
+<table>
+<thead>
+<tr>
+<th>Filtro</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Cliente</strong></td>
+<td>Filtra por cliente específico</td>
+</tr>
+<tr>
+<td><strong>Técnico</strong></td>
+<td>Filtra por técnico responsável</td>
+</tr>
+<tr>
+<td><strong>Período</strong></td>
+<td>Hoje, 7 dias, 30 dias, 90 dias, 6 meses, Ano, ou personalizado</td>
+</tr>
+</tbody></table>
+<h3>Cards de KPIs</h3>
+<ul>
+<li><strong>Total de Visitas</strong> - Quantidade de visitas no período</li>
+<li><strong>Finalizadas</strong> - Visitas concluídas</li>
+<li><strong>Pendentes</strong> - Visitas ainda não finalizadas</li>
+<li><strong>Não Sincronizadas</strong> - Visitas finalizadas mas não enviadas</li>
+</ul>
+<h3>Gráficos</h3>
+<ul>
+<li><strong>Evolução Mensal</strong> - Visitas por mês (últimos 6 meses)</li>
+<li><strong>Status das Visitas</strong> - Pizza/Rosca com distribuição por status</li>
+<li><strong>Tempo por Visita</strong> - Tempo médio de cada visita</li>
+</ul>
+<h3>Ranking de Pontos Críticos</h3>
+<p>Lista os testes que mais tiveram resultados críticos (fora do padrão).</p>
+<h3>Visitas Pendentes</h3>
+<p>Tabela com visitas que ainda precisam de ação.</p>
+<h3>Personalização</h3>
+<p>Clique no ícone ⚙️ para:</p>
+<ul>
+<li>Mostrar/ocultar widgets</li>
+<li>Reordenar os cards do dashboard</li>
+</ul>
+<hr>
+<h2>📋 Visitas Técnicas</h2>
+<h3>Visualizar Visitas</h3>
+<ol>
+<li>Clique em <strong>Visitas</strong> no menu lateral</li>
+<li>Use os filtros de data e técnico</li>
+<li>Clique em uma visita para ver detalhes</li>
+</ol>
+<p><img src="docs/images/visitas.png" alt="Lista de Visitas"></p>
+<h3>Criar Nova Visita</h3>
+<ol>
+<li>Clique no botão <strong>+ Nova Visita</strong></li>
+<li>Selecione a <strong>Data</strong></li>
+<li>Escolha o <strong>Cliente</strong></li>
+<li>A visita será criada e você será direcionado aos detalhes</li>
+</ol>
+<h3>Status das Visitas</h3>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Cor</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Agendada</strong></td>
+<td>🔵 Azul</td>
+<td>Visita programada</td>
+</tr>
+<tr>
+<td><strong>Em Andamento</strong></td>
+<td>🟡 Amarelo</td>
+<td>Técnico em campo</td>
+</tr>
+<tr>
+<td><strong>Concluída</strong></td>
+<td>🟢 Verde</td>
+<td>Finalizada localmente</td>
+</tr>
+<tr>
+<td><strong>Enviada</strong></td>
+<td>🟣 Roxo</td>
+<td>Relatório enviado ao cliente</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>🔍 Detalhes da Visita</h2>
+<p>Cada visita possui 5 abas:</p>
+<h3>Aba: Leituras</h3>
+<p>Registre os resultados dos testes/ensaios por equipamento:</p>
+<ol>
+<li>Selecione o <strong>Local</strong> (se houver múltiplos)</li>
+<li>Para cada equipamento, clique para expandir</li>
+<li>Digite o <strong>valor</strong> de cada teste</li>
+<li>Observe os indicadores:<ul>
+<li>🟢 Verde = Dentro da faixa</li>
+<li>🟡 Amarelo = Atenção</li>
+<li>🔴 Vermelho = Crítico</li>
+</ul>
+</li>
+</ol>
+<p><img src="docs/images/visita_leituras.png" alt="Aba Leituras"></p>
+<blockquote>
+<p>💡 Os valores são salvos automaticamente ao sair do campo.</p>
+</blockquote>
+<h3>Aba: Dosagens</h3>
+<p>Controle os produtos químicos aplicados:</p>
+<ol>
+<li>Veja os produtos configurados para cada equipamento</li>
+<li>Digite a <strong>dosagem aplicada</strong> (em ml, g, etc.)</li>
+<li>O sistema calcula automaticamente o débito no estoque</li>
+</ol>
+<p><img src="docs/images/visita_dosagens.png" alt="Aba Dosagens"></p>
+<p><strong>Funcionalidades:</strong></p>
+<ul>
+<li>Ver estoque atual do cliente</li>
+<li>Ver dosagem padrão recomendada</li>
+<li>Alertas de estoque baixo</li>
+</ul>
+<h3>Aba: Fotos</h3>
+<p>Registre fotos da visita:</p>
+<ol>
+<li>Clique em <strong>+ Adicionar Foto</strong></li>
+<li>Tire a foto ou selecione da galeria</li>
+<li>As fotos ficam anexadas à visita</li>
+</ol>
+<p><img src="docs/images/visita_fotos.png" alt="Aba Fotos"></p>
+<p>Para excluir: clique no ícone 🗑️ sobre a foto.</p>
+<h3>Aba: Detalhes</h3>
+<p>Informações gerais da visita:</p>
+<ul>
+<li>Cliente</li>
+<li>Local</li>
+<li>Data</li>
+<li>Status</li>
+<li>Técnico responsável</li>
+</ul>
+<p><img src="docs/images/visita_detalhes.png" alt="Aba Detalhes"></p>
+<h3>Aba: Relatório</h3>
+<p><img src="docs/images/visita_relatorio.png" alt="Aba Relatório"></p>
+<h4>Observações</h4>
+<ol>
+<li><strong>Observações Gerais</strong> - Observações sobre a visita</li>
+<li><strong>Descargas e Drenos</strong> - Informações sobre descargas realizadas</li>
+</ol>
+<blockquote>
+<p>💡 Use o botão <strong>+ Template</strong> para inserir textos pré-definidos.</p>
+</blockquote>
+<h4>Gerar Análise com IA</h4>
+<ol>
+<li>Clique em <strong>Gerar Análise IA</strong></li>
+<li>A IA analisa os resultados e dosagens</li>
+<li>Gera uma análise técnica automática</li>
+<li>O texto é adicionado às observações</li>
+</ol>
+<h4>Assinatura do Cliente</h4>
+<ol>
+<li>Use o quadro de assinatura digital</li>
+<li>Cliente assina com o dedo ou caneta</li>
+<li>Clique em <strong>Salvar</strong></li>
+</ol>
+<h4>Finalizar Visita</h4>
+<p><strong>Finalizar Localmente:</strong></p>
+<ul>
+<li>Clique em <strong>Finalizar Localmente</strong></li>
+<li>O estoque será debitado</li>
+<li>Status muda para &quot;Concluída&quot;</li>
+</ul>
+<p><strong>Finalizar, Enviar e Salvar:</strong></p>
+<ul>
+<li>Clique em <strong>Finalizar, Enviar e Salvar</strong></li>
+<li>Confirme a ação</li>
+<li>O sistema:<ol>
+<li>Gera o PDF do relatório</li>
+<li>Salva no Google Drive do cliente</li>
+<li>Envia por email ao cliente</li>
+<li>Status muda para &quot;Enviada&quot;</li>
+</ol>
+</li>
+</ul>
+<h4>Reabrir Visita</h4>
+<p>Se precisar corrigir algo:</p>
+<ol>
+<li>Clique em <strong>Reabrir Visita</strong></li>
+<li>O estoque será estornado</li>
+<li>Faça as correções</li>
+<li>Finalize novamente</li>
+</ol>
+<h3>Navegação entre Abas</h3>
+<p>Use os botões <strong>&lt; Anterior</strong> e <strong>Próximo &gt;</strong> no final da página para navegar sem precisar rolar até o topo.</p>
+<hr>
+<h2>👥 Clientes</h2>
+<h3>Cadastrar Cliente</h3>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>Clientes</strong></li>
+<li>Clique em <strong>+ Novo Cliente</strong></li>
+<li>Preencha:<ul>
+<li><strong>Nome</strong> (obrigatório)</li>
+<li><strong>CNPJ</strong></li>
+<li><strong>Endereço</strong></li>
+<li><strong>Telefone</strong></li>
+<li><strong>Email</strong> (para receber relatórios)</li>
+<li><strong>ID da Pasta do Drive</strong> (para salvar PDFs)</li>
+<li><strong>Descargas Padrão</strong> (texto automático no relatório)</li>
+</ul>
+</li>
+</ol>
+<p><img src="docs/images/clientes.png" alt="Cadastro de Clientes"></p>
+<h3>Gerenciar Locais</h3>
+<p>Cada cliente pode ter múltiplos locais (filiais, torres, etc.):</p>
+<ol>
+<li>Clique no cliente</li>
+<li>Clique em <strong>+ Adicionar Local</strong></li>
+<li>Preencha o nome do local</li>
+</ol>
+<h3>Configurar Equipamentos por Local</h3>
+<ol>
+<li>Selecione o local</li>
+<li>Clique em <strong>+ Adicionar Equipamento</strong></li>
+<li>Escolha o tipo de equipamento</li>
+<li>Configure os testes que serão realizados</li>
+<li>Configure os produtos que serão dosados</li>
+</ol>
+<hr>
+<h2>⚙️ Equipamentos</h2>
+<h3>Tipos de Equipamentos</h3>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>Equipamentos</strong></li>
+<li>Cadastre tipos como:<ul>
+<li>Torre de Resfriamento</li>
+<li>Caldeira</li>
+<li>Chiller</li>
+<li>ETA/ETE</li>
+<li>etc.</li>
+</ul>
+</li>
+</ol>
+<p><img src="docs/images/equipamentos.png" alt="Cadastro de Equipamentos"></p>
+<h3>Configuração</h3>
+<p>Para cada tipo de equipamento, defina:</p>
+<ul>
+<li>Nome e descrição</li>
+<li>Ícone (opcional)</li>
+<li>Testes padrão associados</li>
+<li>Produtos padrão configurados</li>
+</ul>
+<hr>
+<h2>🧪 Testes/Ensaios</h2>
+<h3>Cadastrar Teste</h3>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>Testes</strong></li>
+<li>Clique em <strong>+ Novo Teste</strong></li>
+<li>Preencha:<ul>
+<li><strong>Nome</strong> (ex: pH, Condutividade, Cloro Livre)</li>
+<li><strong>Unidade</strong> (ex: pH, µS/cm, ppm)</li>
+<li><strong>Faixa Mínima</strong> (valor ideal mínimo)</li>
+<li><strong>Faixa Máxima</strong> (valor ideal máximo)</li>
+<li><strong>Limite Crítico Inferior</strong> (abaixo = vermelho)</li>
+<li><strong>Limite Crítico Superior</strong> (acima = vermelho)</li>
+</ul>
+</li>
+</ol>
+<p><img src="docs/images/testes.png" alt="Cadastro de Testes"></p>
+<h3>Indicadores de Cor</h3>
+<table>
+<thead>
+<tr>
+<th>Resultado</th>
+<th>Condição</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>🟢 Verde</td>
+<td>Dentro da faixa min-max</td>
+</tr>
+<tr>
+<td>🟡 Amarelo</td>
+<td>Entre faixa e limite crítico</td>
+</tr>
+<tr>
+<td>🔴 Vermelho</td>
+<td>Fora do limite crítico</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>🧴 Produtos</h2>
+<h3>Cadastrar Produto</h3>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>Produtos</strong></li>
+<li>Clique em <strong>+ Novo Produto</strong></li>
+<li>Preencha:<ul>
+<li><strong>Nome</strong> (ex: Biocida XYZ)</li>
+<li><strong>Unidade</strong> (ex: litros, kg)</li>
+<li><strong>Descrição</strong></li>
+</ul>
+</li>
+</ol>
+<p><img src="docs/images/produtos.png" alt="Cadastro de Produtos"></p>
+<h3>Estoque por Cliente</h3>
+<p>O estoque é gerenciado por cliente:</p>
+<ul>
+<li>Cada cliente tem seu próprio estoque</li>
+<li>As dosagens aplicadas são debitadas automaticamente</li>
+<li>Alertas aparecem quando estoque está baixo</li>
+</ul>
+<hr>
+<h2>📝 Templates de Observação</h2>
+<h3>Criar Template</h3>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>Templates</strong></li>
+<li>Clique em <strong>+ Novo Template</strong></li>
+<li>Preencha:<ul>
+<li><strong>Nome</strong> (como aparece na lista)</li>
+<li><strong>Conteúdo</strong> (texto que será inserido)</li>
+</ul>
+</li>
+</ol>
+<p><img src="docs/images/templates.png" alt="Templates de Observação"></p>
+<h3>Usar Template</h3>
+<p>Na aba Relatório da visita:</p>
+<ol>
+<li>Clique no botão <strong>+ Template</strong></li>
+<li>Escolha o template desejado</li>
+<li>O texto é inserido no campo de observações</li>
+</ol>
+<hr>
+<h2>🤖 Configuração de IA</h2>
+<h3>Acessar</h3>
+<ol>
+<li>Vá em <strong>Cadastros</strong> &gt; <strong>IA</strong></li>
+</ol>
+<p><img src="docs/images/ia_config.png" alt="Configuração de IA"></p>
+<h3>Configurações</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Modelo Gemini</strong></td>
+<td>Escolha o modelo de IA (Flash, Lite, etc.)</td>
+</tr>
+<tr>
+<td><strong>Máximo de Tokens</strong></td>
+<td>Limite o tamanho da resposta</td>
+</tr>
+<tr>
+<td><strong>Prompt</strong></td>
+<td>Texto enviado à IA junto com os dados</td>
+</tr>
+</tbody></table>
+<h3>Variáveis no Prompt</h3>
+<p>Use estas variáveis que serão substituídas automaticamente:</p>
+<table>
+<thead>
+<tr>
+<th>Variável</th>
+<th>Substituído Por</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>{{client_name}}</code></td>
+<td>Nome do cliente</td>
+</tr>
+<tr>
+<td><code>{{client_address}}</code></td>
+<td>Endereço</td>
+</tr>
+<tr>
+<td><code>{{results}}</code></td>
+<td>Resultados dos testes</td>
+</tr>
+<tr>
+<td><code>{{dosages}}</code></td>
+<td>Dosagens aplicadas</td>
+</tr>
+<tr>
+<td><code>{{observations}}</code></td>
+<td>Observações do técnico</td>
+</tr>
+</tbody></table>
+<h3>Restaurar Padrão</h3>
+<p>Clique em <strong>Restaurar Padrão</strong> para usar o prompt original.</p>
+<hr>
+<hr>
+<h2>🤖 Assistente IA (Chatbot)</h2>
+<p>O Assistente IA é uma ferramenta interativa para tirar dúvidas técnicas sobre tratamento de águas e o sistema WGA.</p>
+<h3>Como Acessar</h3>
+<ol>
+<li>Clique no ícone de <strong>Chat</strong> ou <strong>Assistente</strong> no menu lateral.</li>
+<li>Ou use o botão de &quot;Chat&quot; disponível no Dashboard.</li>
+</ol>
+<h3>Funcionalidades</h3>
+<ul>
+<li><strong>Perguntas Técnicas</strong>: Tire dúvidas sobre parâmetros de análise, produtos químicos e procedimentos.</li>
+<li><strong>Contexto da Visita</strong>: Se acessado de uma visita, o assistente sabe os resultados e pode ajudar na interpretação.</li>
+<li><strong>Escopo</strong>: O assistente responde exclusivamente sobre tratamento de águas, efluentes e serviços da WGA.</li>
+</ul>
+<blockquote>
+<p>💡 O assistente utiliza a base de conhecimento técnica da WGA para fornecer respostas precisas.</p>
+</blockquote>
+<hr>
+<h2>👤 Gerenciamento de Usuários</h2>
+<blockquote>
+<p>⚠️ Apenas administradores têm acesso.</p>
+</blockquote>
+<h3>Visualizar Usuários</h3>
+<ol>
+<li>Vá em <strong>Usuários</strong> no menu</li>
+<li>Veja a lista de todos os usuários</li>
+</ol>
+<p><img src="docs/images/usuarios.png" alt="Gerenciamento de Usuários"></p>
+<h3>Alterar Perfil de Acesso</h3>
+<ol>
+<li>Encontre o usuário</li>
+<li>No dropdown de perfil, selecione:<ul>
+<li><strong>Admin</strong> - Acesso total</li>
+<li><strong>Gerente</strong> - Acesso intermediário</li>
+<li><strong>Técnico</strong> - Acesso básico</li>
+</ul>
+</li>
+<li>Confirme a alteração</li>
+</ol>
+<h3>Ativar/Desativar Usuário</h3>
+<ol>
+<li>Clique no ícone de menu (⋮)</li>
+<li>Escolha <strong>Ativar</strong> ou <strong>Desativar</strong></li>
+<li>Usuários desativados não conseguem fazer login</li>
+</ol>
+<h3>Gerenciar Perfis (RBAC)</h3>
+<p>Na aba <strong>Perfis de Acesso</strong>:</p>
+<ol>
+<li>Veja os perfis existentes</li>
+<li>Edite permissões de cada perfil</li>
+<li>Crie novos perfis se necessário</li>
+</ol>
+<hr>
+<h2>👤 Meu Perfil</h2>
+<h3>Acessar</h3>
+<ol>
+<li>Clique no seu nome no canto inferior da sidebar</li>
+<li>Clique em <strong>Meu Perfil</strong></li>
+</ol>
+<p><img src="docs/images/perfil.png" alt="Meu Perfil"></p>
+<h3>Alterar Nome</h3>
+<ol>
+<li>Digite seu nome completo</li>
+<li>Clique em <strong>Salvar</strong></li>
+</ol>
+<h3>Cadastrar Assinatura</h3>
+<p>A assinatura aparece nos relatórios:</p>
+<ol>
+<li>Desenhe sua assinatura no quadro</li>
+<li>Clique em <strong>Salvar</strong></li>
+</ol>
+<blockquote>
+<p>💡 Se não tiver assinatura cadastrada, o sistema pedirá antes de finalizar relatórios.</p>
+</blockquote>
+<hr>
+<h2>📱 Uso Offline (PWA)</h2>
+<p>O sistema funciona como um aplicativo:</p>
+<h3>Instalar no Celular</h3>
+<ol>
+<li>Acesse <code>https://gwaapp.vercel.app</code> no navegador</li>
+<li>Clique em <strong>&quot;Adicionar à tela inicial&quot;</strong> (ou instalar)</li>
+<li>O app fica disponível como ícone</li>
+</ol>
+<h3>Funcionalidades Offline</h3>
+<ul>
+<li>Visualizar visitas recentes</li>
+<li>Preencher leituras (sincroniza depois)</li>
+<li>Tirar fotos</li>
+</ul>
+<hr>
+<h2>❓ Dúvidas Frequentes</h2>
+<h3>Por que o estoque não atualizou?</h3>
+<p>O estoque só é debitado ao clicar em <strong>Finalizar Localmente</strong> ou <strong>Finalizar, Enviar e Salvar</strong>.</p>
+<h3>Como reenviar um relatório?</h3>
+<p>Mesmo visitas &quot;Enviadas&quot; podem ser reenviadas:</p>
+<ol>
+<li>Abra a visita</li>
+<li>Vá na aba Relatório</li>
+<li>Clique em <strong>Reenviar e Salvar no Drive</strong></li>
+</ol>
+<h3>Por que não consigo acessar certa página?</h3>
+<p>Seu perfil de acesso pode não ter permissão. Fale com o administrador.</p>
+<h3>As fotos não estão salvando?</h3>
+<p>Verifique sua conexão com a internet e tente novamente.</p>
+<hr>
+<h2>📞 Suporte</h2>
+<p>Em caso de problemas, entre em contato com o administrador do sistema.</p>
+<hr>
+<p><em>Manual do Usuário - WGA Brasil</em>
+<em>Versão 1.3.0 | Dezembro 2024</em></p>
+
+    </div>
+    <div class="footer">
+        <p>Gerado automaticamente em 23/01/2026</p>
+    </div>
+</body>
+</html>
+        

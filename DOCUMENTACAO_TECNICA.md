@@ -132,6 +132,8 @@ wga-brasil/
 ├── api/                    # Serverless Functions (Vercel)
 │   ├── send-email.js       # Envio de email via Brevo SMTP
 │   └── upload-drive.js     # Upload para Google Drive
+├── scripts/
+│   └── sql/                # Scripts SQL de migração
 ├── src/
 │   ├── api/                # Adapters para Supabase
 │   │   ├── entities.js     # CRUD de tabelas

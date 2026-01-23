@@ -19,8 +19,9 @@
 10. [Produtos](#produtos)
 11. [Templates de Observação](#templates-de-observação)
 12. [Configuração de IA](#configuração-de-ia)
-13. [Gerenciamento de Usuários](#gerenciamento-de-usuários)
-14. [Meu Perfil](#meu-perfil)
+13. [Assistente IA (Chatbot)](#assistente-ia-chatbot)
+14. [Gerenciamento de Usuários](#gerenciamento-de-usuários)
+15. [Meu Perfil](#meu-perfil)
 
 ---
 
@@ -479,6 +480,27 @@ Use estas variáveis que serão substituídas automaticamente:
 ### Restaurar Padrão
 
 Clique em **Restaurar Padrão** para usar o prompt original.
+
+---
+
+---
+
+## 🤖 Assistente IA (Chatbot)
+
+O Assistente IA é uma ferramenta interativa para tirar dúvidas técnicas sobre tratamento de águas e o sistema WGA.
+
+### Como Acessar
+
+1. Clique no ícone de **Chat** ou **Assistente** no menu lateral.
+2. Ou use o botão de "Chat" disponível no Dashboard.
+
+### Funcionalidades
+
+- **Perguntas Técnicas**: Tire dúvidas sobre parâmetros de análise, produtos químicos e procedimentos.
+- **Contexto da Visita**: Se acessado de uma visita, o assistente sabe os resultados e pode ajudar na interpretação.
+- **Escopo**: O assistente responde exclusivamente sobre tratamento de águas, efluentes e serviços da WGA.
+
+> 💡 O assistente utiliza a base de conhecimento técnica da WGA para fornecer respostas precisas.
 
 ---
 

@@ -1,0 +1,498 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WGA Brasil - Documentação Técnica</title>
+    
+<style>
+    body {
+        font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+        line-height: 1.6;
+        color: #24292f;
+        background-color: #ffffff;
+        max-width: 896px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    h1, h2, h3, h4, h5, h6 { margin-top: 24px; margin-bottom: 16px; font-weight: 600; line-height: 1.25; }
+    h1 { font-size: 2em; padding-bottom: 0.3em; border-bottom: 1px solid #eaecef; }
+    h2 { font-size: 1.5em; padding-bottom: 0.3em; border-bottom: 1px solid #eaecef; }
+    h3 { font-size: 1.25em; }
+    p { margin-top: 0; margin-bottom: 16px; }
+    code { font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace; background-color: #f6f8fa; padding: 0.2em 0.4em; border-radius: 6px; font-size: 85%; }
+    pre { background-color: #f6f8fa; padding: 16px; overflow: auto; border-radius: 6px; }
+    pre code { background-color: transparent; padding: 0; }
+    blockquote { padding: 0 1em; color: #6a737d; border-left: 0.25em solid #dfe2e5; margin: 0 0 16px 0; }
+    table { display: block; width: 100%; overflow: auto; border-spacing: 0; border-collapse: collapse; margin-bottom: 16px; }
+    table tr { background-color: #fff; border-top: 1px solid #c6cbd1; }
+    table tr:nth-child(2n) { background-color: #f6f8fa; }
+    table th, table td { padding: 6px 13px; border: 1px solid #dfe2e5; }
+    table th { font-weight: 600; }
+    img { max-width: 100%; box-sizing: content-box; background-color: #fff; }
+    hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: #e1e4e8; border: 0; }
+    a { color: #0969da; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .header { text-align: center; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #eaecef; }
+    .footer { margin-top: 4rem; text-align: center; font-size: 0.8rem; color: #6a737d; }
+</style>
+
+</head>
+<body>
+    <div class="content">
+        <h1>📋 WGA Brasil - Documentação Técnica</h1>
+<blockquote>
+<p><strong>Documento de Handover</strong> - Sistema de Gerenciamento de Visitas Técnicas</p>
+</blockquote>
+<hr>
+<h2>🏗️ Arquitetura do Sistema</h2>
+<pre><code>┌────────────────────────────────────────────────────────────────┐
+│                         FRONTEND                               │
+│                    React + Vite + TailwindCSS                  │
+│                     Hospedado no Vercel                        │
+└────────────────────────┬───────────────────────────────────────┘
+                         │
+                         ▼
+┌────────────────────────────────────────────────────────────────┐
+│                    SERVERLESS FUNCTIONS                        │
+│                       (Vercel Edge)                            │
+│   /api/send-email.js → Brevo SMTP                              │
+│   /api/upload-drive.js → Google Drive API                      │
+└────────────────────────┬───────────────────────────────────────┘
+                         │
+                         ▼
+┌────────────────────────────────────────────────────────────────┐
+│                        BACKEND                                 │
+│                    Supabase (PostgreSQL)                       │
+│              Auth + Database + Row Level Security              │
+└────────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2>🔐 Credenciais e Serviços</h2>
+<h3>1. Supabase (Banco de Dados)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Dashboard</strong></td>
+<td><a href="https://supabase.com/dashboard">https://supabase.com/dashboard</a></td>
+</tr>
+<tr>
+<td><strong>Project URL</strong></td>
+<td><code>https://uaqjbdxntuchphtsbkyd.supabase.co</code></td>
+</tr>
+<tr>
+<td><strong>Project ID</strong></td>
+<td><code>uaqjbdxntuchphtsbkyd</code></td>
+</tr>
+<tr>
+<td><strong>Anon Key</strong></td>
+<td><code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</code> (ver variáveis de ambiente)</td>
+</tr>
+</tbody></table>
+<p><strong>Variáveis de Ambiente:</strong></p>
+<pre><code class="language-env">VITE_SUPABASE_URL=https://uaqjbdxntuchphtsbkyd.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhcWpiZHhudHVjaHBodHNia3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMTg2MDEsImV4cCI6MjA4MDc5NDYwMX0.l0M5XvspdXAM4gsxqgaWp9rDJoLReASeZr1gnksRfJg
+</code></pre>
+<hr>
+<h3>2. Vercel (Hospedagem)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Dashboard</strong></td>
+<td><a href="https://vercel.com/dashboard">https://vercel.com/dashboard</a></td>
+</tr>
+<tr>
+<td><strong>Projeto</strong></td>
+<td><code>gwabrasilapp</code></td>
+</tr>
+<tr>
+<td><strong>URL de Produção</strong></td>
+<td><code>https://wgabrasilapp.vercel.app/</code></td>
+</tr>
+<tr>
+<td><strong>Repositório</strong></td>
+<td>Conectado ao GitHub</td>
+</tr>
+</tbody></table>
+<hr>
+<h3>3. GitHub (Código Fonte)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Repositório</strong></td>
+<td><code>brasilgwa-web/gwaapp</code></td>
+</tr>
+<tr>
+<td><strong>URL</strong></td>
+<td><a href="https://github.com/brasilgwa-web/gwaapp">https://github.com/brasilgwa-web/gwaapp</a></td>
+</tr>
+<tr>
+<td><strong>Branch Principal</strong></td>
+<td><code>main</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h3>4. Brevo / SMTP (Envio de Email)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Dashboard</strong></td>
+<td><a href="https://app.brevo.com">https://app.brevo.com</a></td>
+</tr>
+<tr>
+<td><strong>Servidor SMTP</strong></td>
+<td><code>smtp-relay.brevo.com</code></td>
+</tr>
+<tr>
+<td><strong>Porta</strong></td>
+<td><code>587</code></td>
+</tr>
+<tr>
+<td><strong>Usuário SMTP</strong></td>
+<td><code>9e18bc001@smtp-brevo.com</code></td>
+</tr>
+<tr>
+<td><strong>Senha SMTP</strong></td>
+<td>Ver variáveis de ambiente no Vercel</td>
+</tr>
+<tr>
+<td><strong>Email Remetente</strong></td>
+<td><code>brasilgwa@gmail.com</code></td>
+</tr>
+</tbody></table>
+<p><strong>Variáveis de Ambiente (Vercel):</strong></p>
+<pre><code class="language-env">SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USER=9e18bc001@smtp-brevo.com
+SMTP_PASS=********** (configurado no Vercel)
+</code></pre>
+<hr>
+<h3>5. Google Drive API (Upload de Relatórios)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Console</strong></td>
+<td><a href="https://console.cloud.google.com">https://console.cloud.google.com</a></td>
+</tr>
+<tr>
+<td><strong>Projeto GCP</strong></td>
+<td>Verificar qual projeto está configurado</td>
+</tr>
+<tr>
+<td><strong>Método de Auth</strong></td>
+<td>OAuth2 (Refresh Token)</td>
+</tr>
+</tbody></table>
+<p><strong>Variáveis de Ambiente (Vercel):</strong></p>
+<pre><code class="language-env">GOOGLE_DRIVE_CLIENT_ID=**********.apps.googleusercontent.com
+GOOGLE_DRIVE_CLIENT_SECRET=**********
+GOOGLE_DRIVE_REFRESH_TOKEN=**********
+</code></pre>
+<blockquote>
+<p>⚠️ <strong>Importante:</strong> Cada cliente deve ter seu <code>google_drive_folder_id</code> configurado no cadastro para receber os PDFs.</p>
+</blockquote>
+<hr>
+<h3>6. Gemini AI (Geração de Análises)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>API</strong></td>
+<td>Google AI Studio</td>
+</tr>
+<tr>
+<td><strong>Modelo Padrão</strong></td>
+<td><code>gemini-2.5-flash</code></td>
+</tr>
+</tbody></table>
+<p><strong>Variáveis de Ambiente:</strong></p>
+<pre><code class="language-env">VITE_GEMINI_API_KEY=**********
+</code></pre>
+<hr>
+<h2>📁 Estrutura do Projeto</h2>
+<pre><code>wga-brasil/
+├── api/                    # Serverless Functions (Vercel)
+│   ├── send-email.js       # Envio de email via Brevo SMTP
+│   └── upload-drive.js     # Upload para Google Drive
+├── scripts/
+│   └── sql/                # Scripts SQL de migração
+├── src/
+│   ├── api/                # Adapters para Supabase
+│   │   ├── entities.js     # CRUD de tabelas
+│   │   └── integrations.js # Email, Upload, etc.
+│   ├── components/         # Componentes React
+│   │   ├── ui/             # shadcn/ui components
+│   │   ├── visit/          # Componentes de visita
+│   │   └── setup/          # Componentes de configuração
+│   ├── context/            # React Contexts
+│   │   ├── AuthContext.jsx # Autenticação
+│   │   └── ConfirmContext.jsx # Diálogos customizados
+│   ├── lib/                # Utilitários
+│   │   ├── supabase.ts     # Cliente Supabase
+│   │   ├── gemini.js       # Cliente Gemini AI
+│   │   └── utils.js        # Helpers
+│   └── pages/              # Páginas da aplicação
+├── public/                 # Arquivos estáticos
+├── package.json            # Dependências
+├── vite.config.js          # Configuração Vite
+└── vercel.json             # Configuração Vercel
+</code></pre>
+<hr>
+<h2>🗄️ Estrutura do Banco de Dados</h2>
+<h3>Tabelas Principais</h3>
+<table>
+<thead>
+<tr>
+<th>Tabela</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>profiles</code></td>
+<td>Usuários do sistema (extende auth.users)</td>
+</tr>
+<tr>
+<td><code>roles</code></td>
+<td>Perfis de acesso (admin, gerente, tecnico)</td>
+</tr>
+<tr>
+<td><code>role_permissions</code></td>
+<td>Permissões por perfil</td>
+</tr>
+<tr>
+<td><code>clients</code></td>
+<td>Clientes cadastrados</td>
+</tr>
+<tr>
+<td><code>locations</code></td>
+<td>Locais/unidades do cliente</td>
+</tr>
+<tr>
+<td><code>equipments</code></td>
+<td>Tipos de equipamentos</td>
+</tr>
+<tr>
+<td><code>location_equipments</code></td>
+<td>Equipamentos instalados em cada local</td>
+</tr>
+<tr>
+<td><code>visits</code></td>
+<td>Visitas técnicas</td>
+</tr>
+<tr>
+<td><code>test_definitions</code></td>
+<td>Definições de testes/ensaios</td>
+</tr>
+<tr>
+<td><code>test_results</code></td>
+<td>Resultados dos testes por visita</td>
+</tr>
+<tr>
+<td><code>products</code></td>
+<td>Produtos químicos</td>
+</tr>
+<tr>
+<td><code>client_products</code></td>
+<td>Estoque de produtos por cliente</td>
+</tr>
+<tr>
+<td><code>visit_dosages</code></td>
+<td>Dosagens aplicadas por visita</td>
+</tr>
+<tr>
+<td><code>visit_photos</code></td>
+<td>Fotos anexadas às visitas</td>
+</tr>
+<tr>
+<td><code>observation_templates</code></td>
+<td>Templates de observação</td>
+</tr>
+<tr>
+<td><code>ai_settings</code></td>
+<td>Configurações da IA</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>🔒 Sistema de Permissões (RBAC)</h2>
+<h3>Perfis Padrão</h3>
+<table>
+<thead>
+<tr>
+<th>Perfil</th>
+<th>Permissões</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>admin</strong></td>
+<td>Acesso total</td>
+</tr>
+<tr>
+<td><strong>gerente</strong></td>
+<td>Dashboard, Visitas, Clientes, Usuários</td>
+</tr>
+<tr>
+<td><strong>tecnico</strong></td>
+<td>Dashboard, Visitas, Perfil</td>
+</tr>
+</tbody></table>
+<h3>Rotas Protegidas</h3>
+<pre><code>/dashboard       → requer &#39;dashboard&#39;
+/visits          → requer &#39;visits&#39;
+/setup/clients   → requer &#39;setup_clients&#39;
+/setup/equipments→ requer &#39;setup_equipments&#39;
+/users           → requer &#39;users&#39;
+/profile         → acesso livre (usuário logado)
+</code></pre>
+<hr>
+<h2>🚀 Deploy e CI/CD</h2>
+<h3>Ambientes</h3>
+<table>
+<thead>
+<tr>
+<th>Ambiente</th>
+<th>Branch</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Produção</strong></td>
+<td><code>main</code></td>
+<td><code>https://wgabrasilapp.vercel.app/</code></td>
+</tr>
+<tr>
+<td><strong>Homologação</strong></td>
+<td><code>staging</code></td>
+<td><code>https://gwabrasilapp-git-staging-*.vercel.app</code></td>
+</tr>
+</tbody></table>
+<h3>Fluxo de Deploy</h3>
+<pre><code>┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Desenvolve    │────▶│   Push para     │────▶│   Testa em      │
+│   localmente    │     │   staging       │     │   Homologação   │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                                                        │
+                                                        ▼
+                        ┌─────────────────┐     ┌─────────────────┐
+                        │   Deploy em     │◀────│   Merge para    │
+                        │   Produção      │     │   main          │
+                        └─────────────────┘     └─────────────────┘
+</code></pre>
+<h3>Comandos Git - Staging (Homologação)</h3>
+<pre><code class="language-bash"># Mudar para branch staging
+git checkout staging
+
+# Fazer alterações e commit
+git add .
+git commit -m &quot;feat: descrição da alteração&quot;
+
+# Enviar para homologação (gera deploy de preview automaticamente)
+git push origin staging
+</code></pre>
+<h3>Comandos Git - Produção</h3>
+<pre><code class="language-bash"># Mudar para branch main
+git checkout main
+
+# Atualizar main (por segurança)
+git pull origin main
+
+# Fazer merge da staging na main
+git merge staging
+
+# Enviar para produção
+git push origin main
+
+# Voltar para staging para continuar desenvolvendo
+git checkout staging
+</code></pre>
+<h3>Comandos Úteis - Desenvolvimento Local</h3>
+<pre><code class="language-bash"># Instalar dependências
+npm install
+
+# Desenvolvimento local
+npm run dev
+
+# Build de produção
+npm run build
+
+# Preview local do build
+npm run preview
+</code></pre>
+<hr>
+<h2>🔄 Transferência de Propriedade</h2>
+<h3>Checklist de Handover</h3>
+<ul>
+<li><input disabled="" type="checkbox"> <strong>Supabase:</strong> Adicionar cliente como Owner → Settings → Members</li>
+<li><input disabled="" type="checkbox"> <strong>Vercel:</strong> Transferir projeto → Settings → General → Transfer</li>
+<li><input disabled="" type="checkbox"> <strong>GitHub:</strong> Adicionar como colaborador ou transferir repo</li>
+<li><input disabled="" type="checkbox"> <strong>Brevo:</strong> Criar conta nova ou transferir credenciais SMTP</li>
+<li><input disabled="" type="checkbox"> <strong>Google Cloud:</strong> Transferir projeto GCP ou criar novo</li>
+<li><input disabled="" type="checkbox"> <strong>Domínio:</strong> Atualizar DNS se houver domínio customizado</li>
+</ul>
+<hr>
+<h2>📞 Suporte</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Contato</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Desenvolvedor</strong></td>
+<td><a href="mailto:andre.lsarruda@gmail.com">andre.lsarruda@gmail.com</a>  41-99840-4811</td>
+</tr>
+<tr>
+<td><strong>Documentação Supabase</strong></td>
+<td><a href="https://supabase.com/docs">https://supabase.com/docs</a></td>
+</tr>
+<tr>
+<td><strong>Documentação Vercel</strong></td>
+<td><a href="https://vercel.com/docs">https://vercel.com/docs</a></td>
+</tr>
+<tr>
+<td><strong>Suporte Brevo</strong></td>
+<td><a href="https://help.brevo.com">https://help.brevo.com</a></td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>Documento criado em: Dezembro 2024</em>
+<em>Atualizado em: Janeiro 2025</em>
+<em>Versão do Sistema: 1.4.0</em></p>
+
+    </div>
+    <div class="footer">
+        <p>Gerado automaticamente em 23/01/2026</p>
+    </div>
+</body>
+</html>
+        
