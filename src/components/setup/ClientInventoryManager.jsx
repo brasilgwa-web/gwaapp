@@ -143,7 +143,7 @@ export default function ClientInventoryManager({ client }) {
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione..." />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-[40vh] overflow-y-auto">
                                         {products?.map(p => (
                                             <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>
                                         ))}
