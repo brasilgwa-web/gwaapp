@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Pencil, Package, AlertTriangle, ArrowLeft } from "lucide-react";
 
@@ -13,6 +13,7 @@ export default function ClientInventoryManager({ client }) {
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
+    const [selectedProductId, setSelectedProductId] = useState('');
 
     // Queries
     const { data: inventory } = useQuery({
@@ -38,6 +39,7 @@ export default function ClientInventoryManager({ client }) {
             queryClient.invalidateQueries({ queryKey: ['clientInventory', client.id] });
             setIsDialogOpen(false);
             setEditingItem(null);
+            setSelectedProductId('');
         }
     });
 
@@ -52,7 +54,7 @@ export default function ClientInventoryManager({ client }) {
 
         const data = {
             id: editingItem?.id,
-            product_id: formData.get('product_id'),
+            product_id: selectedProductId,
             current_stock: parseFloat(formData.get('current_stock')),
             min_stock: parseFloat(formData.get('min_stock'))
         };
@@ -71,11 +73,13 @@ export default function ClientInventoryManager({ client }) {
 
     const openNew = () => {
         setEditingItem(null);
+        setSelectedProductId('');
         setIsDialogOpen(true);
     };
 
     const openEdit = (item) => {
         setEditingItem(item);
+        setSelectedProductId(item.product_id);
         setIsDialogOpen(true);
     };
 
@@ -139,16 +143,18 @@ export default function ClientInventoryManager({ client }) {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Produto</Label>
-                                <Select name="product_id" disabled={!!editingItem} defaultValue={editingItem?.product_id}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecione..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-[40vh] overflow-y-auto">
-                                        {products?.map(p => (
-                                            <SelectItem key={p.id} value={p.id}>{p.name} ({p.unit})</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                    value={selectedProductId}
+                                    onValueChange={setSelectedProductId}
+                                    options={products?.map(p => ({
+                                        value: p.id,
+                                        label: `${p.name} (${p.unit})`
+                                    })) || []}
+                                    placeholder="Selecione um produto..."
+                                    searchPlaceholder="Buscar produto..."
+                                    emptyText="Nenhum produto encontrado."
+                                    disabled={!!editingItem}
+                                />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
