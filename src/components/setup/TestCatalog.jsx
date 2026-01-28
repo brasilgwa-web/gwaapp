@@ -12,9 +12,11 @@ import { Plus, Trash2, Pencil, ArrowUpDown } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
+import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 
 export default function TestCatalog() {
     const queryClient = useQueryClient();
+    const { executeWithFeedback } = useOperationFeedback();
     const [editingTest, setEditingTest] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [sortOrder, setSortOrder] = useState('manual'); // 'manual', 'asc', 'desc'
@@ -25,7 +27,18 @@ export default function TestCatalog() {
     });
 
     const create = useMutation({
-        mutationFn: (data) => TestDefinition.create(data),
+        mutationFn: async (data) => {
+            const result = await executeWithFeedback({
+                operation: () => TestDefinition.create(data),
+                loadingMessage: 'Criando teste...',
+                successMessage: 'Teste criado com sucesso!',
+                errorMessage: 'Erro ao criar teste.',
+                logCategory: 'crud',
+                logDetails: { action: 'create', entity: 'test_definition', data },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['testDefinitions'] });
             setIsDialogOpen(false);
@@ -33,7 +46,18 @@ export default function TestCatalog() {
     });
 
     const update = useMutation({
-        mutationFn: (data) => TestDefinition.update(data.id, data.fields),
+        mutationFn: async (data) => {
+            const result = await executeWithFeedback({
+                operation: () => TestDefinition.update(data.id, data.fields),
+                loadingMessage: 'Salvando alterações...',
+                successMessage: 'Teste atualizado com sucesso!',
+                errorMessage: 'Erro ao atualizar teste.',
+                logCategory: 'crud',
+                logDetails: { action: 'update', entity: 'test_definition', id: data.id, fields: data.fields },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['testDefinitions'] });
             setEditingTest(null);
@@ -42,7 +66,18 @@ export default function TestCatalog() {
     });
 
     const remove = useMutation({
-        mutationFn: (id) => TestDefinition.delete(id),
+        mutationFn: async (id) => {
+            const result = await executeWithFeedback({
+                operation: () => TestDefinition.delete(id),
+                loadingMessage: 'Excluindo teste...',
+                successMessage: 'Teste excluído com sucesso!',
+                errorMessage: 'Erro ao excluir teste.',
+                logCategory: 'crud',
+                logDetails: { action: 'delete', entity: 'test_definition', id },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['testDefinitions'] }),
     });
 

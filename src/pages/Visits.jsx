@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Visit, Client, Location, User } from "@/api/entities";
 import { useAuth } from "@/context/AuthContext";
 import { useConfirm } from "@/context/ConfirmContext";
+import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import { createPageUrl, formatDateAsLocal } from '@/lib/utils';
 export default function VisitsPage() {
     const queryClient = useQueryClient();
     const { confirm } = useConfirm();
+    const { executeWithFeedback } = useOperationFeedback();
     const [search, setSearch] = React.useState('');
 
     // Date Range Filters (Default: Current Month)
@@ -90,7 +92,18 @@ export default function VisitsPage() {
 
     // Delete Visit Mutation
     const deleteMutation = useMutation({
-        mutationFn: (visitId) => Visit.delete(visitId),
+        mutationFn: async (visitId) => {
+            const result = await executeWithFeedback({
+                operation: () => Visit.delete(visitId),
+                loadingMessage: 'Excluindo visita...',
+                successMessage: 'Visita excluída com sucesso!',
+                errorMessage: 'Erro ao excluir visita.',
+                logCategory: 'crud',
+                logDetails: { action: 'delete', entity: 'visit', id: visitId },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['visits'] });
         }

@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Role } from "@/api/entities";
 import { useAuth } from "@/context/AuthContext";
 import { useConfirm } from "@/context/ConfirmContext";
+import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ export default function UserManagement() {
     const queryClient = useQueryClient();
     const { user: currentUser } = useAuth();
     const { confirm, alert } = useConfirm();
+    const { executeWithFeedback, logOperation } = useOperationFeedback();
 
     // Password reset state
     const [resetPasswordUser, setResetPasswordUser] = useState(null);
@@ -88,23 +90,35 @@ export default function UserManagement() {
     });
 
     const updateUserMutation = useMutation({
-        mutationFn: async ({ id, data }) => {
-            const { data: updated, error } = await supabase
-                .from('profiles')
-                .update(data)
-                .eq('id', id)
-                .select();
+        mutationFn: async ({ id, data, actionDescription }) => {
+            const result = await executeWithFeedback({
+                operation: async () => {
+                    const { data: updated, error } = await supabase
+                        .from('profiles')
+                        .update(data)
+                        .eq('id', id)
+                        .select();
 
-            if (error) throw error;
-            if (!updated || updated.length === 0) {
-                throw new Error("Permissão negada ou usuário não encontrado.");
-            }
+                    if (error) throw error;
+                    if (!updated || updated.length === 0) {
+                        throw new Error("Permissão negada ou usuário não encontrado.");
+                    }
+                    return updated;
+                },
+                loadingMessage: 'Atualizando usuário...',
+                successMessage: actionDescription || 'Usuário atualizado com sucesso!',
+                errorMessage: 'Erro ao atualizar usuário.',
+                logCategory: 'user_management',
+                logDetails: { action: 'update', entity: 'user', id, data },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
         },
         onError: (error) => {
-            alert({ title: 'Erro', message: 'Erro ao atualizar usuário: ' + error.message, type: 'error' });
+            // Erro já tratado pelo modal
         }
     });
 
