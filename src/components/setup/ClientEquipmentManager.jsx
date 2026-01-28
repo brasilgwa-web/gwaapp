@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, Product, EquipmentDosageParams, AnalysisGroup } from "@/api/entities";
 import { supabase } from "@/lib/supabase";
@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle } from "lucide-react";
+import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle, Search } from "lucide-react";
 
 export default function ClientEquipmentManager({ client }) {
     const queryClient = useQueryClient();
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [equipmentFilter, setEquipmentFilter] = useState('');
     const [configEquipment, setConfigEquipment] = useState(null); // The LocationEquipment instance being configured
 
     // Queries
@@ -66,22 +67,43 @@ export default function ClientEquipmentManager({ client }) {
                     <CardTitle>Equipamentos</CardTitle>
                     <CardDescription>Gerencie os equipamentos atendidos neste cliente.</CardDescription>
                 </div>
-                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <Dialog open={isAddOpen} onOpenChange={(open) => {
+                    setIsAddOpen(open);
+                    if (!open) setEquipmentFilter(''); // Limpa o filtro ao fechar
+                }}>
                     <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Adicionar Equipamento</Button></DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-md max-h-[70vh] flex flex-col">
                         <DialogHeader><DialogTitle>Adicionar Equipamento</DialogTitle></DialogHeader>
-                        <div className="grid gap-2 py-4">
-                            {catalogEquipments?.map(eq => (
-                                <Button
-                                    key={eq.id}
-                                    variant="outline"
-                                    className="justify-start"
-                                    onClick={() => addEquipment.mutate(eq.id)}
-                                >
-                                    <Box className="w-4 h-4 mr-2" />
-                                    {eq.name}
-                                </Button>
-                            ))}
+
+                        {/* Campo de filtro */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <Input
+                                placeholder="Buscar equipamento..."
+                                value={equipmentFilter}
+                                onChange={(e) => setEquipmentFilter(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+
+                        {/* Lista de equipamentos com scroll */}
+                        <div className="flex-1 overflow-y-auto min-h-0 grid gap-2 py-2">
+                            {catalogEquipments
+                                ?.filter(eq => eq.name.toLowerCase().includes(equipmentFilter.toLowerCase()))
+                                .map(eq => (
+                                    <Button
+                                        key={eq.id}
+                                        variant="outline"
+                                        className="justify-start"
+                                        onClick={() => addEquipment.mutate(eq.id)}
+                                    >
+                                        <Box className="w-4 h-4 mr-2" />
+                                        {eq.name}
+                                    </Button>
+                                ))}
+                            {catalogEquipments?.filter(eq => eq.name.toLowerCase().includes(equipmentFilter.toLowerCase())).length === 0 && (
+                                <p className="text-sm text-slate-500 text-center py-4">Nenhum equipamento encontrado.</p>
+                            )}
                         </div>
                     </DialogContent>
                 </Dialog>
