@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -148,6 +149,7 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
     const queryClient = useQueryClient();
     // Local state for selected group - needed because prop is snapshot when dialog opens
     const [selectedGroupId, setSelectedGroupId] = React.useState(locationEquipment?.default_analysis_group_id || null);
+    const [selectedProductId, setSelectedProductId] = React.useState('');
 
     // --- Tests Logic ---
     const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list() });
@@ -262,28 +264,33 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
+                                    if (!selectedProductId) return;
                                     const fd = new FormData(e.target);
                                     addProduct.mutate({
-                                        product_id: fd.get('product_id'),
+                                        product_id: selectedProductId,
                                         recommended_dosage: parseFloat(fd.get('recommended_dosage')),
                                         dosage_unit: fd.get('dosage_unit') || '-',
                                         complementary_info: fd.get('complementary_info') || ''
                                     });
                                     e.target.reset();
+                                    setSelectedProductId('');
                                 }}
                                 className="space-y-3"
                             >
                                 <div className="flex gap-2 items-end">
                                     <div className="space-y-1 flex-1">
                                         <Label className="text-xs">Produto</Label>
-                                        <Select name="product_id" required>
-                                            <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                                            <SelectContent>
-                                                {allProducts?.map(p => (
-                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <SearchableSelect
+                                            value={selectedProductId}
+                                            onValueChange={setSelectedProductId}
+                                            options={allProducts?.map(p => ({
+                                                value: p.id,
+                                                label: p.name
+                                            })) || []}
+                                            placeholder="Selecione um produto..."
+                                            searchPlaceholder="Buscar produto..."
+                                            emptyText="Nenhum produto encontrado."
+                                        />
                                     </div>
                                     <div className="space-y-1 w-32">
                                         <Label className="text-xs">Dosagem (Meta)</Label>
