@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, ArrowUpDown, GripVertical } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowUpDown, GripVertical, CheckCircle } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -63,6 +64,7 @@ function SortableEquipmentRow({ eq, sortOrder, moveEquipment, handleOpenEdit, re
 
 export default function EquipmentCatalog() {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
     const [editingEq, setEditingEq] = useState(null);
     const [sortOrder, setSortOrder] = useState('manual'); // 'manual', 'asc', 'desc'
@@ -102,6 +104,10 @@ export default function EquipmentCatalog() {
             setIsOpen(false);
             setSelectedTestsData([]);
             setEditingEq(null);
+            toast({
+                title: "✅ Equipamento cadastrado",
+                description: "O equipamento foi adicionado com sucesso ao catálogo.",
+            });
         }
     });
 
@@ -151,6 +157,10 @@ export default function EquipmentCatalog() {
             setIsOpen(false);
             setSelectedTestsData([]);
             setEditingEq(null);
+            toast({
+                title: "✅ Equipamento atualizado",
+                description: "As alterações foram salvas com sucesso.",
+            });
         }
     });
 
