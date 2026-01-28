@@ -12,9 +12,11 @@ import { Plus, Trash2, Pencil, Beaker, ArrowUpDown } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
+import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 
 export default function ProductCatalog() {
     const queryClient = useQueryClient();
+    const { executeWithFeedback } = useOperationFeedback();
     const [editingProduct, setEditingProduct] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [sortOrder, setSortOrder] = useState('manual'); // 'manual', 'asc', 'desc'
@@ -25,7 +27,18 @@ export default function ProductCatalog() {
     });
 
     const create = useMutation({
-        mutationFn: (data) => Product.create(data),
+        mutationFn: async (data) => {
+            const result = await executeWithFeedback({
+                operation: () => Product.create(data),
+                loadingMessage: 'Criando produto...',
+                successMessage: 'Produto criado com sucesso!',
+                errorMessage: 'Erro ao criar produto.',
+                logCategory: 'crud',
+                logDetails: { action: 'create', entity: 'product', data },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['products'] });
             setIsDialogOpen(false);
@@ -33,7 +46,18 @@ export default function ProductCatalog() {
     });
 
     const update = useMutation({
-        mutationFn: (data) => Product.update(data.id, data.fields),
+        mutationFn: async (data) => {
+            const result = await executeWithFeedback({
+                operation: () => Product.update(data.id, data.fields),
+                loadingMessage: 'Salvando alterações...',
+                successMessage: 'Produto atualizado com sucesso!',
+                errorMessage: 'Erro ao atualizar produto.',
+                logCategory: 'crud',
+                logDetails: { action: 'update', entity: 'product', id: data.id, fields: data.fields },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['products'] });
             setEditingProduct(null);
@@ -42,7 +66,18 @@ export default function ProductCatalog() {
     });
 
     const remove = useMutation({
-        mutationFn: (id) => Product.delete(id),
+        mutationFn: async (id) => {
+            const result = await executeWithFeedback({
+                operation: () => Product.delete(id),
+                loadingMessage: 'Excluindo produto...',
+                successMessage: 'Produto excluído com sucesso!',
+                errorMessage: 'Erro ao excluir produto.',
+                logCategory: 'crud',
+                logDetails: { action: 'delete', entity: 'product', id },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
     });
 

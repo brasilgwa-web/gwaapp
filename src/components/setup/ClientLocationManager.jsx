@@ -11,6 +11,7 @@ import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 
 // V1.2 Managers
 import ClientInventoryManager from "./ClientInventoryManager";
@@ -83,10 +84,22 @@ export default function ClientLocationManager() {
 
     // Client CRUD
     const queryClient = useQueryClient();
+    const { executeWithFeedback } = useOperationFeedback();
     const { data: clients } = useQuery({ queryKey: ['clients'], queryFn: () => Client.list() });
 
     const createClient = useMutation({
-        mutationFn: (data) => Client.create(data),
+        mutationFn: async (data) => {
+            const result = await executeWithFeedback({
+                operation: () => Client.create(data),
+                loadingMessage: 'Criando cliente...',
+                successMessage: 'Cliente criado com sucesso!',
+                errorMessage: 'Erro ao criar cliente.',
+                logCategory: 'crud',
+                logDetails: { action: 'create', entity: 'client', data },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['clients'] });
             setIsClientDialogOpen(false);
@@ -94,7 +107,18 @@ export default function ClientLocationManager() {
     });
 
     const updateClient = useMutation({
-        mutationFn: (data) => Client.update(data.id, data.fields),
+        mutationFn: async (data) => {
+            const result = await executeWithFeedback({
+                operation: () => Client.update(data.id, data.fields),
+                loadingMessage: 'Salvando alterações...',
+                successMessage: 'Cliente atualizado com sucesso!',
+                errorMessage: 'Erro ao atualizar cliente.',
+                logCategory: 'crud',
+                logDetails: { action: 'update', entity: 'client', id: data.id, fields: data.fields },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['clients'] });
             setIsClientDialogOpen(false);
@@ -103,7 +127,18 @@ export default function ClientLocationManager() {
     });
 
     const removeClient = useMutation({
-        mutationFn: (id) => Client.delete(id),
+        mutationFn: async (id) => {
+            const result = await executeWithFeedback({
+                operation: () => Client.delete(id),
+                loadingMessage: 'Excluindo cliente...',
+                successMessage: 'Cliente excluído com sucesso!',
+                errorMessage: 'Erro ao excluir cliente.',
+                logCategory: 'crud',
+                logDetails: { action: 'delete', entity: 'client', id },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] })
     });
 

@@ -9,10 +9,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Pencil, ArrowUpDown, GripVertical, CheckCircle } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 
 function SortableEquipmentRow({ eq, sortOrder, moveEquipment, handleOpenEdit, remove, index, isFirst, isLast }) {
     const {
@@ -64,7 +64,7 @@ function SortableEquipmentRow({ eq, sortOrder, moveEquipment, handleOpenEdit, re
 
 export default function EquipmentCatalog() {
     const queryClient = useQueryClient();
-    const { toast } = useToast();
+    const { executeWithFeedback } = useOperationFeedback();
     const [isOpen, setIsOpen] = useState(false);
     const [editingEq, setEditingEq] = useState(null);
     const [sortOrder, setSortOrder] = useState('manual'); // 'manual', 'asc', 'desc'
@@ -85,87 +85,105 @@ export default function EquipmentCatalog() {
     // Mutations
     const createEquipment = useMutation({
         mutationFn: async (data) => {
-            const eq = await Equipment.create(data.equipment);
-            if (data.testLinks.length > 0) {
-                await Promise.all(data.testLinks.map(link =>
-                    EquipmentTest.create({
-                        equipment_id: eq.id,
-                        test_definition_id: link.id,
-                        min_value: link.min_value,
-                        max_value: link.max_value,
-                        unit: link.unit
-                    })
-                ));
-            }
-            return eq;
+            const result = await executeWithFeedback({
+                operation: async () => {
+                    const eq = await Equipment.create(data.equipment);
+                    if (data.testLinks.length > 0) {
+                        await Promise.all(data.testLinks.map(link =>
+                            EquipmentTest.create({
+                                equipment_id: eq.id,
+                                test_definition_id: link.id,
+                                min_value: link.min_value,
+                                max_value: link.max_value,
+                                unit: link.unit
+                            })
+                        ));
+                    }
+                    return eq;
+                },
+                loadingMessage: 'Criando equipamento...',
+                successMessage: 'Equipamento cadastrado com sucesso!',
+                errorMessage: 'Erro ao criar equipamento.',
+                logCategory: 'crud',
+                logDetails: { action: 'create', entity: 'equipment', data: data.equipment },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['equipments'] });
             setIsOpen(false);
             setSelectedTestsData([]);
             setEditingEq(null);
-            toast({
-                title: "✅ Equipamento cadastrado",
-                description: "O equipamento foi adicionado com sucesso ao catálogo.",
-            });
         }
     });
 
     const updateEquipment = useMutation({
         mutationFn: async (data) => {
-            await Equipment.update(data.id, data.equipment);
+            const result = await executeWithFeedback({
+                operation: async () => {
+                    await Equipment.update(data.id, data.equipment);
 
-            // Update tests links
-            // 1. Get existing links
-            const existingLinks = await EquipmentTest.list().then(res => res.filter(r => r.equipment_id === data.id));
+                    // Update tests links
+                    const existingLinks = await EquipmentTest.list().then(res => res.filter(r => r.equipment_id === data.id));
 
-            // Strategy: Delete all and recreate is easiest for full sync of auxiliary fields, 
-            // but might break foreign keys if we had them (we don't for these links usually, or CASCADE).
-            // Better: update existing, add new, delete removed.
+                    const existingTestIds = existingLinks.map(r => r.test_definition_id);
+                    const newTestIds = data.testLinks.map(l => l.id);
 
-            const existingTestIds = existingLinks.map(r => r.test_definition_id);
-            const newTestIds = data.testLinks.map(l => l.id);
+                    // To Remove
+                    const toRemove = existingLinks.filter(r => !newTestIds.includes(r.test_definition_id));
+                    await Promise.all(toRemove.map(r => EquipmentTest.delete(r.id)));
 
-            // To Remove
-            const toRemove = existingLinks.filter(r => !newTestIds.includes(r.test_definition_id));
-            await Promise.all(toRemove.map(r => EquipmentTest.delete(r.id)));
-
-            // To Add or Update
-            await Promise.all(data.testLinks.map(async (link) => {
-                const existing = existingLinks.find(r => r.test_definition_id === link.id);
-                if (existing) {
-                    // Update
-                    await EquipmentTest.update(existing.id, {
-                        min_value: link.min_value,
-                        max_value: link.max_value,
-                        unit: link.unit
-                    });
-                } else {
-                    // Create
-                    await EquipmentTest.create({
-                        equipment_id: data.id,
-                        test_definition_id: link.id,
-                        min_value: link.min_value,
-                        max_value: link.max_value,
-                        unit: link.unit
-                    });
-                }
-            }));
+                    // To Add or Update
+                    await Promise.all(data.testLinks.map(async (link) => {
+                        const existing = existingLinks.find(r => r.test_definition_id === link.id);
+                        if (existing) {
+                            await EquipmentTest.update(existing.id, {
+                                min_value: link.min_value,
+                                max_value: link.max_value,
+                                unit: link.unit
+                            });
+                        } else {
+                            await EquipmentTest.create({
+                                equipment_id: data.id,
+                                test_definition_id: link.id,
+                                min_value: link.min_value,
+                                max_value: link.max_value,
+                                unit: link.unit
+                            });
+                        }
+                    }));
+                },
+                loadingMessage: 'Salvando alterações...',
+                successMessage: 'Equipamento atualizado com sucesso!',
+                errorMessage: 'Erro ao atualizar equipamento.',
+                logCategory: 'crud',
+                logDetails: { action: 'update', entity: 'equipment', id: data.id },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['equipments'] });
             setIsOpen(false);
             setSelectedTestsData([]);
             setEditingEq(null);
-            toast({
-                title: "✅ Equipamento atualizado",
-                description: "As alterações foram salvas com sucesso.",
-            });
         }
     });
 
     const remove = useMutation({
-        mutationFn: (id) => Equipment.delete(id),
+        mutationFn: async (id) => {
+            const result = await executeWithFeedback({
+                operation: () => Equipment.delete(id),
+                loadingMessage: 'Excluindo equipamento...',
+                successMessage: 'Equipamento excluído com sucesso!',
+                errorMessage: 'Erro ao excluir equipamento.',
+                logCategory: 'crud',
+                logDetails: { action: 'delete', entity: 'equipment', id },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipments'] }),
     });
 
