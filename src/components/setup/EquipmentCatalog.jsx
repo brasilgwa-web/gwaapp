@@ -212,7 +212,7 @@ export default function EquipmentCatalog() {
     const handleOpenEdit = async (eq) => {
         setEditingEq(eq);
         // Fetch linked tests for this equipment
-        const links = await EquipmentTest.list().then(res => res.filter(r => r.equipment_id === eq.id));
+        const links = await EquipmentTest.filter({ equipment_id: eq.id });
 
         // Map to internal state
         const loadedData = links.map(l => {
@@ -327,7 +327,7 @@ export default function EquipmentCatalog() {
                         <DialogTrigger asChild>
                             <Button onClick={handleOpenNew}><Plus className="w-4 h-4 mr-2" /> Novo Equipamento</Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="max-w-2xl max-h-[90vh] h-fit overflow-y-auto">
                             <DialogHeader><DialogTitle>{editingEq ? 'Editar Equipamento' : 'Novo Equipamento'}</DialogTitle></DialogHeader>
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="grid gap-4">
@@ -337,7 +337,7 @@ export default function EquipmentCatalog() {
 
                                 <div className="space-y-3">
                                     <Label className="text-base font-semibold">Testes e Limites (VMP)</Label>
-                                    <div className="grid grid-cols-1 gap-2 border rounded-lg p-4 bg-slate-50 max-h-[400px] overflow-y-auto">
+                                    <div className="grid grid-cols-1 gap-2 border rounded-lg p-4 bg-slate-50">
                                         {tests?.map(test => {
                                             const isSelected = selectedTestsData.some(x => x.id === test.id);
                                             const config = selectedTestsData.find(x => x.id === test.id);
