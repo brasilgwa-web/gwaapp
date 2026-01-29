@@ -29,10 +29,19 @@ export default function ClientEquipmentManager({ client }) {
     // Strategy: Use the first location found, or create one named "Geral" if none exists.
     // We do this check when adding equipment.
 
-    const { data: allLocationEquipments } = useQuery({ queryKey: ['locationEquipments'], queryFn: () => LocationEquipment.list() });
-
-    // Filter for THIS client's equipments
-    const clientEquipments = allLocationEquipments?.filter(le => locations?.some(l => l.id === le.location_id));
+    const { data: clientEquipments } = useQuery({
+        queryKey: ['locationEquipments', locations?.map(l => l.id).join(',')],
+        queryFn: async () => {
+            if (!locations || locations.length === 0) return [];
+            const { data, error } = await supabase
+                .from('location_equipments')
+                .select('*')
+                .in('location_id', locations.map(l => l.id));
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!locations && locations.length > 0
+    });
 
     const { data: catalogEquipments } = useQuery({ queryKey: ['equipments'], queryFn: () => Equipment.list() });
 
