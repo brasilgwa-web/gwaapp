@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Client } from "@/api/entities";
+import { Client, ClientContact } from "@/api/entities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical, User, Users } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -87,45 +87,6 @@ export default function ClientLocationManager() {
     const { executeWithFeedback } = useOperationFeedback();
     const { data: clients } = useQuery({ queryKey: ['clients'], queryFn: () => Client.list() });
 
-    const createClient = useMutation({
-        mutationFn: async (data) => {
-            const result = await executeWithFeedback({
-                operation: () => Client.create(data),
-                loadingMessage: 'Criando cliente...',
-                successMessage: 'Cliente criado com sucesso!',
-                errorMessage: 'Erro ao criar cliente.',
-                logCategory: 'crud',
-                logDetails: { action: 'create', entity: 'client', data },
-            });
-            if (!result.success) throw result.error;
-            return result.data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['clients'] });
-            setIsClientDialogOpen(false);
-        }
-    });
-
-    const updateClient = useMutation({
-        mutationFn: async (data) => {
-            const result = await executeWithFeedback({
-                operation: () => Client.update(data.id, data.fields),
-                loadingMessage: 'Salvando alterações...',
-                successMessage: 'Cliente atualizado com sucesso!',
-                errorMessage: 'Erro ao atualizar cliente.',
-                logCategory: 'crud',
-                logDetails: { action: 'update', entity: 'client', id: data.id, fields: data.fields },
-            });
-            if (!result.success) throw result.error;
-            return result.data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['clients'] });
-            setIsClientDialogOpen(false);
-            setEditingClient(null);
-        }
-    });
-
     const removeClient = useMutation({
         mutationFn: async (id) => {
             const result = await executeWithFeedback({
@@ -141,27 +102,6 @@ export default function ClientLocationManager() {
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['clients'] })
     });
-
-    const handleClientSubmit = (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = {
-            name: formData.get('name'),
-            email: formData.get('email'),
-            phone: formData.get('phone'),
-            contact_name: formData.get('contact_name'),
-            client_code: formData.get('client_code'),
-            address: formData.get('address'),
-            city_state: formData.get('city_state'),
-            google_drive_folder_id: formData.get('google_drive_folder_id')
-        };
-
-        if (editingClient) {
-            updateClient.mutate({ id: editingClient.id, fields: data });
-        } else {
-            createClient.mutate(data);
-        }
-    };
 
     const openNewClient = () => {
         setEditingClient(null);
@@ -258,38 +198,13 @@ export default function ClientLocationManager() {
                             <SelectItem value="desc">Z → A</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Dialog open={isClientDialogOpen} onOpenChange={setIsClientDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button onClick={openNewClient} className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Novo Cliente</Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader><DialogTitle>{editingClient ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle></DialogHeader>
-                            <form onSubmit={handleClientSubmit} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2"><Label>Empresa</Label><Input name="name" defaultValue={editingClient?.name} required /></div>
-                                    <div className="space-y-2"><Label>Código do Cliente</Label><Input name="client_code" defaultValue={editingClient?.client_code} placeholder="Ex: C001" /></div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2"><Label>Email (Relatórios)</Label><Input name="email" type="email" defaultValue={editingClient?.email} required /></div>
-                                    <div className="space-y-2"><Label>Contato</Label><Input name="contact_name" defaultValue={editingClient?.contact_name} /></div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2"><Label>Cel.</Label><Input name="phone" defaultValue={editingClient?.phone} placeholder="(11) 99999-9999" /></div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2"><Label>Endereço</Label><Input name="address" defaultValue={editingClient?.address} /></div>
-                                    <div className="space-y-2"><Label>Cidade/UF</Label><Input name="city_state" defaultValue={editingClient?.city_state} /></div>
-                                </div>
-
-                                <div className="space-y-2"><Label>ID Pasta Drive</Label><Input name="google_drive_folder_id" defaultValue={editingClient?.google_drive_folder_id} placeholder="ID da pasta do Google Drive" /></div>
-
-                                <DialogFooter><Button type="submit">{editingClient ? 'Salvar' : 'Criar'}</Button></DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                    <ClientDialog
+                        open={isClientDialogOpen}
+                        onOpenChange={setIsClientDialogOpen}
+                        client={editingClient}
+                        onClose={() => { setIsClientDialogOpen(false); setEditingClient(null); }}
+                        onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['clients'] }); }}
+                    />
                 </div>
             </CardHeader>
             <CardContent>
@@ -324,62 +239,268 @@ export default function ClientLocationManager() {
     );
 }
 
-// Component for editing Discharges/Drainages field
-function ClientDischargesSection({ client, onBack, onUpdate }) {
-    const [text, setText] = React.useState(client.default_discharges_drainages || '');
-    const [isSaving, setIsSaving] = React.useState(false);
-    const [hasChanges, setHasChanges] = React.useState(false);
+// --- Sub-components ---
 
-    const handleTextChange = (e) => {
-        setText(e.target.value);
-        setHasChanges(e.target.value !== (client.default_discharges_drainages || ''));
+function ClientDialog({ open, onOpenChange, client, onClose, onSuccess }) {
+    const queryClient = useQueryClient();
+    const { executeWithFeedback } = useOperationFeedback();
+
+    // Form State
+    const [extraContacts, setExtraContacts] = useState([]);
+    const [deletedContactIds, setDeletedContactIds] = useState([]);
+
+    // Fetch existing contacts when editing
+    const { data: existingContacts, isLoading: isLoadingContacts } = useQuery({
+        queryKey: ['client_contacts', client?.id],
+        queryFn: () => ClientContact.filter({ client_id: client.id }),
+        enabled: !!client?.id
+    });
+
+    // Sync state when data loads
+    React.useEffect(() => {
+        if (open) {
+            if (client && existingContacts) {
+                setExtraContacts(existingContacts);
+            } else if (!client) {
+                setExtraContacts([]); // New client
+            }
+            setDeletedContactIds([]);
+        }
+    }, [open, client, existingContacts]);
+
+    const handleAddContact = () => {
+        setExtraContacts([...extraContacts, { id: `temp-${Date.now()}`, name: '', email: '', phone: '' }]);
     };
 
-    const handleSave = async () => {
-        setIsSaving(true);
+    const handleRemoveContact = (index, contact) => {
+        const newContacts = [...extraContacts];
+        newContacts.splice(index, 1);
+        setExtraContacts(newContacts);
+
+        if (contact.id && !contact.id.startsWith('temp-')) {
+            setDeletedContactIds([...deletedContactIds, contact.id]);
+        }
+    };
+
+    const handleContactChange = (index, field, value) => {
+        const newContacts = [...extraContacts];
+        newContacts[index] = { ...newContacts[index], [field]: value };
+        setExtraContacts(newContacts);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const clientData = {
+            name: formData.get('name'),
+            email: formData.get('email'),
+            phone: formData.get('phone'),
+            contact_name: formData.get('contact_name'),
+            client_code: formData.get('client_code'),
+            address: formData.get('address'),
+            city_state: formData.get('city_state'),
+            google_drive_folder_id: formData.get('google_drive_folder_id')
+        };
+
         try {
-            const updated = await Client.update(client.id, { default_discharges_drainages: text });
-            setHasChanges(false);
-            onUpdate({ ...client, default_discharges_drainages: text });
+            let savedClient;
+
+            // 1. Save Client
+            if (client) {
+                const res = await executeWithFeedback({
+                    operation: () => Client.update(client.id, clientData),
+                    loadingMessage: 'Salvando cliente...',
+                    successMessage: 'Cliente salvo!',
+                    errorMessage: 'Erro ao salvar cliente',
+                });
+                if (!res.success) return;
+                savedClient = res.data;
+            } else {
+                const res = await executeWithFeedback({
+                    operation: () => Client.create(clientData),
+                    loadingMessage: 'Criando cliente...',
+                    successMessage: 'Cliente criado!',
+                    errorMessage: 'Erro ao criar cliente',
+                });
+                if (!res.success) return;
+                savedClient = res.data;
+            }
+
+            // 2. Process Contacts
+            // Deletes
+            if (deletedContactIds.length > 0) {
+                for (const id of deletedContactIds) {
+                    await ClientContact.delete(id);
+                }
+            }
+
+            // Upserts
+            for (const contact of extraContacts) {
+                const contactPayload = {
+                    client_id: savedClient.id,
+                    name: contact.name,
+                    email: contact.email,
+                    phone: contact.phone
+                };
+
+                if (contact.id && !contact.id.startsWith('temp-')) {
+                    // Update
+                    await ClientContact.update(contact.id, contactPayload);
+                } else {
+                    // Create
+                    await ClientContact.create(contactPayload);
+                }
+            }
+
+            onSuccess();
+            onClose();
+
         } catch (error) {
-            console.error('Erro ao salvar:', error);
-        } finally {
-            setIsSaving(false);
+            console.error(error);
         }
     };
 
     return (
-        <Card className="w-full">
-            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-slate-500 text-sm mb-1 cursor-pointer hover:text-blue-600" onClick={onBack}>
-                        <ChevronRight className="w-4 h-4 rotate-180" /> Voltar para Clientes
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>{client ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle></DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Dados da Empresa */}
+                    <div className="space-y-4 border-b pb-4">
+                        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Building className="w-4 h-4" /> Dados da Empresa</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2"><Label>Empresa *</Label><Input name="name" defaultValue={client?.name} required /></div>
+                            <div className="space-y-2"><Label>Código do Cliente</Label><Input name="client_code" defaultValue={client?.client_code} placeholder="Ex: C001" /></div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2"><Label>Endereço</Label><Input name="address" defaultValue={client?.address} /></div>
+                            <div className="space-y-2"><Label>Cidade/UF</Label><Input name="city_state" defaultValue={client?.city_state} /></div>
+                        </div>
+                        <div className="space-y-2"><Label>ID Pasta Drive</Label><Input name="google_drive_folder_id" defaultValue={client?.google_drive_folder_id} placeholder="ID da pasta do Google Drive" /></div>
                     </div>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label className="text-base font-semibold">Descargas e Drenagens (Padrão)</Label>
-                    <p className="text-sm text-slate-500">
-                        Este texto será inserido automaticamente nos relatórios deste cliente.
-                    </p>
-                    <textarea
-                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]"
-                        value={text}
-                        onChange={handleTextChange}
-                        placeholder="Texto padrão para aparecer no relatório..."
-                    />
-                </div>
-                {hasChanges && (
-                    <Button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="bg-blue-600 hover:bg-blue-700"
-                    >
-                        {isSaving ? 'Salvando...' : 'Salvar Alterações'}
-                    </Button>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
+
+                    {/* Contato Principal */}
+                    <div className="space-y-4 border-b pb-4">
+                        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><User className="w-4 h-4" /> Contato Principal (Assinatura)</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2"><Label>Nome do Contato</Label><Input name="contact_name" defaultValue={client?.contact_name} /></div>
+                            <div className="space-y-2"><Label>Email (Relatórios)</Label><Input name="email" type="email" defaultValue={client?.email} required /></div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2"><Label>Celular</Label><Input name="phone" defaultValue={client?.phone} placeholder="(11) 99999-9999" /></div>
+                        </div>
+                    </div>
+
+                    {/* Contatos Adicionais */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Users className="w-4 h-4" /> Contatos Adicionais (Recebimento de Email)</h3>
+                            <Button type="button" variant="outline" size="sm" onClick={handleAddContact}><Plus className="w-3 h-3 mr-2" /> Adicionar Contato</Button>
+                        </div>
+
+                        {isLoadingContacts && <p className="text-sm text-slate-500">Carregando contatos...</p>}
+
+                        <div className="space-y-3">
+                            {extraContacts.map((contact, index) => (
+                                <div key={contact.id} className="flex flex-col md:flex-row gap-3 items-end bg-slate-50 p-3 rounded-lg border">
+                                    <div className="flex-1 space-y-1 w-full">
+                                        <Label className="text-xs">Nome</Label>
+                                        <Input
+                                            value={contact.name}
+                                            onChange={(e) => handleContactChange(index, 'name', e.target.value)}
+                                            placeholder="Nome do contato"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="flex-1 space-y-1 w-full">
+                                        <Label className="text-xs">Email</Label>
+                                        <Input
+                                            value={contact.email}
+                                            onChange={(e) => handleContactChange(index, 'email', e.target.value)}
+                                            placeholder="email@exemplo.com"
+                                            type="email"
+                                        />
+                                    </div>
+                                    <div className="flex-1 space-y-1 w-full">
+                                        <Label className="text-xs">Celular</Label>
+                                        <Input
+                                            value={contact.phone}
+                                            onChange={(e) => handleContactChange(index, 'phone', e.target.value)}
+                                            placeholder="(11) 99999-9999"
+                                        />
+                                    </div>
+                                    <Button type="button" variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleRemoveContact(index, contact)}>
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                            {extraContacts.length === 0 && (
+                                <p className="text-sm text-slate-400 italic text-center py-2">Nenhum contato adicional.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter><Button type="submit">Salvar Tudo</Button></DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+
+// Component for editing Discharges/Drainages field
+function ClientDischargesSection({ client, onBack, onUpdate }) {
+        const [text, setText] = React.useState(client.default_discharges_drainages || '');
+        const [isSaving, setIsSaving] = React.useState(false);
+        const [hasChanges, setHasChanges] = React.useState(false);
+
+        const handleTextChange = (e) => {
+            setText(e.target.value);
+            setHasChanges(e.target.value !== (client.default_discharges_drainages || ''));
+        };
+
+        const handleSave = async () => {
+            setIsSaving(true);
+            try {
+                const updated = await Client.update(client.id, { default_discharges_drainages: text });
+                setHasChanges(false);
+                onUpdate({ ...client, default_discharges_drainages: text });
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+            } finally {
+                setIsSaving(false);
+            }
+        };
+
+        return (
+            <Card className="w-full">
+                <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-slate-500 text-sm mb-1 cursor-pointer hover:text-blue-600" onClick={onBack}>
+                            <ChevronRight className="w-4 h-4 rotate-180" /> Voltar para Clientes
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label className="text-base font-semibold">Descargas e Drenagens (Padrão)</Label>
+                        <p className="text-sm text-slate-500">
+                            Este texto será inserido automaticamente nos relatórios deste cliente.
+                        </p>
+                        <textarea
+                            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]"
+                            value={text}
+                            onChange={handleTextChange}
+                            placeholder="Texto padrão para aparecer no relatório..."
+                        />
+                    </div>
+                    {hasChanges && (
+                        <Button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                        </Button>
+                    )}
+                </CardContent>
+            </Card>
+        );
+    }

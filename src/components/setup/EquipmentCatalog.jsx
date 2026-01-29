@@ -125,7 +125,7 @@ export default function EquipmentCatalog() {
                     await Equipment.update(data.id, data.equipment);
 
                     // Update tests links
-                    const existingLinks = await EquipmentTest.list().then(res => res.filter(r => r.equipment_id === data.id));
+                    const existingLinks = await EquipmentTest.filter({ equipment_id: data.id });
 
                     const existingTestIds = existingLinks.map(r => r.test_definition_id);
                     const newTestIds = data.testLinks.map(l => l.id);
