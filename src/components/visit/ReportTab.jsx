@@ -23,7 +23,7 @@ import { Logger } from "@/lib/logger";
 import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock, Eye, EyeOff, PenTool } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Label } from "@/components/ui/label";
+
 import SignaturePad from "./SignaturePad";
 import { ClientContact } from "@/api/entities";
 
