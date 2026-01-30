@@ -194,7 +194,14 @@ export function useReportData(id) {
                 selectedTechnicalResponsible = resp;
             }
 
-            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, technicalResponsibles, selectedTechnicalResponsible };
+            // Fetch Client Contact (Signer) - NEW
+            let clientContact = null;
+            if (visit.client_contact_id) {
+                const { data: cc } = await supabase.from('client_contacts').select('*').eq('id', visit.client_contact_id).single();
+                if (cc) clientContact = cc;
+            }
+
+            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, technicalResponsibles, selectedTechnicalResponsible, clientContact };
         },
         // Cache for 5 minutes
         staleTime: 1000 * 60 * 5

@@ -145,7 +145,8 @@ function CoverPage({ settings }) {
 }
 
 export function ReportTemplate({ data }) {
-    const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings } = data;
+    const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, clientContact } = data;
+
 
     // Technician and Visit Metadata
     const techName = technicianUser?.full_name || visit.technician_email || 'Técnico Responsável';
@@ -561,9 +562,10 @@ export function ReportTemplate({ data }) {
                                 ) : (<div className="text-[10px] text-slate-300 italic">Não assinado</div>)}
                             </div>
                             <div className="border-t border-slate-300 w-full pt-1 max-w-[200px]">
-                                <p className="font-bold text-xs uppercase">{client?.contact_name || 'Cliente'}</p>
+                                <p className="font-bold text-xs uppercase">{clientContact?.name || client?.contact_name || 'Cliente'}</p>
                                 <p className="text-[9px] text-slate-500">Responsável no Local</p>
                             </div>
+
                         </div>
                     </div>
                 </section>

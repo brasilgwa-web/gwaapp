@@ -127,6 +127,7 @@ export const LocationEquipment = createAdapter('location_equipments', 'created_a
 // V1.2 New Entities
 export const ClientProduct = createAdapter('client_products', 'created_at');
 export const EquipmentDosageParams = createAdapter('equipment_dosage_params', 'created_at');
+export const ClientContact = createAdapter('client_contacts', 'created_at');
 
 // V1.3 RBAC Entities
 export const Role = createAdapter('roles', 'created_at');
