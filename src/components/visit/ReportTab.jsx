@@ -304,7 +304,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const handleFinalize = async () => {
         const confirmed = await confirm({
             title: 'Finalizar Visita',
-            message: 'Tem certeza que deseja finalizar? O estoque serÃ¡ debitado e a visita serÃ¡ concluÃ­da.',
+            message: 'Tem certeza que deseja finalizar? O estoque será debitado e a visita será concluída.',
             type: 'warning'
         });
         if (!confirmed) return;
@@ -330,7 +330,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const handleReopen = async () => {
         const confirmed = await confirm({
             title: 'Reabrir Visita',
-            message: 'Reabrir esta visita? O estoque serÃ¡ estornado para permitir ediÃ§Ã£o.',
+            message: 'Reabrir esta visita? O estoque será estornado para permitir edição.',
             type: 'warning'
         });
         if (!confirmed) return;
