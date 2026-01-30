@@ -381,7 +381,7 @@ function ClientDialog({ open, onOpenChange, client, onClose, onSuccess }) {
 
                     {/* Contato Principal */}
                     <div className="space-y-4 border-b pb-4">
-                        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><User className="w-4 h-4" /> Contato Principal (Assinatura)</h3>
+                        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><User className="w-4 h-4" /> Contato Principal</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2"><Label>Nome do Contato</Label><Input name="contact_name" defaultValue={client?.contact_name} /></div>
                             <div className="space-y-2"><Label>Email (Relatórios)</Label><Input name="email" type="email" defaultValue={client?.email} required /></div>
@@ -394,7 +394,7 @@ function ClientDialog({ open, onOpenChange, client, onClose, onSuccess }) {
                     {/* Contatos Adicionais */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Users className="w-4 h-4" /> Contatos Adicionais (Recebimento de Email)</h3>
+                            <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Users className="w-4 h-4" /> Contatos Adicionais</h3>
                             <Button type="button" variant="outline" size="sm" onClick={handleAddContact}><Plus className="w-3 h-3 mr-2" /> Adicionar Contato</Button>
                         </div>
 
