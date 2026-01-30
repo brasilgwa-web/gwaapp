@@ -23,7 +23,10 @@ import { Logger } from "@/lib/logger";
 import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock, Eye, EyeOff, PenTool } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label";
 import SignaturePad from "./SignaturePad";
+import { ClientContact } from "@/api/entities";
+
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
     if (!visit) return null;
@@ -40,6 +43,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [showObsPreview, setShowObsPreview] = useState(true);
     const [technicalResponsibleId, setTechnicalResponsibleId] = useState(visit.technical_responsible_id || '');
     const [aiValidated, setAiValidated] = useState(false);
+    const [signerId, setSignerId] = useState(visit.client_contact_id || 'default');
+
 
     // Signature Pad Ref
     const signaturePadRef = useRef(null);
@@ -71,6 +76,17 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             return data;
         },
     });
+
+    // Fetch Client Contacts for Signature Selector
+    const { data: clientContacts } = useQuery({
+        queryKey: ['clientContacts', visit.client_id],
+        queryFn: async () => {
+            if (!visit.client_id) return [];
+            return await ClientContact.filter({ client_id: visit.client_id });
+        },
+        enabled: !!visit.client_id
+    });
+
 
     // Fetch Client Details (to get default discharges) - Direct Supabase Call
     const { data: clientDetails } = useQuery({
@@ -245,8 +261,10 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const handleSaveSignature = (url) => {
         // url can be null (clearing) or a data URL (saving)
         const updates = {
-            client_signature_url: url
+            client_signature_url: url,
+            client_contact_id: signerId === 'default' ? null : signerId,
         };
+
 
         // Only capture service_end_time when actually signing (not clearing)
         if (url) {
@@ -513,11 +531,29 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             const emailSubject = replaceVars(subjectTemplate);
             const emailBody = replaceVars(bodyTemplate);
 
+            // Collect all emails
+            const recipients = [visit.client?.email];
+
+            // Add extra contacts who want to receive email
+            if (clientContacts) {
+                clientContacts.forEach(c => {
+                    if (c.receive_email && c.email) {
+                        recipients.push(c.email);
+                    }
+                });
+            }
+
+            // Remove duplicates and filter empty
+            const uniqueRecipients = [...new Set(recipients)].filter(Boolean);
+
             await Core.SendEmail({
-                to: visit.client?.email,
+                to: uniqueRecipients.join(';'), // Sending to all as semicolon separated string (or handle as arrays if Core backend supports)
+                // If backend expects 'to' to be a single string, standard is comma or semicolon. 
+                // Using simple join for now.
                 subject: emailSubject,
                 body: emailBody,
             });
+
 
             await alert({ title: 'Sucesso!', message: 'Relatório enviado e salvo com sucesso.', type: 'success' });
             Logger.info('USER_ACTION', 'Report sent successfully', { visitId: visit.id, email: visit.client?.email });
@@ -786,7 +822,26 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             Responsável ausente (cliente não disponível para assinatura)
                         </Label>
                     </div>
+
+                    {!clientAbsent && !readOnly && (
+                        <div className="mb-4 space-y-2">
+                            <Label>Quem está assinando? (Nome sairá no relatório)</Label>
+                            <Select value={signerId} onValueChange={setSignerId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o responsável" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="default">{visit.client?.contact_name || 'Responsável Principal'} (Principal)</SelectItem>
+                                    {clientContacts?.map(contact => (
+                                        <SelectItem key={contact.id} value={contact.id}>{contact.name} - {contact.email}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
                     {clientAbsent ? (
+
                         <p className="text-slate-400 italic text-sm">Assinatura não necessária - responsável ausente</p>
                     ) : (
                         readOnly ? (

@@ -331,9 +331,10 @@ const MarkdownText = ({ text }) => {
 };
 
 const ReportPdf = ({ data, settings }) => {
-    const { visit, client, fullReportStructure, photos, primaryLocation, technicianUser } = data;
+    const { visit, client, fullReportStructure, photos, primaryLocation, technicianUser, clientContact } = data;
     // Fallback for reportNumber
     const reportNumber = data.reportNumber || visit.report_number || 'PENDENTE';
+
 
     // Resolve Technician Info
     const techName = data.techName || technicianUser?.name || 'Técnico WGA';
@@ -693,9 +694,10 @@ const ReportPdf = ({ data, settings }) => {
                             <Text style={{ fontSize: 10, fontStyle: 'italic', marginBottom: 30, color: '#94a3b8' }}>Não assinado</Text>
                         )}
                         <View style={styles.signatureLine}>
-                            <Text style={styles.signatureName}>{client?.contact_name || 'Cliente'}</Text>
+                            <Text style={styles.signatureName}>{clientContact?.name || client?.contact_name || 'Cliente'}</Text>
                             <Text style={styles.signatureRole}>Responsável no Local</Text>
                         </View>
+
                     </View>
 
                     {/* Technical Responsible (Bottom Left) */}

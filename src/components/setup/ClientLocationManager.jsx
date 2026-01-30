@@ -269,7 +269,7 @@ function ClientDialog({ open, onOpenChange, client, onClose, onSuccess }) {
     }, [open, client, existingContacts]);
 
     const handleAddContact = () => {
-        setExtraContacts([...extraContacts, { id: `temp-${Date.now()}`, name: '', email: '', phone: '' }]);
+        setExtraContacts([...extraContacts, { id: `temp-${Date.now()}`, name: '', email: '', phone: '', receive_email: true }]);
     };
 
     const handleRemoveContact = (index, contact) => {
@@ -427,6 +427,15 @@ function ClientDialog({ open, onOpenChange, client, onClose, onSuccess }) {
                                             value={contact.phone}
                                             onChange={(e) => handleContactChange(index, 'phone', e.target.value)}
                                             placeholder="(11) 99999-9999"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col items-center justify-end pb-2 space-y-1">
+                                        <Label className="text-xs text-center w-full" title="Receber cópia do relatório">Email?</Label>
+                                        <input
+                                            type="checkbox"
+                                            className="w-5 h-5 accent-blue-600 cursor-pointer"
+                                            checked={contact.receive_email !== false} // Default to true if undefined
+                                            onChange={(e) => handleContactChange(index, 'receive_email', e.target.checked)}
                                         />
                                     </div>
                                     <Button type="button" variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleRemoveContact(index, contact)}>
