@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, Beaker, ArrowUpDown } from "lucide-react";
+import { Plus, Trash2, Pencil, Beaker, ArrowUpDown, Search } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
@@ -106,23 +106,45 @@ export default function ProductCatalog() {
         setIsDialogOpen(true);
     };
 
-    // Sorted products based on sortOrder
-    const sortedProducts = useMemo(() => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [visibleCount, setVisibleCount] = useState(100); // Initial items to show
+
+    // Filter and sort products
+    const filteredProducts = useMemo(() => {
         if (!products) return [];
 
-        let sorted = [...products];
+        let result = [...products];
 
-        if (sortOrder === 'asc') {
-            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
-        } else if (sortOrder === 'desc') {
-            sorted.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
-        } else {
-            // Manual: sort by display_order if exists
-            sorted.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        // 1. Filter
+        if (searchTerm) {
+            const lower = searchTerm.toLowerCase();
+            result = result.filter(p =>
+                (p.name && p.name.toLowerCase().includes(lower)) ||
+                (p.unit && p.unit.toLowerCase().includes(lower))
+            );
         }
 
-        return sorted;
-    }, [products, sortOrder]);
+        // 2. Sort
+        if (sortOrder === 'asc') {
+            result.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+        } else if (sortOrder === 'desc') {
+            result.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
+        } else {
+            // Manual: sort by display_order if exists
+            result.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        }
+
+        return result;
+    }, [products, sortOrder, searchTerm]);
+
+    const visibleProducts = useMemo(() => {
+        return filteredProducts.slice(0, visibleCount);
+    }, [filteredProducts, visibleCount]);
+
+    // Reset visible count when search changes
+    React.useEffect(() => {
+        setVisibleCount(100);
+    }, [searchTerm]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -138,8 +160,8 @@ export default function ProductCatalog() {
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         if (active.id !== over.id) {
-            const oldIndex = sortedProducts.findIndex((p) => p.id === active.id);
-            const newIndex = sortedProducts.findIndex((p) => p.id === over.id);
+            const oldIndex = filteredProducts.findIndex((p) => p.id === active.id);
+            const newIndex = filteredProducts.findIndex((p) => p.id === over.id);
 
             // Optimistic Update (optional but recommended for smooth UX)
             // For now we trust refetch, but here we update backend.
@@ -149,7 +171,7 @@ export default function ProductCatalog() {
             // Swap is easier but drag usually implies re-insert.
             // arrayMove gives us the new array. We should update display_order locally then push.
 
-            const newOrderedList = arrayMove(sortedProducts, oldIndex, newIndex);
+            const newOrderedList = arrayMove(filteredProducts, oldIndex, newIndex);
 
             // Update all to match new index
             await Promise.all(newOrderedList.map((item, index) =>
@@ -168,6 +190,15 @@ export default function ProductCatalog() {
                     <CardDescription>Gerencie os produtos utilizados nas dosagens (ex: Anti-incrustante, Biocida)</CardDescription>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative w-full sm:w-auto flex-1">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar produtos..."
+                            className="pl-8"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                     <Select value={sortOrder} onValueChange={setSortOrder}>
                         <SelectTrigger className="w-full sm:w-[160px]">
                             <ArrowUpDown className="w-4 h-4 mr-2" />
@@ -215,11 +246,11 @@ export default function ProductCatalog() {
                             </TableHeader>
                             <TableBody>
                                 <SortableContext
-                                    items={sortedProducts.map(p => p.id)}
+                                    items={visibleProducts.map(p => p.id)}
                                     strategy={verticalListSortingStrategy}
-                                    disabled={sortOrder !== 'manual'}
+                                    disabled={sortOrder !== 'manual' || searchTerm !== ''} // Disable drag when filtering
                                 >
-                                    {sortedProducts.map((prod) => (
+                                    {visibleProducts.map((prod) => (
                                         <SortableTableRow key={prod.id} id={prod.id}>
                                             <TableCell><Beaker className="w-4 h-4 text-slate-500" /></TableCell>
                                             <TableCell className="font-medium">{prod.name}</TableCell>
@@ -237,11 +268,18 @@ export default function ProductCatalog() {
                                         </SortableTableRow>
                                     ))}
                                 </SortableContext>
-                                {sortedProducts.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-4">Nenhum produto cadastrado.</TableCell></TableRow>}
+                                {visibleProducts.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-4">Nenhum produto encontrado.</TableCell></TableRow>}
                             </TableBody>
                         </Table>
                     </DndContext>
                 </div>
+                {visibleProducts.length < filteredProducts.length && (
+                    <div className="flex justify-center mt-4">
+                        <Button variant="outline" onClick={() => setVisibleCount(prev => prev + 10)}>
+                            Carregar mais
+                        </Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

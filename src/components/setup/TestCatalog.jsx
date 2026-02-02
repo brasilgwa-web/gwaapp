@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, ArrowUpDown } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowUpDown, Search } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
@@ -116,23 +116,46 @@ export default function TestCatalog() {
         setIsDialogOpen(true);
     };
 
-    // Sorted tests based on sortOrder
-    const sortedTests = useMemo(() => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [visibleCount, setVisibleCount] = useState(100);
+
+    // Filter and sort tests
+    const filteredTests = useMemo(() => {
         if (!tests) return [];
 
-        let sorted = [...tests];
+        let result = [...tests];
 
-        if (sortOrder === 'asc') {
-            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
-        } else if (sortOrder === 'desc') {
-            sorted.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
-        } else {
-            // Manual: sort by display_order if exists
-            sorted.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        // 1. Filter
+        if (searchTerm) {
+            const lower = searchTerm.toLowerCase();
+            result = result.filter(t =>
+                (t.name && t.name.toLowerCase().includes(lower)) ||
+                (t.unit && t.unit.toLowerCase().includes(lower)) ||
+                (t.methodology && t.methodology.toLowerCase().includes(lower))
+            );
         }
 
-        return sorted;
-    }, [tests, sortOrder]);
+        // 2. Sort
+        if (sortOrder === 'asc') {
+            result.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+        } else if (sortOrder === 'desc') {
+            result.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
+        } else {
+            // Manual: sort by display_order if exists
+            result.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        }
+
+        return result;
+    }, [tests, sortOrder, searchTerm]);
+
+    const visibleTests = useMemo(() => {
+        return filteredTests.slice(0, visibleCount);
+    }, [filteredTests, visibleCount]);
+
+    // Reset visible count when search changes
+    React.useEffect(() => {
+        setVisibleCount(100);
+    }, [searchTerm]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -148,10 +171,10 @@ export default function TestCatalog() {
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         if (active.id !== over.id) {
-            const oldIndex = sortedTests.findIndex((item) => item.id === active.id);
-            const newIndex = sortedTests.findIndex((item) => item.id === over.id);
+            const oldIndex = filteredTests.findIndex((item) => item.id === active.id);
+            const newIndex = filteredTests.findIndex((item) => item.id === over.id);
 
-            const newOrderedList = arrayMove(sortedTests, oldIndex, newIndex);
+            const newOrderedList = arrayMove(filteredTests, oldIndex, newIndex);
 
             await Promise.all(newOrderedList.map((item, index) =>
                 TestDefinition.update(item.id, { display_order: index })
@@ -169,6 +192,15 @@ export default function TestCatalog() {
                     <CardDescription>Defina os parâmetros analisados e seus dados laboratoriais (LD, LQ, Metodologia)</CardDescription>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative w-full sm:w-auto flex-1">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar testes..."
+                            className="pl-8"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                     <Select value={sortOrder} onValueChange={setSortOrder}>
                         <SelectTrigger className="w-full sm:w-[160px]">
                             <ArrowUpDown className="w-4 h-4 mr-2" />
@@ -237,11 +269,11 @@ export default function TestCatalog() {
                             </TableHeader>
                             <TableBody>
                                 <SortableContext
-                                    items={sortedTests.map(t => t.id)}
+                                    items={visibleTests.map(t => t.id)}
                                     strategy={verticalListSortingStrategy}
-                                    disabled={sortOrder !== 'manual'}
+                                    disabled={sortOrder !== 'manual' || searchTerm !== ''}
                                 >
-                                    {sortedTests.map((test) => (
+                                    {visibleTests.map((test) => (
                                         <SortableTableRow key={test.id} id={test.id}>
                                             <TableCell className="font-medium">{test.name}</TableCell>
                                             <TableCell>{test.unit}</TableCell>
@@ -260,11 +292,18 @@ export default function TestCatalog() {
                                         </SortableTableRow>
                                     ))}
                                 </SortableContext>
-                                {sortedTests.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-4">Nenhum teste cadastrado.</TableCell></TableRow>}
+                                {visibleTests.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-4">Nenhum teste encontrado.</TableCell></TableRow>}
                             </TableBody>
                         </Table>
                     </DndContext>
                 </div>
+                {visibleTests.length < filteredTests.length && (
+                    <div className="flex justify-center mt-4">
+                        <Button variant="outline" onClick={() => setVisibleCount(prev => prev + 10)}>
+                            Carregar mais
+                        </Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

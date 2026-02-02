@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, ArrowUpDown, GripVertical, CheckCircle } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowUpDown, GripVertical, CheckCircle, Search } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -259,23 +259,45 @@ export default function EquipmentCatalog() {
         ));
     };
 
-    // Sorted equipments based on sortOrder
-    const sortedEquipments = useMemo(() => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [visibleCount, setVisibleCount] = useState(100);
+
+    // Filter and sort equipments
+    const filteredEquipments = useMemo(() => {
         if (!equipments) return [];
 
-        let sorted = [...equipments];
+        let result = [...equipments];
 
-        if (sortOrder === 'asc') {
-            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
-        } else if (sortOrder === 'desc') {
-            sorted.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
-        } else {
-            // Manual: sort by display_order if exists, otherwise by created_at
-            sorted.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        // 1. Filter
+        if (searchTerm) {
+            const lower = searchTerm.toLowerCase();
+            result = result.filter(e =>
+                (e.name && e.name.toLowerCase().includes(lower)) ||
+                (e.description && e.description.toLowerCase().includes(lower))
+            );
         }
 
-        return sorted;
-    }, [equipments, sortOrder]);
+        // 2. Sort
+        if (sortOrder === 'asc') {
+            result.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+        } else if (sortOrder === 'desc') {
+            result.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
+        } else {
+            // Manual: sort by display_order if exists, otherwise by created_at
+            result.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        }
+
+        return result;
+    }, [equipments, sortOrder, searchTerm]);
+
+    const visibleEquipments = useMemo(() => {
+        return filteredEquipments.slice(0, visibleCount);
+    }, [filteredEquipments, visibleCount]);
+
+    // Reset visible count when search changes
+    React.useEffect(() => {
+        setVisibleCount(100);
+    }, [searchTerm]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -291,10 +313,10 @@ export default function EquipmentCatalog() {
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         if (active.id !== over.id) {
-            const oldIndex = sortedEquipments.findIndex((item) => item.id === active.id);
-            const newIndex = sortedEquipments.findIndex((item) => item.id === over.id);
+            const oldIndex = filteredEquipments.findIndex((item) => item.id === active.id);
+            const newIndex = filteredEquipments.findIndex((item) => item.id === over.id);
 
-            const newOrderedList = arrayMove(sortedEquipments, oldIndex, newIndex);
+            const newOrderedList = arrayMove(filteredEquipments, oldIndex, newIndex);
 
             await Promise.all(newOrderedList.map((item, index) =>
                 Equipment.update(item.id, { display_order: index })
@@ -312,6 +334,15 @@ export default function EquipmentCatalog() {
                     <CardDescription>Defina os tipos de equipamentos e seus testes padrão</CardDescription>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative w-full sm:w-auto flex-1">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar equipamentos..."
+                            className="pl-8"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                     <Select value={sortOrder} onValueChange={setSortOrder}>
                         <SelectTrigger className="w-full sm:w-[160px]">
                             <ArrowUpDown className="w-4 h-4 mr-2" />
@@ -405,11 +436,11 @@ export default function EquipmentCatalog() {
                         onDragEnd={handleDragEnd}
                     >
                         <SortableContext
-                            items={sortedEquipments.map(e => e.id)}
+                            items={visibleEquipments.map(e => e.id)}
                             strategy={verticalListSortingStrategy}
-                            disabled={sortOrder !== 'manual'}
+                            disabled={sortOrder !== 'manual' || searchTerm !== ''}
                         >
-                            {sortedEquipments.map((eq, index) => (
+                            {visibleEquipments.map((eq, index) => (
                                 <SortableEquipmentRow
                                     key={eq.id}
                                     eq={eq}
@@ -418,12 +449,19 @@ export default function EquipmentCatalog() {
                                     remove={remove}
                                     index={index}
                                     isFirst={index === 0}
-                                    isLast={index === sortedEquipments.length - 1}
+                                    isLast={index === visibleEquipments.length - 1}
                                 />
                             ))}
                         </SortableContext>
                     </DndContext>
                 </div>
+                {visibleEquipments.length < filteredEquipments.length && (
+                    <div className="flex justify-center mt-4">
+                        <Button variant="outline" onClick={() => setVisibleCount(prev => prev + 10)}>
+                            Carregar mais
+                        </Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

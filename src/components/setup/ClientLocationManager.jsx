@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical, User, Users } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical, User, Users, Search } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -114,23 +114,46 @@ export default function ClientLocationManager() {
         setIsClientDialogOpen(true);
     };
 
-    // Sorted clients based on sortOrder
-    const sortedClients = useMemo(() => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [visibleCount, setVisibleCount] = useState(100);
+
+    // Filter and sort clients
+    const filteredClients = useMemo(() => {
         if (!clients) return [];
 
-        let sorted = [...clients];
+        let result = [...clients];
 
-        if (sortOrder === 'asc') {
-            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
-        } else if (sortOrder === 'desc') {
-            sorted.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
-        } else {
-            // Manual: sort by display_order if exists
-            sorted.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        // 1. Filter
+        if (searchTerm) {
+            const lower = searchTerm.toLowerCase();
+            result = result.filter(c =>
+                (c.name && c.name.toLowerCase().includes(lower)) ||
+                (c.email && c.email.toLowerCase().includes(lower)) ||
+                (c.city_state && c.city_state.toLowerCase().includes(lower))
+            );
         }
 
-        return sorted;
-    }, [clients, sortOrder]);
+        // 2. Sort
+        if (sortOrder === 'asc') {
+            result.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+        } else if (sortOrder === 'desc') {
+            result.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'pt-BR'));
+        } else {
+            // Manual: sort by display_order if exists
+            result.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+        }
+
+        return result;
+    }, [clients, sortOrder, searchTerm]);
+
+    const visibleClients = useMemo(() => {
+        return filteredClients.slice(0, visibleCount);
+    }, [filteredClients, visibleCount]);
+
+    // Reset visible count when search changes
+    React.useEffect(() => {
+        setVisibleCount(100);
+    }, [searchTerm]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -146,10 +169,10 @@ export default function ClientLocationManager() {
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         if (active.id !== over.id) {
-            const oldIndex = sortedClients.findIndex((item) => item.id === active.id);
-            const newIndex = sortedClients.findIndex((item) => item.id === over.id);
+            const oldIndex = filteredClients.findIndex((item) => item.id === active.id);
+            const newIndex = filteredClients.findIndex((item) => item.id === over.id);
 
-            const newOrderedList = arrayMove(sortedClients, oldIndex, newIndex);
+            const newOrderedList = arrayMove(filteredClients, oldIndex, newIndex);
 
             await Promise.all(newOrderedList.map((item, index) =>
                 Client.update(item.id, { display_order: index })
@@ -187,6 +210,15 @@ export default function ClientLocationManager() {
             <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <CardTitle>Gerenciar Clientes</CardTitle>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative w-full sm:w-auto flex-1">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar clientes..."
+                            className="pl-8"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                     <Select value={sortOrder} onValueChange={setSortOrder}>
                         <SelectTrigger className="w-full sm:w-[160px]">
                             <ArrowUpDown className="w-4 h-4 mr-2" />
@@ -215,11 +247,11 @@ export default function ClientLocationManager() {
                         onDragEnd={handleDragEnd}
                     >
                         <SortableContext
-                            items={sortedClients.map(c => c.id)}
+                            items={visibleClients.map(c => c.id)}
                             strategy={verticalListSortingStrategy}
-                            disabled={sortOrder !== 'manual'}
+                            disabled={sortOrder !== 'manual' || searchTerm !== ''}
                         >
-                            {sortedClients.map((client, index) => (
+                            {visibleClients.map((client, index) => (
                                 <SortableClientRow
                                     key={client.id}
                                     client={client}
@@ -234,6 +266,13 @@ export default function ClientLocationManager() {
                         </SortableContext>
                     </DndContext>
                 </div>
+                {visibleClients.length < filteredClients.length && (
+                    <div className="flex justify-center mt-4">
+                        <Button variant="outline" onClick={() => setVisibleCount(prev => prev + 10)}>
+                            Carregar mais
+                        </Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
