@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 
 // Helper to create a standard CRUD adapter for a table
 const createAdapter = (tableName, defaultSortField = 'created_at') => ({
-    list: async (orderBy = defaultSortField, limit = 100) => {
+    list: async (orderBy = defaultSortField, limit = 1000) => {
         // Handle sorting if string provided like '-visit_date'
         let orderCol = orderBy;
         let ascending = false;
@@ -80,7 +80,7 @@ const createAdapter = (tableName, defaultSortField = 'created_at') => ({
     },
 
     // Used for specific queries like filter({ client_id: '...' })
-    filter: async (criteria = {}, orderBy, limit = 100) => {
+    filter: async (criteria = {}, orderBy, limit = 1000) => {
         let query = supabase.from(tableName).select('*');
 
         Object.entries(criteria).forEach(([key, value]) => {
