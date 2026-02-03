@@ -230,6 +230,10 @@ export default function ClientLocationManager() {
                             <SelectItem value="desc">Z → A</SelectItem>
                         </SelectContent>
                     </Select>
+                    <Button onClick={openNewClient} className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Novo Cliente
+                    </Button>
                     <ClientDialog
                         open={isClientDialogOpen}
                         onOpenChange={setIsClientDialogOpen}
