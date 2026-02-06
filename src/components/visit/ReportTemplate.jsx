@@ -185,12 +185,12 @@ export function ReportTemplate({ data }) {
                         <div className="flex items-center justify-end gap-6 flex-1">
                             {logoUrl && (
                                 <div className="h-16 flex items-center justify-center">
-                                    <img src={logoUrl} alt="Logo 1" className="h-full w-auto object-contain max-w-[180px]" />
+                                    <img src={logoUrl} alt="Logo 1" className="h-full w-auto object-contain max-w-[160px]" />
                                 </div>
                             )}
                             {logo2Url && (
                                 <div className="h-16 flex items-center justify-center">
-                                    <img src={logo2Url} alt="Logo 2" className="h-full w-auto object-contain max-w-[180px]" />
+                                    <img src={logo2Url} alt="Logo 2" className="h-full w-auto object-contain max-w-[160px]" />
                                 </div>
                             )}
                             {!logoUrl && !logo2Url && (
