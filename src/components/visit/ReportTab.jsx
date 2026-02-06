@@ -721,7 +721,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     {/* Collapsible List of Missing Items */}
                     {validationDialog.items?.length > 0 && (
                         <div className="my-2 border rounded-md overflow-hidden text-sm">
-                            <details className="group" open>
+                            <details className="group">
                                 <summary className="flex justify-between items-center p-3 bg-slate-50 cursor-pointer font-medium text-slate-700 hover:bg-slate-100 transition-colors">
                                     <span>Ver itens pendentes ({validationDialog.items.length})</span>
                                     <span className="transform group-open:rotate-180 transition-transform">
