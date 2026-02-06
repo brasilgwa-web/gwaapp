@@ -271,7 +271,7 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                 <Tabs defaultValue="products" className="flex-1 overflow-hidden flex flex-col">
                     <TabsList>
                         <TabsTrigger value="products">Produtos & Dosagens</TabsTrigger>
-                        <TabsTrigger value="tests">Parâmetros de Análise</TabsTrigger>
+                        <TabsTrigger value="tests">Tecnologia Química</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="products" className="flex-1 overflow-y-auto space-y-4 pt-4">
