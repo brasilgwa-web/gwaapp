@@ -203,10 +203,11 @@ export default function ClientLocationManager() {
                     }}
                 />
 
-                {/* Inventory Section (Full Width) - Only if enabled */}
-                {selectedClient.has_stock_access !== false && (
-                    <ClientInventoryManager client={selectedClient} />
-                )}
+                {/* Inventory Section (Full Width) */}
+                <ClientInventoryManager client={selectedClient} onUpdate={(updated) => {
+                    setSelectedClient(updated);
+                    queryClient.invalidateQueries({ queryKey: ['clients'] });
+                }} />
 
                 {/* Equipments Section (Full Width) */}
                 <ClientEquipmentManager client={selectedClient} />
