@@ -20,7 +20,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from "@/lib/utils";
 import { Logger } from "@/lib/logger";
-import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock, Eye, EyeOff, PenTool } from "lucide-react";
+import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock, Eye, EyeOff, PenTool, ChevronDown, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
@@ -43,6 +43,24 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [showObsPreview, setShowObsPreview] = useState(true);
     const [technicalResponsibleId, setTechnicalResponsibleId] = useState(visit.technical_responsible_id || '');
     const [aiValidated, setAiValidated] = useState(false);
+    const [validationDialog, setValidationDialog] = useState({
+        open: false,
+        items: [],
+        onConfirm: null,
+        confirmLabel: '',
+        title: '',
+        message: ''
+    });
+
+    const closeValidationDialog = () => {
+        setValidationDialog(prev => ({ ...prev, open: false }));
+    };
+
+    const confirmValidationDialog = () => {
+        if (validationDialog.onConfirm) validationDialog.onConfirm();
+        closeValidationDialog();
+    };
+
     const [signerId, setSignerId] = useState(visit.client_contact_id || 'default');
 
 
@@ -453,7 +471,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     };
 
     const handleOpenPreview = async () => {
-        // Validation: If user has no CRQ, Technical Responsible is MANDATORY
+        // Validation: Mandatory Tech Resp
         if (needsTechnicalResponsible && !technicalResponsibleId) {
             await alert({
                 title: 'Responsável Técnico Obrigatório',
@@ -464,47 +482,51 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         }
 
         // Smart Readings Validation
-        const { hasMissing, count } = checkMissingReadings();
-        if (hasMissing) {
-            const confirmedMissing = await confirm({
-                title: 'Campos em Branco Detectados',
-                message: `Existem ${count} análise(s) sem resultados preenchidos. \n\nSe você prosseguir, estes campos serão ocultados no relatório final e marcados como não realizados. \n\nDeseja continuar?`,
-                confirmLabel: 'Sim, ocultar e finalizar',
-                cancelLabel: 'Revisar preenchimento',
-                type: 'warning'
-            });
-            if (!confirmedMissing) return;
-        }
+        const { hasMissing, count, items } = checkMissingReadings();
 
-        // Auto-save Client Signature Logic
-        if (!readOnly && !clientAbsent && !visit.client_signature_url && signaturePadRef.current) {
-            const unsavedSig = signaturePadRef.current.getSignatureData();
-            if (unsavedSig) {
-                // We have a drawing but it wasn't saved yet
-                // Optimistically save it before confirming
-                try {
-                    await updateMutation.mutateAsync({
-                        client_signature_url: unsavedSig,
-                        service_end_time: new Date().toISOString()
-                    });
-                } catch (err) {
-                    console.error("Auto-save signature failed", err);
+        const proceedWithFinalize = async () => {
+            // Auto-save Client Signature Logic
+            if (!readOnly && !clientAbsent && !visit.client_signature_url && signaturePadRef.current) {
+                const unsavedSig = signaturePadRef.current.getSignatureData();
+                if (unsavedSig) {
+                    try {
+                        await updateMutation.mutateAsync({
+                            client_signature_url: unsavedSig,
+                            service_end_time: new Date().toISOString()
+                        });
+                    } catch (err) {
+                        console.error("Auto-save signature failed", err);
+                    }
                 }
             }
+
+            // Simple confirmation
+            const actionLabel = readOnly ? "reenviar e salvar" : "finalizar, enviar e salvar";
+            const confirmed = await confirm({
+                title: 'Confirmar Envio',
+                message: `Tem certeza que deseja ${actionLabel} o relatório?`,
+                confirmLabel: 'Sim, enviar',
+                cancelLabel: 'Cancelar',
+                type: 'confirm'
+            });
+            if (!confirmed) return;
+
+            await handleConfirmSend();
+        };
+
+        if (hasMissing) {
+            setValidationDialog({
+                open: true,
+                items: items,
+                title: 'Campos em Branco Detectados',
+                message: `Existem ${count} análise(s) ou dosagem(ns) sem resultados preenchidos. Estes campos aparecerão como "Não Realizado" ou vazios (ocultos) no relatório final.`,
+                confirmLabel: 'Sim, ocultar e finalizar',
+                onConfirm: proceedWithFinalize
+            });
+            return;
         }
 
-        // Simple confirmation instead of preview
-        const actionLabel = readOnly ? "reenviar e salvar" : "finalizar, enviar e salvar";
-        const confirmed = await confirm({
-            title: 'Confirmar Envio',
-            message: `Tem certeza que deseja ${actionLabel} o relatório?`,
-            confirmLabel: 'Sim, enviar',
-            cancelLabel: 'Cancelar',
-            type: 'confirm'
-        });
-        if (!confirmed) return;
-
-        await handleConfirmSend();
+        await proceedWithFinalize();
     };
 
     const handleViewWebReport = async (e) => {
@@ -521,20 +543,25 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         }
 
         // Smart Readings & Dosages Validation
-        const { hasMissing, count } = checkMissingReadings();
+        const { hasMissing, count, items } = checkMissingReadings();
+
+        const openReport = () => {
+            window.open(`/report/${visit.id}`, '_blank');
+        };
+
         if (hasMissing) {
-            const confirmedMissing = await confirm({
+            setValidationDialog({
+                open: true,
+                items: items,
                 title: 'Campos em Branco Detectados',
-                message: `Existem ${count} análise(s) ou dosagem(ns) sem resultados preenchidos. \n\nEstes campos aparecerão como "Não Realizado" ou vazios no relatório final. \n\nDeseja continuar e visualizar mesmo assim?`,
+                message: `Existem ${count} análise(s) ou dosagem(ns) sem resultados preenchidos. Estes campos não serão exibidos no relatório.`,
                 confirmLabel: 'Sim, visualizar',
-                cancelLabel: 'Revisar preenchimento',
-                type: 'warning'
+                onConfirm: openReport
             });
-            if (!confirmedMissing) return;
+            return;
         }
 
-        // Open Report
-        window.open(`/report/${visit.id}`, '_blank');
+        openReport();
     };
 
     const handleConfirmSend = async () => {
@@ -710,6 +737,116 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             {uploadStatus || "Gerando relatório..."}
                         </DialogDescription>
                     </DialogHeader>
+                </DialogContent>
+            </Dialog>
+
+            {/* Validation Dialog */}
+            <Dialog open={validationDialog.open} onOpenChange={closeValidationDialog}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-600">
+                            <AlertTriangle className="h-5 w-5" />
+                            {validationDialog.title}
+                        </DialogTitle>
+                        <DialogDescription className="pt-2">
+                            {validationDialog.message}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Collapsible List of Missing Items */}
+                    {validationDialog.items?.length > 0 && (
+                        <div className="my-2 border rounded-md overflow-hidden text-sm">
+                            <details className="group">
+                                <summary className="flex justify-between items-center p-3 bg-slate-50 cursor-pointer font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                                    <span>Ver itens pendentes ({validationDialog.items.length})</span>
+                                    <span className="transform group-open:rotate-180 transition-transform">
+                                        <ChevronDown className="h-4 w-4" />
+                                    </span>
+                                </summary>
+                                <div className="p-0 max-h-[200px] overflow-y-auto bg-white">
+                                    <ul className="divide-y divide-slate-100">
+                                        {validationDialog.items.map((item, idx) => (
+                                            <li key={idx} className="p-3 flex flex-col gap-1">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="font-semibold text-slate-800">{item.name}</span>
+                                                    <span className="text-[10px] uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-bold">{item.type}</span>
+                                                </div>
+                                                <div className="text-xs text-slate-500 flex gap-1">
+                                                    <span>{item.location}</span>
+                                                    <span>&bull;</span>
+                                                    <span>{item.equipment}</span>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </details>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 mt-4">
+                        <Button variant="outline" onClick={closeValidationDialog}>
+                            Revisar preenchimento
+                        </Button>
+                        <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={confirmValidationDialog}>
+                            {validationDialog.confirmLabel}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Validation Dialog */}
+            <Dialog open={validationDialog.open} onOpenChange={closeValidationDialog}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-600">
+                            <AlertTriangle className="h-5 w-5" />
+                            {validationDialog.title}
+                        </DialogTitle>
+                        <DialogDescription className="pt-2">
+                            {validationDialog.message}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Collapsible List of Missing Items */}
+                    {validationDialog.items?.length > 0 && (
+                        <div className="my-2 border rounded-md overflow-hidden text-sm">
+                            <details className="group">
+                                <summary className="flex justify-between items-center p-3 bg-slate-50 cursor-pointer font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                                    <span>Ver itens pendentes ({validationDialog.items.length})</span>
+                                    <span className="transform group-open:rotate-180 transition-transform">
+                                        <ChevronDown className="h-4 w-4" />
+                                    </span>
+                                </summary>
+                                <div className="max-h-[200px] overflow-y-auto bg-white">
+                                    <ul className="divide-y divide-slate-100">
+                                        {validationDialog.items.map((item, idx) => (
+                                            <li key={idx} className="p-3 flex flex-col gap-1">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="font-semibold text-slate-800">{item.name}</span>
+                                                    <span className="text-[10px] uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-bold">{item.type}</span>
+                                                </div>
+                                                <div className="text-xs text-slate-500 flex gap-1">
+                                                    <span>{item.location}</span>
+                                                    <span>&bull;</span>
+                                                    <span>{item.equipment}</span>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </details>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 mt-4">
+                        <Button variant="outline" onClick={closeValidationDialog}>
+                            Revisar preenchimento
+                        </Button>
+                        <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={confirmValidationDialog}>
+                            {validationDialog.confirmLabel}
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 
