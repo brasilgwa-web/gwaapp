@@ -268,12 +268,98 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                     <p className="text-xs text-purple-600 mt-1">Este grupo será carregado automaticamente na visita.</p>
                 </div>
 
-                <Tabs defaultValue="products" className="flex-1 overflow-hidden flex flex-col">
+                <Tabs defaultValue="chemical_tech" className="flex-1 overflow-hidden flex flex-col">
                     <TabsList>
+                        <TabsTrigger value="chemical_tech">Tecnologia Química</TabsTrigger>
                         <TabsTrigger value="products">Produtos & Dosagens</TabsTrigger>
-                        <TabsTrigger value="tests">Tecnologia Química</TabsTrigger>
+                        <TabsTrigger value="analysis_params">Parâmetros de Análise</TabsTrigger>
                     </TabsList>
 
+                    {/* Tab 1: Tecnologia Química (Custom Tests) */}
+                    <TabsContent value="chemical_tech" className="flex-1 overflow-y-auto pt-4 space-y-6">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold flex items-center gap-2">Testes Personalizados deste Cliente</h4>
+                            </div>
+
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h5 className="text-xs font-semibold text-slate-700 mb-2">Adicionar Teste Específico</h5>
+                                <form
+                                    className="flex gap-2 items-end"
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (!selectedTestId) return;
+
+                                        // Find definition to prefill if needed, but we save values explicitly
+                                        const def = allTests?.find(t => t.id === selectedTestId);
+                                        const fd = new FormData(e.target);
+
+                                        addCustomTest.mutate({
+                                            test_definition_id: selectedTestId,
+                                            min_value: fd.get('min_value') || def?.min_value,
+                                            max_value: fd.get('max_value') || def?.max_value,
+                                            unit: fd.get('unit') || def?.unit
+                                        });
+
+                                        e.target.reset();
+                                        setSelectedTestId('');
+                                    }}
+                                >
+                                    <div className="flex-1 space-y-1">
+                                        <Label className="text-xs">Teste</Label>
+                                        <SearchableSelect
+                                            value={selectedTestId}
+                                            onValueChange={setSelectedTestId}
+                                            options={allTests?.map(t => ({ value: t.id, label: t.name })) || []}
+                                            placeholder="Selecione..."
+                                            searchPlaceholder="Buscar teste..."
+                                        />
+                                    </div>
+                                    <div className="w-20 space-y-1">
+                                        <Label className="text-xs">Min</Label>
+                                        <Input name="min_value" className="h-9 text-xs bg-white" placeholder="Min" />
+                                    </div>
+                                    <div className="w-20 space-y-1">
+                                        <Label className="text-xs">Max</Label>
+                                        <Input name="max_value" className="h-9 text-xs bg-white" placeholder="Max" />
+                                    </div>
+                                    <div className="w-20 space-y-1">
+                                        <Label className="text-xs">Unidade</Label>
+                                        <Input name="unit" className="h-9 text-xs bg-white" placeholder="Unit" />
+                                    </div>
+                                    <Button type="submit" size="sm" className="h-9"><Plus className="w-4 h-4" /></Button>
+                                </form>
+                            </div>
+
+                            <div className="space-y-1">
+                                {customTests?.map(ct => {
+                                    const t = allTests?.find(x => x.id === ct.test_definition_id);
+                                    return (
+                                        <div key={ct.id} className="flex items-center justify-between p-3 bg-white border border-blue-200 rounded shadow-sm text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <FlaskConical className="w-4 h-4 text-blue-500" />
+                                                <span className="font-medium">{t?.name || 'Teste Removido'}</span>
+                                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Personalizado</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-mono text-xs text-slate-600">
+                                                    {ct.min_value ?? '-'} a {ct.max_value ?? '-'} {ct.unit}
+                                                </span>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600" onClick={() => removeCustomTest.mutate(ct.id)}>
+                                                    <Trash2 className="w-3 h-3" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {!customTests?.length && (
+                                    <p className="text-xs text-slate-400 text-center italic">Nenhum teste específico configurado.</p>
+                                )}
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    {/* Tab 2: Produtos & Dosagens (Products) */}
                     <TabsContent value="products" className="flex-1 overflow-y-auto space-y-4 pt-4">
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
                             <h4 className="text-sm font-bold text-blue-800 mb-2">Adicionar Produto</h4>
@@ -356,98 +442,15 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="tests" className="flex-1 overflow-y-auto pt-4 space-y-6">
-                        {/* Custom Tests Section */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-bold flex items-center gap-2">Testes Personalizados deste Cliente</h4>
-                            </div>
-
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                <h5 className="text-xs font-semibold text-slate-700 mb-2">Adicionar Teste Específico</h5>
-                                <form
-                                    className="flex gap-2 items-end"
-                                    onSubmit={(e) => {
-                                        e.preventDefault();
-                                        if (!selectedTestId) return;
-
-                                        // Find definition to prefill if needed, but we save values explicitly
-                                        const def = allTests?.find(t => t.id === selectedTestId);
-                                        const fd = new FormData(e.target);
-
-                                        addCustomTest.mutate({
-                                            test_definition_id: selectedTestId,
-                                            min_value: fd.get('min_value') || def?.min_value,
-                                            max_value: fd.get('max_value') || def?.max_value,
-                                            unit: fd.get('unit') || def?.unit
-                                        });
-
-                                        e.target.reset();
-                                        setSelectedTestId('');
-                                    }}
-                                >
-                                    <div className="flex-1 space-y-1">
-                                        <Label className="text-xs">Teste</Label>
-                                        <SearchableSelect
-                                            value={selectedTestId}
-                                            onValueChange={setSelectedTestId}
-                                            options={allTests?.map(t => ({ value: t.id, label: t.name })) || []}
-                                            placeholder="Selecione..."
-                                            searchPlaceholder="Buscar teste..."
-                                        />
-                                    </div>
-                                    <div className="w-20 space-y-1">
-                                        <Label className="text-xs">Min</Label>
-                                        <Input name="min_value" className="h-9 text-xs bg-white" placeholder="Min" />
-                                    </div>
-                                    <div className="w-20 space-y-1">
-                                        <Label className="text-xs">Max</Label>
-                                        <Input name="max_value" className="h-9 text-xs bg-white" placeholder="Max" />
-                                    </div>
-                                    <div className="w-20 space-y-1">
-                                        <Label className="text-xs">Unidade</Label>
-                                        <Input name="unit" className="h-9 text-xs bg-white" placeholder="Unit" />
-                                    </div>
-                                    <Button type="submit" size="sm" className="h-9"><Plus className="w-4 h-4" /></Button>
-                                </form>
-                            </div>
-
-                            <div className="space-y-1">
-                                {customTests?.map(ct => {
-                                    const t = allTests?.find(x => x.id === ct.test_definition_id);
-                                    return (
-                                        <div key={ct.id} className="flex items-center justify-between p-3 bg-white border border-blue-200 rounded shadow-sm text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <FlaskConical className="w-4 h-4 text-blue-500" />
-                                                <span className="font-medium">{t?.name || 'Teste Removido'}</span>
-                                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Personalizado</span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-mono text-xs text-slate-600">
-                                                    {ct.min_value ?? '-'} a {ct.max_value ?? '-'} {ct.unit}
-                                                </span>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600" onClick={() => removeCustomTest.mutate(ct.id)}>
-                                                    <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {!customTests?.length && (
-                                    <p className="text-xs text-slate-400 text-center italic">Nenhum teste específico configurado.</p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="border-t border-slate-200 my-4"></div>
-
+                    {/* Tab 3: Parâmetros de Análise (Standard Tests) */}
+                    <TabsContent value="analysis_params" className="flex-1 overflow-y-auto pt-4 space-y-6">
                         {/* Standard Tests Section (Read-Only) */}
-                        <div className="space-y-2 opacity-75">
+                        <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <h4 className="text-sm font-bold flex items-center gap-2 text-slate-600">Testes Padrão do Equipamento</h4>
                                 <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold border rounded px-1">Global</span>
                             </div>
-                            <p className="text-xs text-slate-500 mb-2">Estes testes são herdados do catálogo ({catalogItem?.name}). Eles aparecerão na visita a menos que haja um personalizado ocultando-os (futuro).</p>
+                            <p className="text-xs text-slate-500 mb-2">Estes testes são herdados do catálogo ({catalogItem?.name}). Eles aparecerão na visita a menos que haja um personalizado ocultando-os.</p>
 
                             <div className="space-y-1">
                                 {standardTests?.map(lt => {
