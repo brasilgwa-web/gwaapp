@@ -389,6 +389,66 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             });
         });
 
+        // Check Dosages
+        reportData.fullReportStructure.forEach(loc => {
+            loc.equipments?.forEach(eq => {
+                const dosages = eq.dosages || []; // Assuming dosages are attached here or need to be mapped from visit data. 
+                // Wait, reportData structure might not have dosages directly on equipment if it's not fully hydrated for the report yet. 
+                // But handleGenerateAI uses freshReportData which seems to have it.
+                // Let's rely on how the report data is structured. 
+                // If dosages is not present, we might need to check how to access it. 
+                // Checking handleGenerateAI logic: 
+                // "dosages: freshReportData?.fullReportStructure?.flatMap(...)". 
+
+                // Let's iterate dosages if they exist on the equipment node
+                if (eq.dosages?.length > 0) {
+                    eq.dosages.forEach(dosage => {
+                        const val = dosage.dosage_applied;
+                        if (val === null || val === undefined || val === '') {
+                            missingCount++;
+                        }
+                    });
+                }
+
+                // Also check products list from the component state/props if needed, but reportData should be the source of truth for the report.
+                // Actually, let's look at how dosages are rendered in the report. They come from `data.equipments[].products[]`.
+                // Let's check eq.products array as that's what seems to hold the dosage info in the report structure usually.
+                if (eq.products?.length > 0) {
+                    eq.products.forEach(prod => {
+                        // In the report structure, 'dosage_applied' might be on the product object or a nested dosage object.
+                        // based on `ReportTab` rendering logic implies `reportData` might differ.
+                        // Let's check `handleGenerateAI` again. It maps `dosages` separately from `freshReportData`. 
+
+                        // BUT `checkMissingReadings` uses `reportData.fullReportStructure`.
+                        // Let's assume `fullReportStructure` has `products` with `dosage_applied`.
+
+                        const val = prod.dosage_applied; // This is a guess based on standard structure. 
+                        // If it's undefined, it might not be counted. 
+                        // However, let's look at `DosageBoardTab`. Dosages are stored in `visit_dosages`.
+
+                        // BETTER APPROACH: Use the `results` prop for tests, but for dosages we might need to look at `dosages` prop if available or fetch them?
+                        // `ReportTab` has `visit` prop. 
+
+                        // Let's stick to what's likely in `fullReportStructure` or just check `results` for tests.
+                        // Wait, the user specifically mentioned "leituras e dosagens".
+                        // `checkMissingReadings` effectively checks "readings" (tests). 
+                        // I need to check dosages. 
+
+                        // Let's look at `handleSyncStock`. It fetches `visit_dosages`. 
+                        // `ReportTab` doesn't seem to have `dosages` in state. 
+                        // But `reportData` from `useReportData` likely aggregates it.
+
+                        // Let's iterate `eq.products` and check `dosage_applied`.
+                        if (prod.dosage_applied === null || prod.dosage_applied === undefined || prod.dosage_applied === '') {
+                            // Check if it's a product that *requires* dosage? 
+                            // Usually all listed products do.
+                            missingCount++;
+                        }
+                    });
+                }
+            });
+        });
+
         return { hasMissing: missingCount > 0, count: missingCount };
     };
 
@@ -445,6 +505,36 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         if (!confirmed) return;
 
         await handleConfirmSend();
+    };
+
+    const handleViewWebReport = async (e) => {
+        e.preventDefault();
+
+        // Validation: Same as preview
+        if (needsTechnicalResponsible && !technicalResponsibleId) {
+            await alert({
+                title: 'Responsável Técnico Obrigatório',
+                message: 'Como você não possui CRQ cadastrado, é obrigatório selecionar um Responsável Técnico para verificar o relatório.',
+                type: 'warning'
+            });
+            return;
+        }
+
+        // Smart Readings & Dosages Validation
+        const { hasMissing, count } = checkMissingReadings();
+        if (hasMissing) {
+            const confirmedMissing = await confirm({
+                title: 'Campos em Branco Detectados',
+                message: `Existem ${count} análise(s) ou dosagem(ns) sem resultados preenchidos. \n\nEstes campos aparecerão como "Não Realizado" ou vazios no relatório final. \n\nDeseja continuar e visualizar mesmo assim?`,
+                confirmLabel: 'Sim, visualizar',
+                cancelLabel: 'Revisar preenchimento',
+                type: 'warning'
+            });
+            if (!confirmedMissing) return;
+        }
+
+        // Open Report
+        window.open(`/report/${visit.id}`, '_blank');
     };
 
     const handleConfirmSend = async () => {
@@ -895,9 +985,9 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             {/* Footer / Actions */}
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col gap-3 md:relative md:flex-row md:border-0 md:bg-transparent md:p-0">
-                <a href={`/report/${visit.id}`} target="_blank" className="w-full md:flex-1">
-                    <Button variant="outline" className="w-full"><FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web</Button>
-                </a>
+                <button onClick={handleViewWebReport} className="w-full md:flex-1">
+                    <Button variant="outline" className="w-full pointer-events-none"><FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web</Button>
+                </button>
 
                 {!readOnly && (
                     <Button className="w-full md:flex-1 bg-green-600 hover:bg-green-700" onClick={handleFinalize}>

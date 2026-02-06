@@ -59,11 +59,7 @@ function SortableClientRow({ client, sortOrder, openEditClient, removeClient, se
                 <div className="min-w-0 flex-1">
                     <h3 className="font-semibold truncate pr-2 w-full flex items-center gap-2">
                         {client.name}
-                        {client.has_stock_access === false && (
-                            <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded-full border border-orange-200">
-                                Sem Estoque
-                            </span>
-                        )}
+                        {/* "Sem Estoque" tag removed */}
                     </h3>
                     <p className="text-sm text-slate-500 truncate w-full block">{client.email} • {client.city_state}</p>
                 </div>

@@ -207,11 +207,11 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                         <div key={prod.id} className="p-3 space-y-2">
                                                             <div className="flex justify-between items-center">
                                                                 <div className="font-medium text-slate-700">{prod.name}</div>
-                                                                {hasStockAccess && (
-                                                                    <div className="text-sm text-slate-500">Estoque: <span className="font-mono font-bold">{currentStock || '-'}</span></div>
-                                                                )}
+                                                                <div className="text-sm text-slate-500">
+                                                                    Estoque: <span className="font-mono font-bold">{hasStockAccess ? (currentStock || '-') : 'N/A'}</span>
+                                                                </div>
                                                             </div>
-                                                            <div className={`grid ${hasStockAccess ? 'grid-cols-3' : 'grid-cols-2'} gap-2 items-start`}>
+                                                            <div className="grid grid-cols-3 gap-2 items-start">
                                                                 <div className="text-center">
                                                                     <label className="text-xs text-slate-500 block">Dosagem</label>
                                                                     <div className="font-bold text-slate-700">{recommended || '-'}</div>
@@ -232,15 +232,13 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                     />
                                                                     <div className="text-xs text-slate-400">{prod.unit}</div>
                                                                 </div>
-                                                                {hasStockAccess && (
-                                                                    <div className="text-center">
-                                                                        <label className="text-xs text-slate-500 block">Est. Final</label>
-                                                                        <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
-                                                                            {finalStock.toFixed(1)}
-                                                                            {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline text-red-500" />}
-                                                                        </div>
+                                                                <div className="text-center">
+                                                                    <label className="text-xs text-slate-500 block">Est. Final</label>
+                                                                    <div className={`font-bold ${isLowStock && hasStockAccess ? 'text-red-600' : 'text-slate-600'}`}>
+                                                                        {hasStockAccess ? finalStock.toFixed(1) : 'N/A'}
+                                                                        {isLowStock && hasStockAccess && <AlertTriangle className="w-3 h-3 ml-1 inline text-red-500" />}
                                                                     </div>
-                                                                )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     );
@@ -253,10 +251,10 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                     <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-xs border-b">
                                                         <tr>
                                                             <th className="px-4 py-3 text-left">Produto</th>
-                                                            {hasStockAccess && <th className="px-4 py-3 text-center">Estoque</th>}
+                                                            <th className="px-4 py-3 text-center">Estoque</th>
                                                             <th className="px-4 py-3 text-center">Dosagem</th>
                                                             <th className="px-4 py-3 text-center">Aplicado</th>
-                                                            {hasStockAccess && <th className="px-4 py-3 text-center">Est. Final</th>}
+                                                            <th className="px-4 py-3 text-center">Est. Final</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100">
@@ -274,9 +272,9 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                     <td className="px-4 py-3">
                                                                         <div className="font-medium text-slate-700">{prod.name}</div>
                                                                     </td>
-                                                                    {hasStockAccess && (
-                                                                        <td className="px-4 py-3 text-center font-mono text-slate-600">{currentStock || '-'}</td>
-                                                                    )}
+                                                                    <td className="px-4 py-3 text-center font-mono text-slate-600">
+                                                                        {hasStockAccess ? (currentStock || '-') : 'N/A'}
+                                                                    </td>
                                                                     <td className="px-4 py-3 text-center">
                                                                         <div className="flex flex-col items-center">
                                                                             <div className="font-bold text-slate-700">{recommended || '-'}</div>
@@ -299,14 +297,12 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                             <div className="text-xs text-slate-400">{prod.unit}</div>
                                                                         </div>
                                                                     </td>
-                                                                    {hasStockAccess && (
-                                                                        <td className="px-4 py-3 text-center">
-                                                                            <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
-                                                                                {finalStock.toFixed(1)}
-                                                                                {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline" />}
-                                                                            </div>
-                                                                        </td>
-                                                                    )}
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <div className={`font-bold ${isLowStock && hasStockAccess ? 'text-red-600' : 'text-slate-600'}`}>
+                                                                            {hasStockAccess ? finalStock.toFixed(1) : 'N/A'}
+                                                                            {isLowStock && hasStockAccess && <AlertTriangle className="w-3 h-3 ml-1 inline" />}
+                                                                        </div>
+                                                                    </td>
                                                                 </tr>
                                                             );
                                                         })}
