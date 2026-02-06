@@ -94,7 +94,8 @@ export default function DosageBoardTab({ visit, readOnly }) {
     const { data: clientData } = useQuery({
         queryKey: ['client', visit.client_id],
         queryFn: () => Client.filter({ id: visit.client_id }).then(res => res[0]),
-        staleTime: 60000 // Cache for a minute
+        staleTime: 0,
+        refetchOnMount: 'always'
     });
 
     // Default to true if not loaded yet or undefined (legacy compatibility)

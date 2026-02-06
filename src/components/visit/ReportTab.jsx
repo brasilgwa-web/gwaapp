@@ -795,60 +795,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </DialogContent>
             </Dialog>
 
-            {/* Validation Dialog */}
-            <Dialog open={validationDialog.open} onOpenChange={closeValidationDialog}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-amber-600">
-                            <AlertTriangle className="h-5 w-5" />
-                            {validationDialog.title}
-                        </DialogTitle>
-                        <DialogDescription className="pt-2">
-                            {validationDialog.message}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    {/* Collapsible List of Missing Items */}
-                    {validationDialog.items?.length > 0 && (
-                        <div className="my-2 border rounded-md overflow-hidden text-sm">
-                            <details className="group">
-                                <summary className="flex justify-between items-center p-3 bg-slate-50 cursor-pointer font-medium text-slate-700 hover:bg-slate-100 transition-colors">
-                                    <span>Ver itens pendentes ({validationDialog.items.length})</span>
-                                    <span className="transform group-open:rotate-180 transition-transform">
-                                        <ChevronDown className="h-4 w-4" />
-                                    </span>
-                                </summary>
-                                <div className="max-h-[200px] overflow-y-auto bg-white">
-                                    <ul className="divide-y divide-slate-100">
-                                        {validationDialog.items.map((item, idx) => (
-                                            <li key={idx} className="p-3 flex flex-col gap-1">
-                                                <div className="flex justify-between items-start">
-                                                    <span className="font-semibold text-slate-800">{item.name}</span>
-                                                    <span className="text-[10px] uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-bold">{item.type}</span>
-                                                </div>
-                                                <div className="text-xs text-slate-500 flex gap-1">
-                                                    <span>{item.location}</span>
-                                                    <span>&bull;</span>
-                                                    <span>{item.equipment}</span>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </details>
-                        </div>
-                    )}
-
-                    <div className="flex justify-end gap-3 mt-4">
-                        <Button variant="outline" onClick={closeValidationDialog}>
-                            Revisar preenchimento
-                        </Button>
-                        <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={confirmValidationDialog}>
-                            {validationDialog.confirmLabel}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
 
             {/* Signature Dialog */}
             <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
@@ -864,25 +810,29 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             </Dialog>
 
             {/* Warnings */}
-            {user && !user.signature_url && !showSignatureDialog && !readOnly && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex items-center">
-                    <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
-                    <p className="text-sm text-yellow-700">
-                        Você ainda não cadastrou sua assinatura.
-                        <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>Cadastrar agora</Button>
-                    </p>
-                </div>
-            )}
-
-            {readOnly && (
-                <div className="bg-slate-100 border-l-4 border-slate-500 p-4 mb-4 flex justify-between items-center">
-                    <div className="flex items-center">
-                        <Lock className="h-5 w-5 text-slate-500 mr-2" />
-                        <p className="text-sm text-slate-700">Visita finalizada. Modo somente leitura.</p>
+            {
+                user && !user.signature_url && !showSignatureDialog && !readOnly && (
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex items-center">
+                        <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
+                        <p className="text-sm text-yellow-700">
+                            Você ainda não cadastrou sua assinatura.
+                            <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>Cadastrar agora</Button>
+                        </p>
                     </div>
-                    {isAdmin && <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>}
-                </div>
-            )}
+                )
+            }
+
+            {
+                readOnly && (
+                    <div className="bg-slate-100 border-l-4 border-slate-500 p-4 mb-4 flex justify-between items-center">
+                        <div className="flex items-center">
+                            <Lock className="h-5 w-5 text-slate-500 mr-2" />
+                            <p className="text-sm text-slate-700">Visita finalizada. Modo somente leitura.</p>
+                        </div>
+                        {isAdmin && <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>}
+                    </div>
+                )
+            }
 
             {/* 0. HorÃ¡rios */}
             <Card>
@@ -1025,45 +975,47 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             </Card>
 
             {/* Responsibilidade Técnica (Inserido) */}
-            {(needsTechnicalResponsible || technicalResponsibles?.length > 0) && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <PenTool className="w-4 h-4 text-purple-500" />
-                            Responsabilidade Técnica
-                        </CardTitle>
-                        <CardDescription>
-                            Selecione o engenheiro/químico responsável por este relatório.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {needsTechnicalResponsible && (
-                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-xs text-yellow-700">
-                                <strong>Atenção:</strong> Como seu usuário não possui CRQ cadastrado, é obrigatório selecionar um responsável técnico.
+            {
+                (needsTechnicalResponsible || technicalResponsibles?.length > 0) && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <PenTool className="w-4 h-4 text-purple-500" />
+                                Responsabilidade Técnica
+                            </CardTitle>
+                            <CardDescription>
+                                Selecione o engenheiro/químico responsável por este relatório.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {needsTechnicalResponsible && (
+                                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-xs text-yellow-700">
+                                    <strong>Atenção:</strong> Como seu usuário não possui CRQ cadastrado, é obrigatório selecionar um responsável técnico.
+                                </div>
+                            )}
+                            <div className="space-y-2">
+                                <Label>Responsável Técnico</Label>
+                                <Select
+                                    value={technicalResponsibleId}
+                                    onValueChange={handleResponsibleChange}
+                                    disabled={readOnly}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione o responsável..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {technicalResponsibles?.map((resp) => (
+                                            <SelectItem key={resp.id} value={resp.id}>
+                                                {resp.name} ({resp.crq})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                        )}
-                        <div className="space-y-2">
-                            <Label>Responsável Técnico</Label>
-                            <Select
-                                value={technicalResponsibleId}
-                                onValueChange={handleResponsibleChange}
-                                disabled={readOnly}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecione o responsável..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {technicalResponsibles?.map((resp) => (
-                                        <SelectItem key={resp.id} value={resp.id}>
-                                            {resp.name} ({resp.crq})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                        </CardContent>
+                    </Card>
+                )
+            }
 
             {/* 4. Client Signature */}
             <Card>
@@ -1138,7 +1090,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </Button>
             </div>
             {isLoadingReport && <div className="text-center text-xs text-slate-400">Carregando dados para geração de PDF...</div>}
-        </div>
+        </div >
     );
 }
 
