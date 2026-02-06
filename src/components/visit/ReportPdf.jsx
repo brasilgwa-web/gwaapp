@@ -19,9 +19,9 @@ Font.register({
 // Styles
 const styles = StyleSheet.create({
     page: {
-        paddingTop: 100, // Increased to avoid header overlap
-        paddingBottom: 80, // Increased for footer
-        paddingHorizontal: 40,
+        paddingTop: 30, // Restored to Production
+        paddingBottom: 60, // Restored to Production
+        paddingHorizontal: 30, // Restored to Production
         fontFamily: 'Inter',
         fontSize: 9,
         color: '#1e293b', // slate-800
@@ -41,40 +41,21 @@ const styles = StyleSheet.create({
     header: {
         position: 'absolute',
         top: 0,
-        left: 40,
-        right: 40,
+        left: 30, // Match horizontal padding
+        right: 30, // Match horizontal padding
         height: 80,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center', // Center vertically
-        paddingTop: 30,
+        paddingTop: 10, // Adjusted for smaller top margin
         marginBottom: 20,
     },
-    headerTitle: {
-        fontSize: 14, // Increased size
-        fontWeight: 700, // Bold
-        color: '#1e293b', // darker slate
-        maxWidth: '55%',
-        textTransform: 'uppercase', // Optional style choice for professional look
-    },
-    headerLogos: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        maxWidth: '40%',
-        height: 50, // Fixed height container
-    },
-    logo: {
-        height: '100%', // Fill container height
-        width: 'auto',
-        objectFit: 'contain',
-        marginLeft: 10,
-    },
+    // ...
     footer: {
         position: 'absolute',
         bottom: 20,
-        left: 40,
-        right: 40,
+        left: 30, // Match horizontal padding
+        right: 30, // Match horizontal padding
         textAlign: 'center',
         fontSize: 8,
         color: '#94a3b8', // slate-400

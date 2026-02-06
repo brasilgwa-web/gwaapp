@@ -172,7 +172,7 @@ export function ReportTemplate({ data }) {
         <>
             {includeCover && <CoverPage settings={reportSettings} />}
 
-            <div className="bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]">
+            <div className="bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 p-6 md:p-8 max-w-[210mm] mx-auto min-h-[297mm]">
 
                 {/* Header */}
                 <header className="mb-6">
