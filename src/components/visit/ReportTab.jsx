@@ -518,7 +518,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             setValidationDialog({
                 open: true,
                 items: items,
-                title: 'Campos em Branco Detectados',
+                title: 'Atenção: Itens Pendentes',
                 message: `Existem ${count} análise(s) ou dosagem(ns) sem resultados preenchidos. Estes campos aparecerão como "Não Realizado" ou vazios (ocultos) no relatório final.`,
                 confirmLabel: 'Sim, ocultar e finalizar',
                 onConfirm: proceedWithFinalize
@@ -553,7 +553,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             setValidationDialog({
                 open: true,
                 items: items,
-                title: 'Campos em Branco Detectados',
+                title: 'Atenção: Itens Pendentes',
                 message: `Existem ${count} análise(s) ou dosagem(ns) sem resultados preenchidos. Estes campos não serão exibidos no relatório.`,
                 confirmLabel: 'Sim, visualizar',
                 onConfirm: openReport
@@ -756,7 +756,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     {/* Collapsible List of Missing Items */}
                     {validationDialog.items?.length > 0 && (
                         <div className="my-2 border rounded-md overflow-hidden text-sm">
-                            <details className="group">
+                            <details className="group" open>
                                 <summary className="flex justify-between items-center p-3 bg-slate-50 cursor-pointer font-medium text-slate-700 hover:bg-slate-100 transition-colors">
                                     <span>Ver itens pendentes ({validationDialog.items.length})</span>
                                     <span className="transform group-open:rotate-180 transition-transform">
