@@ -172,25 +172,25 @@ export function ReportTemplate({ data }) {
         <>
             {includeCover && <CoverPage settings={reportSettings} />}
 
-            <div className="bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 p-6 md:p-8 max-w-[210mm] mx-auto min-h-[297mm]">
+            <div className="bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 p-5 max-w-[210mm] mx-auto min-h-[297mm]">
 
                 {/* Header */}
                 <header className="mb-6">
-                    <div className="flex justify-between items-center h-20"> {/* Fixed height header for alignment */}
-                        <div className="flex-1">
+                    <div className="flex justify-between items-center h-20 gap-4"> {/* Added gap, kept items-center for middle alignment */}
+                        <div className="w-2/3"> {/* Give Title more space (66%) */}
                             <h1 className="text-xl font-bold text-slate-800 leading-tight">
                                 {reportSettings?.report_title || 'Relatório de Atendimento Técnico em Campo'}
                             </h1>
                         </div>
-                        <div className="flex items-center justify-end gap-6 flex-1">
+                        <div className="flex items-center justify-end gap-4 w-1/3"> {/* Limit Logos to 33% */}
                             {logoUrl && (
-                                <div className="h-16 flex items-center justify-center">
-                                    <img src={logoUrl} alt="Logo 1" className="h-full w-auto object-contain max-w-[160px]" />
+                                <div className="h-14 flex items-center justify-center"> {/* Slightly reduced height container */}
+                                    <img src={logoUrl} alt="Logo 1" className="h-full w-auto object-contain max-w-[140px]" />
                                 </div>
                             )}
                             {logo2Url && (
-                                <div className="h-16 flex items-center justify-center">
-                                    <img src={logo2Url} alt="Logo 2" className="h-full w-auto object-contain max-w-[160px]" />
+                                <div className="h-14 flex items-center justify-center">
+                                    <img src={logo2Url} alt="Logo 2" className="h-full w-auto object-contain max-w-[140px]" />
                                 </div>
                             )}
                             {!logoUrl && !logo2Url && (

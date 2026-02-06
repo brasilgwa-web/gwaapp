@@ -19,9 +19,9 @@ Font.register({
 // Styles
 const styles = StyleSheet.create({
     page: {
-        paddingTop: 30, // Restored to Production
-        paddingBottom: 60, // Restored to Production
-        paddingHorizontal: 30, // Restored to Production
+        paddingTop: 20, // Reduced from 30
+        paddingBottom: 40, // Reduced from 60
+        paddingHorizontal: 20, // Reduced from 30
         fontFamily: 'Inter',
         fontSize: 9,
         color: '#1e293b', // slate-800
@@ -41,21 +41,35 @@ const styles = StyleSheet.create({
     header: {
         position: 'absolute',
         top: 0,
-        left: 30, // Match horizontal padding
-        right: 30, // Match horizontal padding
-        height: 80,
+        left: 20, // Match horizontal padding
+        right: 20, // Match horizontal padding
+        height: 70, // Slightly reduced
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center', // Center vertically
-        paddingTop: 10, // Adjusted for smaller top margin
-        marginBottom: 20,
+        paddingTop: 10,
+        marginBottom: 10,
+    },
+    headerTitle: {
+        fontSize: 14,
+        fontWeight: 700,
+        color: '#1e293b',
+        maxWidth: '65%', // Increased from 55% to prevent wrapping
+        textTransform: 'uppercase',
+    },
+    headerLogos: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        maxWidth: '35%', // Reduced to balance
+        height: 50,
     },
     // ...
     footer: {
         position: 'absolute',
         bottom: 20,
-        left: 30, // Match horizontal padding
-        right: 30, // Match horizontal padding
+        left: 20,
+        right: 20,
         textAlign: 'center',
         fontSize: 8,
         color: '#94a3b8', // slate-400
@@ -66,7 +80,7 @@ const styles = StyleSheet.create({
     pageNumber: {
         position: 'absolute',
         bottom: 20,
-        right: 40,
+        right: 20,
         fontSize: 8,
         color: '#94a3b8',
     },
