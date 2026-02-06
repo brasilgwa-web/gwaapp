@@ -728,22 +728,35 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                                         <ChevronDown className="h-4 w-4" />
                                     </span>
                                 </summary>
-                                <div className="p-0 max-h-[200px] overflow-y-auto bg-white">
-                                    <ul className="divide-y divide-slate-100">
-                                        {validationDialog.items.map((item, idx) => (
-                                            <li key={idx} className="p-3 flex flex-col gap-1">
-                                                <div className="flex justify-between items-start">
-                                                    <span className="font-semibold text-slate-800">{item.name}</span>
-                                                    <span className="text-[10px] uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-bold">{item.type}</span>
+                                <div className="p-0 max-h-[300px] overflow-y-auto bg-white">
+                                    <div className="divide-y divide-slate-100">
+                                        {Object.entries(validationDialog.items.reduce((acc, item) => {
+                                            const key = item.equipment || 'Outros';
+                                            if (!acc[key]) acc[key] = [];
+                                            acc[key].push(item);
+                                            return acc;
+                                        }, {})).map(([equipmentName, items], idx) => (
+                                            <div key={idx} className="p-3">
+                                                <div className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                                                    <span className="w-1 h-4 bg-amber-500 rounded-full"></span>
+                                                    {equipmentName}
                                                 </div>
-                                                <div className="text-xs text-slate-500 flex gap-1">
-                                                    <span>{item.location}</span>
-                                                    <span>&bull;</span>
-                                                    <span>{item.equipment}</span>
-                                                </div>
-                                            </li>
+                                                <ul className="space-y-1.5 pl-3">
+                                                    {items.map((item, i) => (
+                                                        <li key={i} className="flex items-center justify-between text-sm text-slate-600">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                                                                <span>{item.name}</span>
+                                                            </div>
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                                                {item.type}
+                                                            </span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
                                         ))}
-                                    </ul>
+                                    </div>
                                 </div>
                             </details>
                         </div>
