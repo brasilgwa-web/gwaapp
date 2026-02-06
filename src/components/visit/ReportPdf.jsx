@@ -468,53 +468,62 @@ const ReportPdf = ({ data, settings }) => {
                                     Local: {loc.location.name}
                                 </Text>
 
-                                {loc.equipments.map((eq, eqIdx) => (
-                                    <View key={eqIdx} style={{ marginBottom: 8 }} break>
-                                        {/* Eq Header */}
-                                        <View style={styles.equipmentHeader}>
-                                            <View style={styles.equipmentTitle}>
-                                                <View style={styles.dot} />
-                                                <Text>{eq.equipment.name}</Text>
-                                            </View>
-                                            <View style={{ flexDirection: 'row' }}>
-                                                {eq.sample?.collection_time && <Text style={{ color: '#475569', fontSize: 8 }}>Coleta: {eq.sample.collection_time.substring(0, 5)}h</Text>}
-                                            </View>
-                                        </View>
+                                {loc.equipments.map((eq, eqIdx) => {
+                                    const validTests = eq.tests.filter(test => {
+                                        const val = test.result?.measured_value;
+                                        return val !== null && val !== undefined && val !== '';
+                                    });
 
-                                        {/* Table */}
-                                        <View style={styles.table}>
-                                            <View style={styles.tableHeader}>
-                                                <Text style={{ ...styles.tableCell, ...styles.tableCellLeft, flex: 2 }}>Parâmetro</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 0.5 }}>Und.</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 1 }}>VMP</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 0.5 }}>LD</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 0.5 }}>LQ</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 0.8 }}>Incerteza</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 1 }}>Resultado</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 1 }}>Metodologia</Text>
-                                            </View>
-                                            {eq.tests.map((test, tIdx) => (
-                                                <View key={tIdx} style={tIdx % 2 === 0 ? styles.tableRow : { ...styles.tableRow, ...styles.tableRowAlt }}>
-                                                    <Text style={{ ...styles.tableCell, ...styles.tableCellLeft, flex: 2, color: '#334155', fontWeight: 500 }}>{test.name}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 0.5, color: '#64748b' }}>{test.unit || '-'}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 1, fontFamily: 'Courier', fontSize: 8, color: '#64748b' }}>{test.min_value} - {test.max_value}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 0.5, color: '#94a3b8' }}>{test.ld || '-'}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 0.5, color: '#94a3b8' }}>{test.lq || '-'}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 0.8, color: '#94a3b8' }}>{test.method_uncertainty || '-'}</Text>
-                                                    <Text style={{
-                                                        ...styles.tableCell,
-                                                        flex: 1,
-                                                        fontWeight: 700,
-                                                        color: test.result?.status_light === 'red' ? '#dc2626' : test.result?.status_light === 'green' ? '#16a34a' : '#ca8a04'
-                                                    }}>
-                                                        {test.result ? test.result.measured_value : '-'}
-                                                    </Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 1, color: '#94a3b8', fontSize: 7 }}>{test.methodology || '-'}</Text>
+                                    if (validTests.length === 0) return null;
+
+                                    return (
+                                        <View key={eqIdx} style={{ marginBottom: 8 }} break>
+                                            {/* Eq Header */}
+                                            <View style={styles.equipmentHeader}>
+                                                <View style={styles.equipmentTitle}>
+                                                    <View style={styles.dot} />
+                                                    <Text>{eq.equipment.name}</Text>
                                                 </View>
-                                            ))}
+                                                <View style={{ flexDirection: 'row' }}>
+                                                    {eq.sample?.collection_time && <Text style={{ color: '#475569', fontSize: 8 }}>Coleta: {eq.sample.collection_time.substring(0, 5)}h</Text>}
+                                                </View>
+                                            </View>
+
+                                            {/* Table */}
+                                            <View style={styles.table}>
+                                                <View style={styles.tableHeader}>
+                                                    <Text style={{ ...styles.tableCell, ...styles.tableCellLeft, flex: 2 }}>Parâmetro</Text>
+                                                    <Text style={{ ...styles.tableCell, flex: 0.5 }}>Und.</Text>
+                                                    <Text style={{ ...styles.tableCell, flex: 1 }}>VMP</Text>
+                                                    <Text style={{ ...styles.tableCell, flex: 0.5 }}>LD</Text>
+                                                    <Text style={{ ...styles.tableCell, flex: 0.5 }}>LQ</Text>
+                                                    <Text style={{ ...styles.tableCell, flex: 0.8 }}>Incerteza</Text>
+                                                    <Text style={{ ...styles.tableCell, flex: 1 }}>Resultado</Text>
+                                                    <Text style={{ ...styles.tableCell, flex: 1 }}>Metodologia</Text>
+                                                </View>
+                                                {validTests.map((test, tIdx) => (
+                                                    <View key={tIdx} style={tIdx % 2 === 0 ? styles.tableRow : { ...styles.tableRow, ...styles.tableRowAlt }}>
+                                                        <Text style={{ ...styles.tableCell, ...styles.tableCellLeft, flex: 2, color: '#334155', fontWeight: 500 }}>{test.name}</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 0.5, color: '#64748b' }}>{test.unit || '-'}</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 1, fontFamily: 'Courier', fontSize: 8, color: '#64748b' }}>{test.min_value} - {test.max_value}</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 0.5, color: '#94a3b8' }}>{test.ld || '-'}</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 0.5, color: '#94a3b8' }}>{test.lq || '-'}</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 0.8, color: '#94a3b8' }}>{test.method_uncertainty || '-'}</Text>
+                                                        <Text style={{
+                                                            ...styles.tableCell,
+                                                            flex: 1,
+                                                            fontWeight: 700,
+                                                            color: test.result?.status_light === 'red' ? '#dc2626' : test.result?.status_light === 'green' ? '#16a34a' : '#ca8a04'
+                                                        }}>
+                                                            {test.result ? test.result.measured_value : '-'}
+                                                        </Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 1, color: '#94a3b8', fontSize: 7 }}>{test.methodology || '-'}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
                                         </View>
-                                    </View>
-                                ))}
+                                    );
+                                })}
                             </View>
                         ))
                     )}

@@ -342,7 +342,8 @@ function ClientDialog({ open, onOpenChange, client, onClose, onSuccess }) {
             client_code: formData.get('client_code'),
             address: formData.get('address'),
             city_state: formData.get('city_state'),
-            google_drive_folder_id: formData.get('google_drive_folder_id')
+            google_drive_folder_id: formData.get('google_drive_folder_id'),
+            has_stock_access: formData.get('has_stock_access') === 'on' // Checkbox handling
         };
 
         try {
@@ -431,6 +432,28 @@ function ClientDialog({ open, onOpenChange, client, onClose, onSuccess }) {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2"><Label>Celular</Label><Input name="phone" defaultValue={client?.phone} placeholder="(11) 99999-9999" /></div>
+                        </div>
+                    </div>
+
+                    {/* Configurações Operacionais */}
+                    <div className="space-y-4 border-b pb-4">
+                        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Settings className="w-4 h-4" /> Configurações Operacionais</h3>
+                        <div className="flex items-center space-x-2 bg-slate-50 p-3 rounded-lg border">
+                            <input
+                                type="checkbox"
+                                name="has_stock_access"
+                                id="has_stock_access"
+                                defaultChecked={client?.has_stock_access !== false} // Default true
+                                className="w-4 h-4 accent-blue-600"
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <Label htmlFor="has_stock_access" className="font-semibold cursor-pointer">
+                                    Acesso ao Estoque
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Se desmarcado, o controle de estoque será desativado para este cliente (botão "Adicionar Produto" inativo na visita).
+                                </p>
+                            </div>
                         </div>
                     </div>
 

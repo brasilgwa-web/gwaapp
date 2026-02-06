@@ -369,6 +369,29 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     // PDF & Email Logic
     // signaturePadRef is defined at the top
 
+    // --- Smart Readings Validation ---
+    const checkMissingReadings = () => {
+        if (!reportData?.fullReportStructure) return { hasMissing: false, count: 0 };
+
+        let missingCount = 0;
+        reportData.fullReportStructure.forEach(loc => {
+            loc.equipments?.forEach(eq => {
+                // Check if equipment has tests configured
+                if (eq.tests?.length > 0) {
+                    eq.tests.forEach(test => {
+                        // Check if result is missing (null, undefined or empty string)
+                        const val = test.result?.measured_value;
+                        if (val === null || val === undefined || val === '') {
+                            missingCount++;
+                        }
+                    });
+                }
+            });
+        });
+
+        return { hasMissing: missingCount > 0, count: missingCount };
+    };
+
     const handleOpenPreview = async () => {
         // Validation: If user has no CRQ, Technical Responsible is MANDATORY
         if (needsTechnicalResponsible && !technicalResponsibleId) {
@@ -378,6 +401,19 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 type: 'warning'
             });
             return;
+        }
+
+        // Smart Readings Validation
+        const { hasMissing, count } = checkMissingReadings();
+        if (hasMissing) {
+            const confirmedMissing = await confirm({
+                title: 'Campos em Branco Detectados',
+                message: `Existem ${count} análise(s) sem resultados preenchidos. \n\nSe você prosseguir, estes campos serão ocultados no relatório final e marcados como não realizados. \n\nDeseja continuar?`,
+                confirmLabel: 'Sim, ocultar e finalizar',
+                cancelLabel: 'Revisar preenchimento',
+                type: 'warning'
+            });
+            if (!confirmedMissing) return;
         }
 
         // Auto-save Client Signature Logic
