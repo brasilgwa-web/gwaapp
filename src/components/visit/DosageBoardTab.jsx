@@ -100,6 +100,14 @@ export default function DosageBoardTab({ visit, readOnly }) {
     // Default to true if not loaded yet or undefined (legacy compatibility)
     const hasStockAccess = clientData?.has_stock_access !== false;
 
+    // Helper to get dosage record
+    const getDosageRecord = (locationEquipmentId, productId) => {
+        return dosages?.find(d =>
+            d.location_equipment_id === locationEquipmentId &&
+            d.product_id === productId
+        );
+    };
+
     // Prepare Grid Data
     const groupedData = useMemo(() => {
         if (!locations || !allLocationEquipments || !allEquipments || !clientProducts || !dosageParams || !allProducts) return null;

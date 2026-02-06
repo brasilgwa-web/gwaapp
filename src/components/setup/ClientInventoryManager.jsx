@@ -114,11 +114,11 @@ export default function ClientInventoryManager({ client, onUpdate }) {
                                 <input
                                     type="checkbox"
                                     id="no_stock_access"
-                                    className="w-6 h-6 border-2 border-red-500 rounded text-red-600 focus:ring-red-500 cursor-pointer"
+                                    className="w-6 h-6 border-2 border-slate-900 rounded text-slate-900 focus:ring-slate-900 cursor-pointer"
                                     checked={!hasStockAccess}
                                     onChange={(e) => updateClientAccess.mutate(!e.target.checked)}
                                 />
-                                <Label htmlFor="no_stock_access" className="text-red-600 font-bold cursor-pointer">Sem Acesso</Label>
+                                <Label htmlFor="no_stock_access" className="text-slate-900 font-bold cursor-pointer">Sem Acesso</Label>
                             </div>
                             <Button
                                 onClick={openNew}
@@ -129,7 +129,7 @@ export default function ClientInventoryManager({ client, onUpdate }) {
                             </Button>
                         </div>
                         {!hasStockAccess && (
-                            <p className="text-xs text-red-600 font-semibold max-w-md text-right">
+                            <p className="text-xs text-slate-900 font-semibold max-w-md text-right">
                                 Se o botão Sem acesso estiver marcado o botão adicionar produto ficará inabilitado e no momento da visita o calculo de estoque não será feito
                             </p>
                         )}
