@@ -99,7 +99,11 @@ export default function DosageBoardTab({ visit, readOnly }) {
     });
 
     // Default to true if not loaded yet or undefined (legacy compatibility)
-    const hasStockAccess = clientData?.has_stock_access !== false;
+    // Default to true ONLY if we have data and it says so, or if fallback is needed.
+    // BUT we must wait for clientData. 
+    // If clientData is loading, we might want to default to false or show loading.
+    // For now, let's stick to: if clientData is present, use it. If not, use visit.client (if present). Default true (legacy).
+    const hasStockAccess = clientData ? clientData.has_stock_access !== false : (visit.client?.has_stock_access !== false);
 
     // Helper to get dosage record
     const getDosageRecord = (locationEquipmentId, productId) => {

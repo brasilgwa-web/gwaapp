@@ -389,85 +389,50 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
     // --- Smart Readings Validation ---
     const checkMissingReadings = () => {
-        if (!reportData?.fullReportStructure) return { hasMissing: false, count: 0 };
-
+        if (!reportData?.fullReportStructure) return { hasMissing: false, count: 0, items: [] };
         let missingCount = 0;
+        const missingItems = []; // Array to store details: { name, type, location, equipment }
+
+        // Check Analytical Results
         reportData.fullReportStructure.forEach(loc => {
             loc.equipments?.forEach(eq => {
-                // Check if equipment has tests configured
                 if (eq.tests?.length > 0) {
                     eq.tests.forEach(test => {
-                        // Check if result is missing (null, undefined or empty string)
+                        // Check if result is missing (null, undefined or empty string, strictly)
                         const val = test.result?.measured_value;
                         if (val === null || val === undefined || val === '') {
                             missingCount++;
-                        }
-                    });
-                }
-            });
-        });
-
-        // Check Dosages
-        reportData.fullReportStructure.forEach(loc => {
-            loc.equipments?.forEach(eq => {
-                const dosages = eq.dosages || []; // Assuming dosages are attached here or need to be mapped from visit data. 
-                // Wait, reportData structure might not have dosages directly on equipment if it's not fully hydrated for the report yet. 
-                // But handleGenerateAI uses freshReportData which seems to have it.
-                // Let's rely on how the report data is structured. 
-                // If dosages is not present, we might need to check how to access it. 
-                // Checking handleGenerateAI logic: 
-                // "dosages: freshReportData?.fullReportStructure?.flatMap(...)". 
-
-                // Let's iterate dosages if they exist on the equipment node
-                if (eq.dosages?.length > 0) {
-                    eq.dosages.forEach(dosage => {
-                        const val = dosage.dosage_applied;
-                        if (val === null || val === undefined || val === '') {
-                            missingCount++;
+                            missingItems.push({
+                                name: test.name,
+                                type: 'Análise',
+                                location: loc.name,
+                                equipment: eq.name || eq.catalogName
+                            });
                         }
                     });
                 }
 
-                // Also check products list from the component state/props if needed, but reportData should be the source of truth for the report.
-                // Actually, let's look at how dosages are rendered in the report. They come from `data.equipments[].products[]`.
-                // Let's check eq.products array as that's what seems to hold the dosage info in the report structure usually.
+                // Check Dosages (using products array which usually holds dosage info in report structure)
                 if (eq.products?.length > 0) {
                     eq.products.forEach(prod => {
-                        // In the report structure, 'dosage_applied' might be on the product object or a nested dosage object.
-                        // based on `ReportTab` rendering logic implies `reportData` might differ.
-                        // Let's check `handleGenerateAI` again. It maps `dosages` separately from `freshReportData`. 
-
-                        // BUT `checkMissingReadings` uses `reportData.fullReportStructure`.
-                        // Let's assume `fullReportStructure` has `products` with `dosage_applied`.
-
-                        const val = prod.dosage_applied; // This is a guess based on standard structure. 
-                        // If it's undefined, it might not be counted. 
-                        // However, let's look at `DosageBoardTab`. Dosages are stored in `visit_dosages`.
-
-                        // BETTER APPROACH: Use the `results` prop for tests, but for dosages we might need to look at `dosages` prop if available or fetch them?
-                        // `ReportTab` has `visit` prop. 
-
-                        // Let's stick to what's likely in `fullReportStructure` or just check `results` for tests.
-                        // Wait, the user specifically mentioned "leituras e dosagens".
-                        // `checkMissingReadings` effectively checks "readings" (tests). 
-                        // I need to check dosages. 
-
-                        // Let's look at `handleSyncStock`. It fetches `visit_dosages`. 
-                        // `ReportTab` doesn't seem to have `dosages` in state. 
-                        // But `reportData` from `useReportData` likely aggregates it.
-
-                        // Let's iterate `eq.products` and check `dosage_applied`.
-                        if (prod.dosage_applied === null || prod.dosage_applied === undefined || prod.dosage_applied === '') {
-                            // Check if it's a product that *requires* dosage? 
-                            // Usually all listed products do.
+                        // Logic: If the product is configured (exists in report), it likely expects a dosage
+                        // unless it's strictly optional. Assuming mandatory for now.
+                        const val = prod.dosage_applied;
+                        if (val === null || val === undefined || val === '') {
                             missingCount++;
+                            missingItems.push({
+                                name: prod.name,
+                                type: 'Dosagem',
+                                location: loc.name,
+                                equipment: eq.name || eq.catalogName
+                            });
                         }
                     });
                 }
             });
         });
 
-        return { hasMissing: missingCount > 0, count: missingCount };
+        return { hasMissing: missingCount > 0, count: missingCount, items: missingItems };
     };
 
     const handleOpenPreview = async () => {
