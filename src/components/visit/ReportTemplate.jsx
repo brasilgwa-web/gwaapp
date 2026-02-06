@@ -176,24 +176,28 @@ export function ReportTemplate({ data }) {
 
                 {/* Header */}
                 <header className="mb-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <h1 className="text-lg font-medium text-slate-700 pb-1 inline-block">
-                                Relatório de Atendimento Técnico em Campo
+                    <div className="flex justify-between items-center h-20"> {/* Fixed height header for alignment */}
+                        <div className="flex-1">
+                            <h1 className="text-xl font-bold text-slate-800 leading-tight">
+                                {reportSettings?.report_title || 'Relatório de Atendimento Técnico em Campo'}
                             </h1>
                         </div>
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center justify-end gap-6 flex-1">
                             {logoUrl && (
-                                <img src={logoUrl} alt="Logo 1" className="h-12 w-auto max-w-[150px] object-contain" />
+                                <div className="h-16 flex items-center justify-center">
+                                    <img src={logoUrl} alt="Logo 1" className="h-full w-auto object-contain max-w-[180px]" />
+                                </div>
                             )}
                             {logo2Url && (
-                                <img src={logo2Url} alt="Logo 2" className="h-12 w-auto max-w-[150px] object-contain" />
+                                <div className="h-16 flex items-center justify-center">
+                                    <img src={logo2Url} alt="Logo 2" className="h-full w-auto object-contain max-w-[180px]" />
+                                </div>
                             )}
                             {!logoUrl && !logo2Url && (
-                                <>
-                                    <div className="text-blue-600 font-bold text-xl">WGA</div>
+                                <div className="text-right">
+                                    <div className="text-blue-600 font-bold text-2xl">WGA</div>
                                     <span className="text-slate-700 font-medium">Brasil</span>
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>

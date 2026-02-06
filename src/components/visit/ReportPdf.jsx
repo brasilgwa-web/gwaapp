@@ -43,30 +43,30 @@ const styles = StyleSheet.create({
         top: 0,
         left: 40,
         right: 40,
-        height: 80, // Increased height
+        height: 80,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-end', // Aligns title underline with logos bottom
-        paddingTop: 30, // More top padding
+        alignItems: 'center', // Center vertically
+        paddingTop: 30,
         marginBottom: 20,
     },
     headerTitle: {
-        fontSize: 12,
-        fontWeight: 600,
-        color: '#334155', // slate-700
-        maxWidth: '55%', // Reverted to 55%
+        fontSize: 14, // Increased size
+        fontWeight: 700, // Bold
+        color: '#1e293b', // darker slate
+        maxWidth: '55%',
+        textTransform: 'uppercase', // Optional style choice for professional look
     },
     headerLogos: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        maxWidth: '40%', // Reverted to 40%
-        // gap removed (not supported in all versions)
+        maxWidth: '40%',
+        height: 50, // Fixed height container
     },
     logo: {
-        height: 45, // Reverted
+        height: '100%', // Fill container height
         width: 'auto',
-        maxWidth: 120, // Reverted
         objectFit: 'contain',
         marginLeft: 10,
     },
@@ -350,18 +350,25 @@ const ReportPdf = ({ data, settings }) => {
 
     const renderHeader = () => (
         <View style={styles.header} fixed>
-            <View>
-                <Text style={styles.headerTitle}>Relatório de Atendimento Técnico em Campo</Text>
-            </View>
+            <Text style={styles.headerTitle}>
+                {settings?.report_title || 'Relatório de Atendimento Técnico em Campo'}
+            </Text>
             <View style={styles.headerLogos}>
-                {logoUrl && <Image src={logoUrl} style={styles.logo} />}
-                {logo2Url && <Image src={logo2Url} style={styles.logo} />}
-                {!logoUrl && !logo2Url && (
-                    <View>
-                        <Text style={{ color: '#2563eb', fontWeight: 700, fontSize: 16 }}>WGA</Text>
-                        <Text style={{ color: '#334155', fontSize: 12 }}>Brasil</Text>
-                    </View>
+                {/* Only show logos if valid URL string */}
+                {settings?.logo_url && typeof settings.logo_url === 'string' && settings.logo_url.startsWith('http') && (
+                    <Image src={settings.logo_url} style={styles.logo} />
                 )}
+                {settings?.logo2_url && typeof settings.logo2_url === 'string' && settings.logo2_url.startsWith('http') && (
+                    <Image src={settings.logo2_url} style={styles.logo} />
+                )}
+                {/* Fallback for logos if neither are provided or valid */}
+                {(!settings?.logo_url || !(typeof settings.logo_url === 'string' && settings.logo_url.startsWith('http'))) &&
+                    (!settings?.logo2_url || !(typeof settings.logo2_url === 'string' && settings.logo2_url.startsWith('http'))) && (
+                        <View>
+                            <Text style={{ color: '#2563eb', fontWeight: 700, fontSize: 16 }}>WGA</Text>
+                            <Text style={{ color: '#334155', fontSize: 12 }}>Brasil</Text>
+                        </View>
+                    )}
             </View>
         </View>
     );

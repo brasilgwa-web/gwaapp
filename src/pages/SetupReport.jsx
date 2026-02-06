@@ -95,6 +95,7 @@ export default function SetupReport() {
 
     const [initialNumber, setInitialNumber] = useState('');
     const [footerText, setFooterText] = useState('');
+    const [reportTitle, setReportTitle] = useState('');
     const [emailSubject, setEmailSubject] = useState('');
     const [emailBody, setEmailBody] = useState('');
 
@@ -153,6 +154,7 @@ export default function SetupReport() {
         if (settings) {
             setInitialNumber(settings.current_report_number?.toString() || '1');
             setFooterText(settings.footer_text || '');
+            setReportTitle(settings.report_title || '');
             setEmailSubject(settings.email_subject_default || 'Relatório de Visita Técnica - {client_name} - {date}');
 
             setEmailBody(settings.email_body_default || '');
@@ -359,6 +361,7 @@ export default function SetupReport() {
                 logo_url: logoUrl,
                 logo2_url: logo2Url,
                 footer_text: footerText,
+                report_title: reportTitle,
                 email_subject_default: emailSubject,
                 email_body_default: emailBody,
                 cover_enabled: coverEnabled,
@@ -651,18 +654,31 @@ export default function SetupReport() {
                         buttonLabel="Escolher Logo 2"
                     />
 
-                    {/* Footer Text */}
+                    {/* Header and Footer Settings */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2">
                                 <AlignLeft className="w-4 h-4 text-green-500" />
-                                Texto do Rodapé
+                                Cabeçalho e Rodapé
                             </CardTitle>
                             <CardDescription>
-                                Personalize o texto que aparecerá no rodapé de todas as páginas do relatório.
+                                Personalize os textos fixos do relatório.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="reportTitle">Título do Relatório (Cabeçalho)</Label>
+                                <Input
+                                    id="reportTitle"
+                                    value={reportTitle}
+                                    onChange={(e) => setReportTitle(e.target.value)}
+                                    placeholder="Padrão: Relatório de Atendimento Técnico em Campo"
+                                />
+                                <p className="text-xs text-slate-500">
+                                    Define o título principal que aparece no topo de todas as páginas.
+                                </p>
+                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="footerText">Texto do Rodapé</Label>
                                 <Textarea
