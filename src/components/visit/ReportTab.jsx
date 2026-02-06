@@ -405,8 +405,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             missingItems.push({
                                 name: test.name,
                                 type: 'Análise',
-                                location: loc.name,
-                                equipment: eq.name || eq.catalogName
+                                location: loc.location?.name || loc.name,
+                                equipment: eq.equipment?.name || eq.name || eq.catalogName
                             });
                         }
                     });
@@ -423,8 +423,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             missingItems.push({
                                 name: prod.name,
                                 type: 'Dosagem',
-                                location: loc.name,
-                                equipment: eq.name || eq.catalogName
+                                location: loc.location?.name || loc.name,
+                                equipment: eq.equipment?.name || eq.name || eq.catalogName
                             });
                         }
                     });
