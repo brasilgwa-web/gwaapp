@@ -27,7 +27,7 @@ const dataURLtoBlob = (dataurl) => {
 };
 
 // Reusable Image Upload Component
-const ImageUploadCard = ({ title, description, icon: Icon, previewUrl, onFileSelect, file, inputRef, buttonLabel = "Escolher Imagem" }) => (
+const ImageUploadCard = ({ title, description, icon: Icon, previewUrl, onFileSelect, onRemove, file, inputRef, buttonLabel = "Escolher Imagem" }) => (
     <Card>
         <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -39,13 +39,31 @@ const ImageUploadCard = ({ title, description, icon: Icon, previewUrl, onFileSel
         <CardContent className="space-y-4">
             <div className="flex items-start gap-6">
                 {/* Preview */}
-                <div className="w-32 h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden">
+                <div className="w-32 h-32 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden relative group">
                     {previewUrl ? (
-                        <img
-                            src={previewUrl}
-                            alt="Preview"
-                            className="max-w-full max-h-full object-contain"
-                        />
+                        <>
+                            <img
+                                src={previewUrl}
+                                alt="Preview"
+                                className="max-w-full max-h-full object-contain"
+                            />
+                            {onRemove && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                        variant="destructive"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onRemove();
+                                        }}
+                                        type="button"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            )}
+                        </>
                     ) : (
                         <div className="text-center text-slate-400">
                             <Image className="w-8 h-8 mx-auto mb-1" />
@@ -66,13 +84,27 @@ const ImageUploadCard = ({ title, description, icon: Icon, previewUrl, onFileSel
                         }}
                         className="hidden"
                     />
-                    <Button
-                        variant="outline"
-                        onClick={() => inputRef.current?.click()}
-                    >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {buttonLabel}
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => inputRef.current?.click()}
+                            type="button"
+                        >
+                            <Upload className="w-4 h-4 mr-2" />
+                            {buttonLabel}
+                        </Button>
+                        {previewUrl && onRemove && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={onRemove}
+                                type="button"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                        )}
+                    </div>
                     <p className="text-xs text-slate-500">
                         Recomendado: PNG ou JPG, máximo 500KB
                     </p>
@@ -285,7 +317,7 @@ export default function SetupReport() {
     const handleSave = async () => {
         setIsUploading(true);
         try {
-            let logoUrl = settings?.logo_url || null;
+            let logoUrl = logoFile ? null : logoPreview;
 
             // Upload logo if new file selected
             if (logoFile) {
@@ -298,8 +330,7 @@ export default function SetupReport() {
                     .upload(filePath, logoFile, { upsert: true });
 
                 if (uploadError) {
-                    // Try alternative bucket name 'uploads' if 'public' fails logic (simplified for brevity, assume 'uploads' fallback logic exists or just use 'uploads' if consistent)
-                    // Staying consistent with current code Structure
+                    // Try alternative bucket name 'uploads' if 'public' fails logic
                     const { error: uploadError2 } = await supabase.storage
                         .from('uploads')
                         .upload(filePath, logoFile, { upsert: true });
@@ -316,7 +347,7 @@ export default function SetupReport() {
             }
 
             // Upload cover image if new file selected
-            let coverImageUrl = settings?.cover_image_url || null;
+            let coverImageUrl = coverImageFile ? null : coverImagePreview;
             if (coverImageFile) {
                 const fileExt = coverImageFile.name.split('.').pop();
                 const fileName = `cover_${Date.now()}.${fileExt}`;
@@ -333,7 +364,7 @@ export default function SetupReport() {
             }
 
             // Upload logo 2 if new file selected
-            let logo2Url = settings?.logo2_url || null;
+            let logo2Url = logo2File ? null : logo2Preview;
             if (logo2File) {
                 const fileExt = logo2File.name.split('.').pop();
                 const fileName = `logo2_${Date.now()}.${fileExt}`;
@@ -377,6 +408,16 @@ export default function SetupReport() {
             setIsUploading(false);
         }
     };
+
+    // ... handleSaveResp, openNewResp, openEditResp ... (omitted for brevity in replacement, but effectively need to keep the file structure valid.
+    // Actually this replacement chunk is too large and cuts off the rest of the file. I should only replace `ImageUploadCard` and `SetupReport` start up to `handleSave` end.
+    // The previous chunk logic might be risky if I don't precise the end.
+
+    // Let's refine the replacement to be specific blocks.
+    // 1. ImageUploadCard
+    // 2. handleSave logic
+    // 3. ImageUploadCard usages in return.
+
 
     const handleSaveResp = async (e) => {
         e.preventDefault();
@@ -638,6 +679,7 @@ export default function SetupReport() {
                         icon={Image}
                         previewUrl={logoPreview}
                         onFileSelect={(f) => handleFileSelect(f, setLogoFile, setLogoPreview)}
+                        onRemove={() => { setLogoFile(null); setLogoPreview(null); }}
                         file={logoFile}
                         inputRef={fileInputRef}
                     />
@@ -649,6 +691,7 @@ export default function SetupReport() {
                         icon={Image}
                         previewUrl={logo2Preview}
                         onFileSelect={(f) => handleFileSelect(f, setLogo2File, setLogo2Preview)}
+                        onRemove={() => { setLogo2File(null); setLogo2Preview(null); }}
                         file={logo2File}
                         inputRef={logo2InputRef}
                         buttonLabel="Escolher Logo 2"
@@ -799,16 +842,17 @@ export default function SetupReport() {
                                                     <Button
                                                         type="button"
                                                         variant="ghost"
+                                                        size="icon"
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
                                                         onClick={() => {
                                                             setCoverImageFile(null);
                                                             setCoverImagePreview(null);
                                                         }}
-                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                                     >
-                                                        <Trash2 className="w-4 h-4 mr-2" />
-                                                        Remover
+                                                        <Trash2 className="w-4 h-4" />
                                                     </Button>
                                                 )}
+
                                             </div>
                                         </div>
 
