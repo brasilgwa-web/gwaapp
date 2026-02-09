@@ -19,9 +19,9 @@ Font.register({
 // Styles
 const styles = StyleSheet.create({
     page: {
-        paddingTop: 100, // Increased to avoid header overlap
-        paddingBottom: 80, // Increased for footer
-        paddingHorizontal: 40,
+        paddingTop: 20, // Reduced from 30
+        paddingBottom: 40, // Reduced from 60
+        paddingHorizontal: 20, // Reduced from 30
         fontFamily: 'Inter',
         fontSize: 9,
         color: '#1e293b', // slate-800
@@ -41,40 +41,35 @@ const styles = StyleSheet.create({
     header: {
         position: 'absolute',
         top: 0,
-        left: 40,
-        right: 40,
-        height: 80, // Increased height
+        left: 20, // Match horizontal padding
+        right: 20, // Match horizontal padding
+        height: 70, // Slightly reduced
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-end', // Aligns title underline with logos bottom
-        paddingTop: 30, // More top padding
-        marginBottom: 20,
+        alignItems: 'center', // Center vertically
+        paddingTop: 10,
+        marginBottom: 10,
     },
     headerTitle: {
-        fontSize: 12,
-        fontWeight: 600,
-        color: '#334155', // slate-700
-        maxWidth: '55%', // Reverted to 55%
+        fontSize: 14,
+        fontWeight: 700,
+        color: '#1e293b',
+        maxWidth: '65%', // Increased from 55% to prevent wrapping
+        textTransform: 'uppercase',
     },
     headerLogos: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        maxWidth: '40%', // Reverted to 40%
-        // gap removed (not supported in all versions)
+        maxWidth: '35%', // Reduced to balance
+        height: 50,
     },
-    logo: {
-        height: 45, // Reverted
-        width: 'auto',
-        maxWidth: 120, // Reverted
-        objectFit: 'contain',
-        marginLeft: 10,
-    },
+    // ...
     footer: {
         position: 'absolute',
         bottom: 20,
-        left: 40,
-        right: 40,
+        left: 20,
+        right: 20,
         textAlign: 'center',
         fontSize: 8,
         color: '#94a3b8', // slate-400
@@ -85,7 +80,7 @@ const styles = StyleSheet.create({
     pageNumber: {
         position: 'absolute',
         bottom: 20,
-        right: 40,
+        right: 20,
         fontSize: 8,
         color: '#94a3b8',
     },
@@ -350,18 +345,25 @@ const ReportPdf = ({ data, settings }) => {
 
     const renderHeader = () => (
         <View style={styles.header} fixed>
-            <View>
-                <Text style={styles.headerTitle}>Relatório de Atendimento Técnico em Campo</Text>
-            </View>
+            <Text style={styles.headerTitle}>
+                {settings?.report_title || 'Relatório de Atendimento Técnico em Campo'}
+            </Text>
             <View style={styles.headerLogos}>
-                {logoUrl && <Image src={logoUrl} style={styles.logo} />}
-                {logo2Url && <Image src={logo2Url} style={styles.logo} />}
-                {!logoUrl && !logo2Url && (
-                    <View>
-                        <Text style={{ color: '#2563eb', fontWeight: 700, fontSize: 16 }}>WGA</Text>
-                        <Text style={{ color: '#334155', fontSize: 12 }}>Brasil</Text>
-                    </View>
+                {/* Only show logos if valid URL string */}
+                {settings?.logo_url && typeof settings.logo_url === 'string' && settings.logo_url.startsWith('http') && (
+                    <Image src={settings.logo_url} style={styles.logo} />
                 )}
+                {settings?.logo2_url && typeof settings.logo2_url === 'string' && settings.logo2_url.startsWith('http') && (
+                    <Image src={settings.logo2_url} style={styles.logo} />
+                )}
+                {/* Fallback for logos if neither are provided or valid */}
+                {(!settings?.logo_url || !(typeof settings.logo_url === 'string' && settings.logo_url.startsWith('http'))) &&
+                    (!settings?.logo2_url || !(typeof settings.logo2_url === 'string' && settings.logo2_url.startsWith('http'))) && (
+                        <View>
+                            <Text style={{ color: '#2563eb', fontWeight: 700, fontSize: 16 }}>WGA</Text>
+                            <Text style={{ color: '#334155', fontSize: 12 }}>Brasil</Text>
+                        </View>
+                    )}
             </View>
         </View>
     );
@@ -462,61 +464,79 @@ const ReportPdf = ({ data, settings }) => {
                     {fullReportStructure?.length === 0 ? (
                         <Text style={{ ...styles.text, fontStyle: 'italic', textAlign: 'center', marginVertical: 10 }}>Nenhum resultado registrado.</Text>
                     ) : (
-                        fullReportStructure.map((loc, idx) => (
-                            <View key={idx} style={{ marginBottom: 10 }}>
-                                <Text style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4, color: '#334155' }}>
-                                    Local: {loc.location.name}
-                                </Text>
+                        fullReportStructure.map((loc, idx) => {
+                            // Filter equipments that have at least one valid test result
+                            const activeEquipments = loc.equipments.filter(eq =>
+                                eq.tests?.some(t => t.result?.measured_value !== null && t.result?.measured_value !== undefined && t.result?.measured_value !== '')
+                            );
 
-                                {loc.equipments.map((eq, eqIdx) => (
-                                    <View key={eqIdx} style={{ marginBottom: 8 }} break>
-                                        {/* Eq Header */}
-                                        <View style={styles.equipmentHeader}>
-                                            <View style={styles.equipmentTitle}>
-                                                <View style={styles.dot} />
-                                                <Text>{eq.equipment.name}</Text>
-                                            </View>
-                                            <View style={{ flexDirection: 'row' }}>
-                                                {eq.sample?.collection_time && <Text style={{ color: '#475569', fontSize: 8 }}>Coleta: {eq.sample.collection_time.substring(0, 5)}h</Text>}
-                                            </View>
-                                        </View>
+                            if (activeEquipments.length === 0) return null;
 
-                                        {/* Table */}
-                                        <View style={styles.table}>
-                                            <View style={styles.tableHeader}>
-                                                <Text style={{ ...styles.tableCell, ...styles.tableCellLeft, flex: 2 }}>Parâmetro</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 0.5 }}>Und.</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 1 }}>VMP</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 0.5 }}>LD</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 0.5 }}>LQ</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 0.8 }}>Incerteza</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 1 }}>Resultado</Text>
-                                                <Text style={{ ...styles.tableCell, flex: 1 }}>Metodologia</Text>
-                                            </View>
-                                            {eq.tests.map((test, tIdx) => (
-                                                <View key={tIdx} style={tIdx % 2 === 0 ? styles.tableRow : { ...styles.tableRow, ...styles.tableRowAlt }}>
-                                                    <Text style={{ ...styles.tableCell, ...styles.tableCellLeft, flex: 2, color: '#334155', fontWeight: 500 }}>{test.name}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 0.5, color: '#64748b' }}>{test.unit || '-'}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 1, fontFamily: 'Courier', fontSize: 8, color: '#64748b' }}>{test.min_value} - {test.max_value}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 0.5, color: '#94a3b8' }}>{test.ld || '-'}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 0.5, color: '#94a3b8' }}>{test.lq || '-'}</Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 0.8, color: '#94a3b8' }}>{test.method_uncertainty || '-'}</Text>
-                                                    <Text style={{
-                                                        ...styles.tableCell,
-                                                        flex: 1,
-                                                        fontWeight: 700,
-                                                        color: test.result?.status_light === 'red' ? '#dc2626' : test.result?.status_light === 'green' ? '#16a34a' : '#ca8a04'
-                                                    }}>
-                                                        {test.result ? test.result.measured_value : '-'}
-                                                    </Text>
-                                                    <Text style={{ ...styles.tableCell, flex: 1, color: '#94a3b8', fontSize: 7 }}>{test.methodology || '-'}</Text>
+                            return (
+                                <View key={idx} style={{ marginBottom: 10 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4, color: '#334155' }}>
+                                        Local: {loc.location.name}
+                                    </Text>
+
+                                    {activeEquipments.map((eq, eqIdx) => {
+                                        const validTests = eq.tests.filter(test => {
+                                            const val = test.result?.measured_value;
+                                            return val !== null && val !== undefined && val !== '';
+                                        });
+
+                                        if (validTests.length === 0) return null;
+
+                                        return (
+                                            <View key={eqIdx} style={{ marginBottom: 8 }} break>
+                                                {/* Eq Header */}
+                                                <View style={styles.equipmentHeader}>
+                                                    <View style={styles.equipmentTitle}>
+                                                        <View style={styles.dot} />
+                                                        <Text>{eq.equipment.name}</Text>
+                                                    </View>
+                                                    <View style={{ flexDirection: 'row' }}>
+                                                        {eq.sample?.collection_time && <Text style={{ color: '#475569', fontSize: 8 }}>Coleta: {eq.sample.collection_time.substring(0, 5)}h</Text>}
+                                                    </View>
                                                 </View>
-                                            ))}
-                                        </View>
-                                    </View>
-                                ))}
-                            </View>
-                        ))
+
+                                                {/* Table */}
+                                                <View style={styles.table}>
+                                                    <View style={styles.tableHeader}>
+                                                        <Text style={{ ...styles.tableCell, ...styles.tableCellLeft, flex: 2 }}>Parâmetro</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 0.5 }}>Und.</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 1 }}>VMP</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 0.5 }}>LD</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 0.5 }}>LQ</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 0.8 }}>Incerteza</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 1 }}>Resultado</Text>
+                                                        <Text style={{ ...styles.tableCell, flex: 1 }}>Metodologia</Text>
+                                                    </View>
+                                                    {validTests.map((test, tIdx) => (
+                                                        <View key={tIdx} style={tIdx % 2 === 0 ? styles.tableRow : { ...styles.tableRow, ...styles.tableRowAlt }}>
+                                                            <Text style={{ ...styles.tableCell, ...styles.tableCellLeft, flex: 2, color: '#334155', fontWeight: 500 }}>{test.name}</Text>
+                                                            <Text style={{ ...styles.tableCell, flex: 0.5, color: '#64748b' }}>{test.unit || '-'}</Text>
+                                                            <Text style={{ ...styles.tableCell, flex: 1, fontFamily: 'Courier', fontSize: 8, color: '#64748b' }}>{test.min_value} - {test.max_value}</Text>
+                                                            <Text style={{ ...styles.tableCell, flex: 0.5, color: '#94a3b8' }}>{test.ld || '-'}</Text>
+                                                            <Text style={{ ...styles.tableCell, flex: 0.5, color: '#94a3b8' }}>{test.lq || '-'}</Text>
+                                                            <Text style={{ ...styles.tableCell, flex: 0.8, color: '#94a3b8' }}>{test.method_uncertainty || '-'}</Text>
+                                                            <Text style={{
+                                                                ...styles.tableCell,
+                                                                flex: 1,
+                                                                fontWeight: 700,
+                                                                color: test.result?.status_light === 'red' ? '#dc2626' : test.result?.status_light === 'green' ? '#16a34a' : '#ca8a04'
+                                                            }}>
+                                                                {test.result ? test.result.measured_value : '-'}
+                                                            </Text>
+                                                            <Text style={{ ...styles.tableCell, flex: 1, color: '#94a3b8', fontSize: 7 }}>{test.methodology || '-'}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            );
+                        })
                     )}
                     <Text style={{ fontSize: 7, color: '#64748b', marginTop: 4 }}>
                         Legenda: VMP - Valor Máximo Permitido | LQ - Limite de Quantificação | LD - Limite Mínimo Detectável | Incerteza: Percentual de Incerteza Expandida
@@ -534,7 +554,7 @@ const ReportPdf = ({ data, settings }) => {
                         fullReportStructure.map((loc, idx) => (
                             <View key={idx}>
                                 {loc.equipments.map((eq, eqIdx) => {
-                                    const activeDosages = eq.dosages.filter(d => d.product);
+                                    const activeDosages = eq.dosages.filter(d => d.product && d.record?.dosage_applied !== null && d.record?.dosage_applied !== undefined && d.record?.dosage_applied !== '');
                                     if (activeDosages.length === 0) return null;
                                     return (
                                         <View key={eqIdx} style={{ marginBottom: 10 }}>

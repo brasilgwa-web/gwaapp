@@ -20,7 +20,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from "@/lib/utils";
 import { Logger } from "@/lib/logger";
-import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock, Eye, EyeOff, PenTool } from "lucide-react";
+import { Bot, Send, FileText, Loader2, ExternalLink, AlertTriangle, CheckCircle, Lock, MonitorUp, Droplets, Clock, Eye, EyeOff, PenTool, ChevronDown, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
@@ -43,6 +43,24 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [showObsPreview, setShowObsPreview] = useState(true);
     const [technicalResponsibleId, setTechnicalResponsibleId] = useState(visit.technical_responsible_id || '');
     const [aiValidated, setAiValidated] = useState(false);
+    const [validationDialog, setValidationDialog] = useState({
+        open: false,
+        items: [],
+        onConfirm: null,
+        confirmLabel: '',
+        title: '',
+        message: ''
+    });
+
+    const closeValidationDialog = () => {
+        setValidationDialog(prev => ({ ...prev, open: false }));
+    };
+
+    const confirmValidationDialog = () => {
+        if (validationDialog.onConfirm) validationDialog.onConfirm();
+        closeValidationDialog();
+    };
+
     const [signerId, setSignerId] = useState(visit.client_contact_id || 'default');
 
 
@@ -369,8 +387,56 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     // PDF & Email Logic
     // signaturePadRef is defined at the top
 
+    // --- Smart Readings Validation ---
+    const checkMissingReadings = () => {
+        if (!reportData?.fullReportStructure) return { hasMissing: false, count: 0, items: [] };
+        let missingCount = 0;
+        const missingItems = []; // Array to store details: { name, type, location, equipment }
+
+        // Check Analytical Results
+        reportData.fullReportStructure.forEach(loc => {
+            loc.equipments?.forEach(eq => {
+                if (eq.tests?.length > 0) {
+                    eq.tests.forEach(test => {
+                        // Check if result is missing (null, undefined or empty string, strictly)
+                        const val = test.result?.measured_value;
+                        if (val === null || val === undefined || val === '') {
+                            missingCount++;
+                            missingItems.push({
+                                name: test.name,
+                                type: 'Análise',
+                                location: loc.location?.name || loc.name,
+                                equipment: eq.equipment?.name || eq.name || eq.catalogName
+                            });
+                        }
+                    });
+                }
+
+                // Check Dosages (using products array which usually holds dosage info in report structure)
+                if (eq.products?.length > 0) {
+                    eq.products.forEach(prod => {
+                        // Logic: If the product is configured (exists in report), it likely expects a dosage
+                        // unless it's strictly optional. Assuming mandatory for now.
+                        const val = prod.dosage_applied;
+                        if (val === null || val === undefined || val === '') {
+                            missingCount++;
+                            missingItems.push({
+                                name: prod.name,
+                                type: 'Dosagem',
+                                location: loc.location?.name || loc.name,
+                                equipment: eq.equipment?.name || eq.name || eq.catalogName
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        return { hasMissing: missingCount > 0, count: missingCount, items: missingItems };
+    };
+
     const handleOpenPreview = async () => {
-        // Validation: If user has no CRQ, Technical Responsible is MANDATORY
+        // Validation: Mandatory Tech Resp
         if (needsTechnicalResponsible && !technicalResponsibleId) {
             await alert({
                 title: 'Responsável Técnico Obrigatório',
@@ -380,35 +446,87 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             return;
         }
 
-        // Auto-save Client Signature Logic
-        if (!readOnly && !clientAbsent && !visit.client_signature_url && signaturePadRef.current) {
-            const unsavedSig = signaturePadRef.current.getSignatureData();
-            if (unsavedSig) {
-                // We have a drawing but it wasn't saved yet
-                // Optimistically save it before confirming
-                try {
-                    await updateMutation.mutateAsync({
-                        client_signature_url: unsavedSig,
-                        service_end_time: new Date().toISOString()
-                    });
-                } catch (err) {
-                    console.error("Auto-save signature failed", err);
+        // Smart Readings Validation
+        const { hasMissing, count, items } = checkMissingReadings();
+
+        const proceedWithFinalize = async () => {
+            // Auto-save Client Signature Logic
+            if (!readOnly && !clientAbsent && !visit.client_signature_url && signaturePadRef.current) {
+                const unsavedSig = signaturePadRef.current.getSignatureData();
+                if (unsavedSig) {
+                    try {
+                        await updateMutation.mutateAsync({
+                            client_signature_url: unsavedSig,
+                            service_end_time: new Date().toISOString()
+                        });
+                    } catch (err) {
+                        console.error("Auto-save signature failed", err);
+                    }
                 }
             }
+
+            // Simple confirmation
+            const actionLabel = readOnly ? "reenviar e salvar" : "finalizar, enviar e salvar";
+            const confirmed = await confirm({
+                title: 'Confirmar Envio',
+                message: `Tem certeza que deseja ${actionLabel} o relatório?`,
+                confirmLabel: 'Sim, enviar',
+                cancelLabel: 'Cancelar',
+                type: 'confirm'
+            });
+            if (!confirmed) return;
+
+            await handleConfirmSend();
+        };
+
+        if (hasMissing) {
+            setValidationDialog({
+                open: true,
+                items: items,
+                title: 'Atenção: Itens Pendentes',
+                message: `Existem ${count} análise(s) ou dosagem(ns) sem resultados preenchidos. Estes campos aparecerão como "Não Realizado" ou vazios (ocultos) no relatório final.`,
+                confirmLabel: 'Sim, ocultar e finalizar',
+                onConfirm: proceedWithFinalize
+            });
+            return;
         }
 
-        // Simple confirmation instead of preview
-        const actionLabel = readOnly ? "reenviar e salvar" : "finalizar, enviar e salvar";
-        const confirmed = await confirm({
-            title: 'Confirmar Envio',
-            message: `Tem certeza que deseja ${actionLabel} o relatório?`,
-            confirmLabel: 'Sim, enviar',
-            cancelLabel: 'Cancelar',
-            type: 'confirm'
-        });
-        if (!confirmed) return;
+        await proceedWithFinalize();
+    };
 
-        await handleConfirmSend();
+    const handleViewWebReport = async (e) => {
+        e.preventDefault();
+
+        // Validation: Same as preview
+        if (needsTechnicalResponsible && !technicalResponsibleId) {
+            await alert({
+                title: 'Responsável Técnico Obrigatório',
+                message: 'Como você não possui CRQ cadastrado, é obrigatório selecionar um Responsável Técnico para verificar o relatório.',
+                type: 'warning'
+            });
+            return;
+        }
+
+        // Smart Readings & Dosages Validation
+        const { hasMissing, count, items } = checkMissingReadings();
+
+        const openReport = () => {
+            window.open(`/report/${visit.id}`, '_blank');
+        };
+
+        if (hasMissing) {
+            setValidationDialog({
+                open: true,
+                items: items,
+                title: 'Atenção: Itens Pendentes',
+                message: `Existem ${count} análise(s) ou dosagem(ns) sem resultados preenchidos. Estes campos não serão exibidos no relatório.`,
+                confirmLabel: 'Sim, visualizar',
+                onConfirm: openReport
+            });
+            return;
+        }
+
+        openReport();
     };
 
     const handleConfirmSend = async () => {
@@ -587,6 +705,75 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </DialogContent>
             </Dialog>
 
+            {/* Validation Dialog */}
+            <Dialog open={validationDialog.open} onOpenChange={closeValidationDialog}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-600">
+                            <AlertTriangle className="h-5 w-5" />
+                            {validationDialog.title}
+                        </DialogTitle>
+                        <DialogDescription className="pt-2">
+                            {validationDialog.message}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Collapsible List of Missing Items */}
+                    {validationDialog.items?.length > 0 && (
+                        <div className="my-2 border rounded-md overflow-hidden text-sm">
+                            <details className="group">
+                                <summary className="flex justify-between items-center p-3 bg-slate-50 cursor-pointer font-medium text-slate-700 hover:bg-slate-100 transition-colors">
+                                    <span>Ver itens pendentes ({validationDialog.items.length})</span>
+                                    <span className="transform group-open:rotate-180 transition-transform">
+                                        <ChevronDown className="h-4 w-4" />
+                                    </span>
+                                </summary>
+                                <div className="p-0 max-h-[300px] overflow-y-auto bg-white">
+                                    <div className="divide-y divide-slate-100">
+                                        {Object.entries(validationDialog.items.reduce((acc, item) => {
+                                            const key = item.equipment || 'Outros';
+                                            if (!acc[key]) acc[key] = [];
+                                            acc[key].push(item);
+                                            return acc;
+                                        }, {})).map(([equipmentName, items], idx) => (
+                                            <div key={idx} className="p-3">
+                                                <div className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                                                    <span className="w-1 h-4 bg-amber-500 rounded-full"></span>
+                                                    {equipmentName}
+                                                </div>
+                                                <ul className="space-y-1.5 pl-3">
+                                                    {items.map((item, i) => (
+                                                        <li key={i} className="flex items-center justify-between text-sm text-slate-600">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                                                                <span>{item.name}</span>
+                                                            </div>
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                                                {item.type}
+                                                            </span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 mt-4">
+                        <Button variant="outline" onClick={closeValidationDialog}>
+                            Revisar preenchimento
+                        </Button>
+                        <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={confirmValidationDialog}>
+                            {validationDialog.confirmLabel}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+
             {/* Signature Dialog */}
             <Dialog open={showSignatureDialog} onOpenChange={setShowSignatureDialog}>
                 <DialogContent>
@@ -601,25 +788,29 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             </Dialog>
 
             {/* Warnings */}
-            {user && !user.signature_url && !showSignatureDialog && !readOnly && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex items-center">
-                    <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
-                    <p className="text-sm text-yellow-700">
-                        Você ainda não cadastrou sua assinatura.
-                        <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>Cadastrar agora</Button>
-                    </p>
-                </div>
-            )}
-
-            {readOnly && (
-                <div className="bg-slate-100 border-l-4 border-slate-500 p-4 mb-4 flex justify-between items-center">
-                    <div className="flex items-center">
-                        <Lock className="h-5 w-5 text-slate-500 mr-2" />
-                        <p className="text-sm text-slate-700">Visita finalizada. Modo somente leitura.</p>
+            {
+                user && !user.signature_url && !showSignatureDialog && !readOnly && (
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex items-center">
+                        <AlertTriangle className="h-5 w-5 text-yellow-400 mr-2" />
+                        <p className="text-sm text-yellow-700">
+                            Você ainda não cadastrou sua assinatura.
+                            <Button variant="link" className="text-yellow-800 underline pl-1" onClick={() => setShowSignatureDialog(true)}>Cadastrar agora</Button>
+                        </p>
                     </div>
-                    {isAdmin && <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>}
-                </div>
-            )}
+                )
+            }
+
+            {
+                readOnly && (
+                    <div className="bg-slate-100 border-l-4 border-slate-500 p-4 mb-4 flex justify-between items-center">
+                        <div className="flex items-center">
+                            <Lock className="h-5 w-5 text-slate-500 mr-2" />
+                            <p className="text-sm text-slate-700">Visita finalizada. Modo somente leitura.</p>
+                        </div>
+                        {isAdmin && <Button variant="outline" size="sm" onClick={handleReopen}>Reabrir Visita</Button>}
+                    </div>
+                )
+            }
 
             {/* 0. HorÃ¡rios */}
             <Card>
@@ -762,45 +953,47 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             </Card>
 
             {/* Responsibilidade Técnica (Inserido) */}
-            {(needsTechnicalResponsible || technicalResponsibles?.length > 0) && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <PenTool className="w-4 h-4 text-purple-500" />
-                            Responsabilidade Técnica
-                        </CardTitle>
-                        <CardDescription>
-                            Selecione o engenheiro/químico responsável por este relatório.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {needsTechnicalResponsible && (
-                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-xs text-yellow-700">
-                                <strong>Atenção:</strong> Como seu usuário não possui CRQ cadastrado, é obrigatório selecionar um responsável técnico.
+            {
+                (needsTechnicalResponsible || technicalResponsibles?.length > 0) && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <PenTool className="w-4 h-4 text-purple-500" />
+                                Responsabilidade Técnica
+                            </CardTitle>
+                            <CardDescription>
+                                Selecione o engenheiro/químico responsável por este relatório.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {needsTechnicalResponsible && (
+                                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 text-xs text-yellow-700">
+                                    <strong>Atenção:</strong> Como seu usuário não possui CRQ cadastrado, é obrigatório selecionar um responsável técnico.
+                                </div>
+                            )}
+                            <div className="space-y-2">
+                                <Label>Responsável Técnico</Label>
+                                <Select
+                                    value={technicalResponsibleId}
+                                    onValueChange={handleResponsibleChange}
+                                    disabled={readOnly}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione o responsável..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {technicalResponsibles?.map((resp) => (
+                                            <SelectItem key={resp.id} value={resp.id}>
+                                                {resp.name} ({resp.crq})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                        )}
-                        <div className="space-y-2">
-                            <Label>Responsável Técnico</Label>
-                            <Select
-                                value={technicalResponsibleId}
-                                onValueChange={handleResponsibleChange}
-                                disabled={readOnly}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecione o responsável..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {technicalResponsibles?.map((resp) => (
-                                        <SelectItem key={resp.id} value={resp.id}>
-                                            {resp.name} ({resp.crq})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                        </CardContent>
+                    </Card>
+                )
+            }
 
             {/* 4. Client Signature */}
             <Card>
@@ -859,9 +1052,9 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             {/* Footer / Actions */}
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t z-10 flex flex-col gap-3 md:relative md:flex-row md:border-0 md:bg-transparent md:p-0">
-                <a href={`/report/${visit.id}`} target="_blank" className="w-full md:flex-1">
-                    <Button variant="outline" className="w-full"><FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web</Button>
-                </a>
+                <button onClick={handleViewWebReport} className="w-full md:flex-1">
+                    <Button variant="outline" className="w-full pointer-events-none"><FileText className="w-4 h-4 mr-2" /> Visualizar Relatório Web</Button>
+                </button>
 
                 {!readOnly && (
                     <Button className="w-full md:flex-1 bg-green-600 hover:bg-green-700" onClick={handleFinalize}>
@@ -875,7 +1068,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </Button>
             </div>
             {isLoadingReport && <div className="text-center text-xs text-slate-400">Carregando dados para geração de PDF...</div>}
-        </div>
+        </div >
     );
 }
 

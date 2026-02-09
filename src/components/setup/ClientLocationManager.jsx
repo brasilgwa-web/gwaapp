@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical, User, Users, Search } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical, User, Users, Search, Settings } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -57,7 +57,10 @@ function SortableClientRow({ client, sortOrder, openEditClient, removeClient, se
                 )}
                 <div className="bg-blue-100 p-2 rounded-lg text-blue-600 shrink-0"><Building className="w-5 h-5" /></div>
                 <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold truncate pr-2 w-full block">{client.name}</h3>
+                    <h3 className="font-semibold truncate pr-2 w-full flex items-center gap-2">
+                        {client.name}
+                        {/* "Sem Estoque" tag removed */}
+                    </h3>
                     <p className="text-sm text-slate-500 truncate w-full block">{client.email} • {client.city_state}</p>
                 </div>
             </div>
@@ -197,7 +200,10 @@ export default function ClientLocationManager() {
                 />
 
                 {/* Inventory Section (Full Width) */}
-                <ClientInventoryManager client={selectedClient} />
+                <ClientInventoryManager client={selectedClient} onUpdate={(updated) => {
+                    setSelectedClient(updated);
+                    queryClient.invalidateQueries({ queryKey: ['clients'] });
+                }} />
 
                 {/* Equipments Section (Full Width) */}
                 <ClientEquipmentManager client={selectedClient} />
@@ -342,7 +348,8 @@ function ClientDialog({ open, onOpenChange, client, onClose, onSuccess }) {
             client_code: formData.get('client_code'),
             address: formData.get('address'),
             city_state: formData.get('city_state'),
-            google_drive_folder_id: formData.get('google_drive_folder_id')
+            google_drive_folder_id: formData.get('google_drive_folder_id'),
+            has_stock_access: formData.get('has_stock_access') === 'on' // Checkbox handling
         };
 
         try {
@@ -431,6 +438,28 @@ function ClientDialog({ open, onOpenChange, client, onClose, onSuccess }) {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2"><Label>Celular</Label><Input name="phone" defaultValue={client?.phone} placeholder="(11) 99999-9999" /></div>
+                        </div>
+                    </div>
+
+                    {/* Configurações Operacionais */}
+                    <div className="space-y-4 border-b pb-4">
+                        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Settings className="w-4 h-4" /> Configurações Operacionais</h3>
+                        <div className="flex items-center space-x-2 bg-slate-50 p-3 rounded-lg border">
+                            <input
+                                type="checkbox"
+                                name="has_stock_access"
+                                id="has_stock_access"
+                                defaultChecked={client?.has_stock_access !== false} // Default true
+                                className="w-4 h-4 accent-blue-600"
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <Label htmlFor="has_stock_access" className="font-semibold cursor-pointer">
+                                    Acesso ao Estoque
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                    Se desmarcado, o controle de estoque será desativado para este cliente (botão "Adicionar Produto" inativo na visita).
+                                </p>
+                            </div>
                         </div>
                     </div>
 

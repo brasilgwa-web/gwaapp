@@ -90,7 +90,28 @@ export default function DosageBoardTab({ visit, readOnly }) {
         saveDosageMutation.mutate({ locationEquipmentId, productId, field, value });
     };
 
-    const getDosageRecord = (locEqId, prodId) => dosages?.find(d => d.location_equipment_id === locEqId && d.product_id === prodId);
+    // Fetch Client to check 'has_stock_access'
+    const { data: clientData } = useQuery({
+        queryKey: ['client', visit.client_id],
+        queryFn: () => Client.filter({ id: visit.client_id }).then(res => res[0]),
+        staleTime: 0,
+        refetchOnMount: 'always'
+    });
+
+    // Default to true if not loaded yet or undefined (legacy compatibility)
+    // Default to true ONLY if we have data and it says so, or if fallback is needed.
+    // BUT we must wait for clientData. 
+    // If clientData is loading, we might want to default to false or show loading.
+    // For now, let's stick to: if clientData is present, use it. If not, use visit.client (if present). Default true (legacy).
+    const hasStockAccess = clientData ? clientData.has_stock_access !== false : (visit.client?.has_stock_access !== false);
+
+    // Helper to get dosage record
+    const getDosageRecord = (locationEquipmentId, productId) => {
+        return dosages?.find(d =>
+            d.location_equipment_id === locationEquipmentId &&
+            d.product_id === productId
+        );
+    };
 
     // Prepare Grid Data
     const groupedData = useMemo(() => {
@@ -101,36 +122,7 @@ export default function DosageBoardTab({ visit, readOnly }) {
                 .filter(le => le.location_id === loc.id)
                 .map(le => {
                     const catalogItem = allEquipments.find(e => e.id === le.equipment_id);
-                    // Find products linked to this equipment type (instance specific logic?) 
-                    // In V1.2, EquipmentDosageParams links location_equipment_id (Specific Instance) -> Product
-                    // Wait, looking at V1.2 Entities: 
-                    // EquipmentDosageParams links `location_equipment_id` (instance) to `product_id`.
-                    // So we must find params for THIS instance.
-
                     const instanceParams = dosageParams.filter(dp => dp.location_equipment_id === le.id);
-
-                    // If no params, should we show all client products? 
-                    // User said: "Configurar quais produtos ele utiliza". If configured, show specific.
-                    // If none, maybe fallback to all? Let's stick to configured for cleanliness, or All if none to ensure usability.
-                    // Let's rely on what's in Client Inventory broadly if no specific params?
-                    // Better: Show linked params products FIRST. If simple, maybe just show all inventory?
-                    // User Request: "No cadastro... serem considerados os tipos". 
-                    // Let's stick to: Iterate Client Products, check if relevant.
-                    // Actually, the prompt says "Configurar... quais produtos utiliza".
-
-                    // Proposed Logic:
-                    // 1. Get products identified in instanceParams.
-                    // 2. Map them to display.
-
-                    const linkedProdIds = instanceParams.map(p => p.product_id);
-
-                    // We only display products that are configured for this equipment? 
-                    // Or do we display all products available in Client Stock?
-                    // Most flexible: Display All Client Products for every equipment might be clutter.
-                    // Let's display products that are in `instanceParams`. 
-                    // If `instanceParams` is empty, user hasn't configured properly. 
-                    // BUT, to be safe, if empty, maybe show nothing or show all? 
-                    // Let's show products from `instanceParams`.
 
                     const productsToDisplay = instanceParams.map(dp => {
                         const prod = allProducts.find(p => p.id === dp.product_id);
@@ -148,7 +140,6 @@ export default function DosageBoardTab({ visit, readOnly }) {
                         products: productsToDisplay
                     };
                 });
-            // Removed filter to show ALL equipment, even without products configured
 
             return {
                 ...loc,
@@ -177,6 +168,11 @@ export default function DosageBoardTab({ visit, readOnly }) {
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                     {isSaving ? <><Loader2 className="w-4 h-4 animate-spin text-blue-600" /><span>Salvando...</span></> : <><Save className="w-4 h-4 text-green-600" /><span>Dados salvos</span></>}
                 </div>
+                {!hasStockAccess && (
+                    <div className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                        Sem Acesso ao Estoque
+                    </div>
+                )}
             </div>
 
             {groupedData.map(location => (
@@ -216,7 +212,9 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                         <div key={prod.id} className="p-3 space-y-2">
                                                             <div className="flex justify-between items-center">
                                                                 <div className="font-medium text-slate-700">{prod.name}</div>
-                                                                <div className="text-sm text-slate-500">Estoque: <span className="font-mono font-bold">{currentStock || '-'}</span></div>
+                                                                <div className="text-sm text-slate-500">
+                                                                    Estoque: <span className="font-mono font-bold">{hasStockAccess ? (currentStock || '-') : 'N/A'}</span>
+                                                                </div>
                                                             </div>
                                                             <div className="grid grid-cols-3 gap-2 items-start">
                                                                 <div className="text-center">
@@ -238,15 +236,12 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                         disabled={readOnly}
                                                                     />
                                                                     <div className="text-xs text-slate-400">{prod.unit}</div>
-                                                                    {prod.doseParams?.complementary_info && (
-                                                                        <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
-                                                                    )}
                                                                 </div>
                                                                 <div className="text-center">
                                                                     <label className="text-xs text-slate-500 block">Est. Final</label>
-                                                                    <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
-                                                                        {finalStock.toFixed(1)}
-                                                                        {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline text-red-500" />}
+                                                                    <div className={`font-bold ${isLowStock && hasStockAccess ? 'text-red-600' : 'text-slate-600'}`}>
+                                                                        {hasStockAccess ? finalStock.toFixed(1) : 'N/A'}
+                                                                        {isLowStock && hasStockAccess && <AlertTriangle className="w-3 h-3 ml-1 inline text-red-500" />}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -282,7 +277,9 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                     <td className="px-4 py-3">
                                                                         <div className="font-medium text-slate-700">{prod.name}</div>
                                                                     </td>
-                                                                    <td className="px-4 py-3 text-center font-mono text-slate-600">{currentStock || '-'}</td>
+                                                                    <td className="px-4 py-3 text-center font-mono text-slate-600">
+                                                                        {hasStockAccess ? (currentStock || '-') : 'N/A'}
+                                                                    </td>
                                                                     <td className="px-4 py-3 text-center">
                                                                         <div className="flex flex-col items-center">
                                                                             <div className="font-bold text-slate-700">{recommended || '-'}</div>
@@ -303,15 +300,12 @@ export default function DosageBoardTab({ visit, readOnly }) {
                                                                                 disabled={readOnly}
                                                                             />
                                                                             <div className="text-xs text-slate-400">{prod.unit}</div>
-                                                                            {prod.doseParams?.complementary_info && (
-                                                                                <div className="text-xs text-blue-600">{prod.doseParams.complementary_info}</div>
-                                                                            )}
                                                                         </div>
                                                                     </td>
                                                                     <td className="px-4 py-3 text-center">
-                                                                        <div className={`font-bold ${isLowStock ? 'text-red-600' : 'text-slate-600'}`}>
-                                                                            {finalStock.toFixed(1)}
-                                                                            {isLowStock && <AlertTriangle className="w-3 h-3 ml-1 inline" />}
+                                                                        <div className={`font-bold ${isLowStock && hasStockAccess ? 'text-red-600' : 'text-slate-600'}`}>
+                                                                            {hasStockAccess ? finalStock.toFixed(1) : 'N/A'}
+                                                                            {isLowStock && hasStockAccess && <AlertTriangle className="w-3 h-3 ml-1 inline" />}
                                                                         </div>
                                                                     </td>
                                                                 </tr>

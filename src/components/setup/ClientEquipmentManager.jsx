@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, Product, EquipmentDosageParams, AnalysisGroup } from "@/api/entities";
+import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, Product, EquipmentDosageParams, AnalysisGroup, LocationEquipmentTest } from "@/api/entities";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle, Search } from "lucide-react";
+import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle, Search, AlertTriangle } from "lucide-react";
 
 export default function ClientEquipmentManager({ client }) {
     const queryClient = useQueryClient();
@@ -159,25 +159,22 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
     // Local state for selected group - needed because prop is snapshot when dialog opens
     const [selectedGroupId, setSelectedGroupId] = React.useState(locationEquipment?.default_analysis_group_id || null);
     const [selectedProductId, setSelectedProductId] = React.useState('');
+    const [selectedTestId, setSelectedTestId] = React.useState(''); // For adding custom test
 
     // --- Tests Logic ---
     const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list() });
-    const { data: linkedTests } = useQuery({
+
+    // Standard Tests (Catalog)
+    const { data: standardTests } = useQuery({
         queryKey: ['equipmentTests', catalogItem.id],
         queryFn: () => EquipmentTest.filter({ equipment_id: catalogItem.id })
     });
 
-    // Note: The original system linked tests to the CATALOG item (Equipment), not the instance.
-    // If we want per-client customization, we should link to LocationEquipment. 
-    // BUT, for now, preserving legacy behavior: we are editing the CATALOG links? 
-    // NO! That would change it for ALL clients. 
-    // The user wants to configure "THIS equipment".
-    // Does 'EquipmentTest' link to Equipment(Catalog) or LocationEquipment(Instance)?
-    // Inspecting entities.js... it links to 'equipment_id' (Catalog).
-    // Should we verify this? If it links to Catalog, then changing it changes for everyone.
-    // User request: "nesse equipamento será castrado quais produtos...".
-    // For TESTS, usually standard per Equipment Type (e.g. all Boilers have pH).
-    // For DOSAGE, it MUST be per instance (Boiler A uses Product X, Boiler B uses Product Y).
+    // Custom/Override Tests (Client Specific)
+    const { data: customTests } = useQuery({
+        queryKey: ['locationEquipmentTests', locationEquipment.id],
+        queryFn: () => LocationEquipmentTest.filter({ location_equipment_id: locationEquipment.id })
+    });
 
     // --- Dosage / Products Logic (PER INSTANCE - V1.2) ---
     const { data: allProducts } = useQuery({ queryKey: ['products'], queryFn: () => Product.list() });
@@ -213,9 +210,19 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipmentDosageParams', locationEquipment.id] })
     });
 
-    const updateProduct = useMutation({
-        mutationFn: (data) => EquipmentDosageParams.update(data.id, data),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipmentDosageParams', locationEquipment.id] })
+    // Tests Mutations
+    const addCustomTest = useMutation({
+        mutationFn: (data) => LocationEquipmentTest.create({
+            ...data,
+            location_equipment_id: locationEquipment.id,
+            // Default values from definition if not provided? Already handled in form
+        }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locationEquipmentTests', locationEquipment.id] })
+    });
+
+    const removeCustomTest = useMutation({
+        mutationFn: (id) => LocationEquipmentTest.delete(id),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locationEquipmentTests', locationEquipment.id] })
     });
 
     return (
@@ -261,12 +268,98 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                     <p className="text-xs text-purple-600 mt-1">Este grupo será carregado automaticamente na visita.</p>
                 </div>
 
-                <Tabs defaultValue="products" className="flex-1 overflow-hidden flex flex-col">
+                <Tabs defaultValue="chemical_tech" className="flex-1 overflow-hidden flex flex-col">
                     <TabsList>
+                        <TabsTrigger value="chemical_tech">Tecnologia Química</TabsTrigger>
                         <TabsTrigger value="products">Produtos & Dosagens</TabsTrigger>
-                        <TabsTrigger value="tests">Parâmetros de Análise</TabsTrigger>
+                        <TabsTrigger value="analysis_params">Parâmetros de Análise</TabsTrigger>
                     </TabsList>
 
+                    {/* Tab 1: Tecnologia Química (Custom Tests) */}
+                    <TabsContent value="chemical_tech" className="flex-1 overflow-y-auto pt-4 space-y-6">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold flex items-center gap-2">Testes Personalizados deste Cliente</h4>
+                            </div>
+
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h5 className="text-xs font-semibold text-slate-700 mb-2">Adicionar Teste Específico</h5>
+                                <form
+                                    className="flex gap-2 items-end"
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (!selectedTestId) return;
+
+                                        // Find definition to prefill if needed, but we save values explicitly
+                                        const def = allTests?.find(t => t.id === selectedTestId);
+                                        const fd = new FormData(e.target);
+
+                                        addCustomTest.mutate({
+                                            test_definition_id: selectedTestId,
+                                            min_value: fd.get('min_value') || def?.min_value,
+                                            max_value: fd.get('max_value') || def?.max_value,
+                                            unit: fd.get('unit') || def?.unit
+                                        });
+
+                                        e.target.reset();
+                                        setSelectedTestId('');
+                                    }}
+                                >
+                                    <div className="flex-1 space-y-1">
+                                        <Label className="text-xs">Teste</Label>
+                                        <SearchableSelect
+                                            value={selectedTestId}
+                                            onValueChange={setSelectedTestId}
+                                            options={allTests?.map(t => ({ value: t.id, label: t.name })) || []}
+                                            placeholder="Selecione..."
+                                            searchPlaceholder="Buscar teste..."
+                                        />
+                                    </div>
+                                    <div className="w-20 space-y-1">
+                                        <Label className="text-xs">Min</Label>
+                                        <Input name="min_value" className="h-9 text-xs bg-white" placeholder="Min" />
+                                    </div>
+                                    <div className="w-20 space-y-1">
+                                        <Label className="text-xs">Max</Label>
+                                        <Input name="max_value" className="h-9 text-xs bg-white" placeholder="Max" />
+                                    </div>
+                                    <div className="w-20 space-y-1">
+                                        <Label className="text-xs">Unidade</Label>
+                                        <Input name="unit" className="h-9 text-xs bg-white" placeholder="Unit" />
+                                    </div>
+                                    <Button type="submit" size="sm" className="h-9"><Plus className="w-4 h-4" /></Button>
+                                </form>
+                            </div>
+
+                            <div className="space-y-1">
+                                {customTests?.map(ct => {
+                                    const t = allTests?.find(x => x.id === ct.test_definition_id);
+                                    return (
+                                        <div key={ct.id} className="flex items-center justify-between p-3 bg-white border border-blue-200 rounded shadow-sm text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <FlaskConical className="w-4 h-4 text-blue-500" />
+                                                <span className="font-medium">{t?.name || 'Teste Removido'}</span>
+                                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Personalizado</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-mono text-xs text-slate-600">
+                                                    {ct.min_value ?? '-'} a {ct.max_value ?? '-'} {ct.unit}
+                                                </span>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600" onClick={() => removeCustomTest.mutate(ct.id)}>
+                                                    <Trash2 className="w-3 h-3" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {!customTests?.length && (
+                                    <p className="text-xs text-slate-400 text-center italic">Nenhum teste específico configurado.</p>
+                                )}
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    {/* Tab 2: Produtos & Dosagens (Products) */}
                     <TabsContent value="products" className="flex-1 overflow-y-auto space-y-4 pt-4">
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
                             <h4 className="text-sm font-bold text-blue-800 mb-2">Adicionar Produto</h4>
@@ -349,25 +442,27 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="tests" className="flex-1 overflow-y-auto pt-4">
-                        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm mb-4">
-                            <h4 className="font-bold flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Atenção</h4>
-                            <p>Os testes são configurados globalmente para o <strong>Tipo de Equipamento</strong> de mesmo nome no catálogo. Alterações aqui afetarão todos os clientes que usam este tipo de equipamento. (Feature Legada)</p>
-                        </div>
-                        <div className="space-y-1">
-                            {/* Read-only view of tests for now to avoid confusion, or implement EquipmentTestManager separately */}
-                            {linkedTests?.map(lt => {
-                                const t = allTests?.find(x => x.id === lt.test_definition_id);
-                                return (
-                                    <div key={lt.id} className="flex items-center justify-between p-2 text-sm border-b">
-                                        <span>{t?.name}</span>
-                                        <span className="font-mono text-xs text-slate-500">{t?.min_value} - {t?.max_value} {t?.unit}</span>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                        <div className="mt-4 text-center">
-                            <Button variant="outline" size="sm" onClick={() => window.open('/setup/equipments', '_blank')}>Gerenciar Testes no Catálogo</Button>
+                    {/* Tab 3: Parâmetros de Análise (Standard Tests) */}
+                    <TabsContent value="analysis_params" className="flex-1 overflow-y-auto pt-4 space-y-6">
+                        {/* Standard Tests Section (Read-Only) */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold flex items-center gap-2 text-slate-600">Testes Padrão do Equipamento</h4>
+                                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold border rounded px-1">Global</span>
+                            </div>
+                            <p className="text-xs text-slate-500 mb-2">Estes testes são herdados do catálogo ({catalogItem?.name}). Eles aparecerão na visita a menos que haja um personalizado ocultando-os.</p>
+
+                            <div className="space-y-1">
+                                {standardTests?.map(lt => {
+                                    const t = allTests?.find(x => x.id === lt.test_definition_id);
+                                    return (
+                                        <div key={lt.id} className="flex items-center justify-between p-2 text-sm border-b bg-slate-50/50">
+                                            <span className="text-slate-700">{t?.name}</span>
+                                            <span className="font-mono text-xs text-slate-500">{lt.min_value} - {lt.max_value} {lt.unit}</span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </div>
                     </TabsContent>
                 </Tabs>
@@ -380,23 +475,4 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
 }
 
 // Missing Icon
-function AlertTriangle(props) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-            <path d="M12 9v4" />
-            <path d="M12 17h.01" />
-        </svg>
-    );
-}
+

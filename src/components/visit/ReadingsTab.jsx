@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, TestResult, Visit, AnalysisGroup, AnalysisGroupItem, VisitEquipmentSample } from "@/api/entities";
+import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, TestResult, Visit, AnalysisGroup, AnalysisGroupItem, VisitEquipmentSample, LocationEquipmentTest } from "@/api/entities";
 import { Input } from "@/components/ui/input";
 import { calculateStatus, getStatusColor } from "@/components/analysisUtils";
 import { AlertCircle, CheckCircle, MinusCircle, Beaker, ChevronDown, ChevronUp, MapPin, ChevronsUpDown, Save, Loader2, Clock, FileText, Layers, Info } from "lucide-react";
@@ -28,6 +28,16 @@ export default function ReadingsTab({ visit, readOnly }) {
     const { data: allLocationEquipments } = useQuery({ queryKey: ['locationEquipments'], queryFn: () => LocationEquipment.list(undefined, 1000) });
     const { data: allEquipments } = useQuery({ queryKey: ['equipments'], queryFn: () => Equipment.list(undefined, 1000) });
     const { data: equipmentTestsLinks } = useQuery({ queryKey: ['equipmentTests'], queryFn: () => EquipmentTest.list(undefined, 1000) });
+    // Fetch custom tests for this client's equipments
+    // We can fetch all LocationEquipmentTests and filter in memory since we don't have a simple "in" filter for list() yet without custom query, 
+    // but if list() gets too big, we should filter by location_equipment ids.
+    // For now assuming list() is okay or improvements later.
+    const { data: allLocationTests } = useQuery({
+        queryKey: ['locationEquipmentTests'],
+        queryFn: () => LocationEquipmentTest.list(undefined, 2000),
+        enabled: !!allLocationEquipments
+    });
+
     const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list(undefined, 1000) });
     const { data: results } = useQuery({ queryKey: ['results', visit.id], queryFn: () => TestResult.filter({ visit_id: visit.id }, undefined, 1000) });
     const { data: analysisGroups } = useQuery({ queryKey: ['analysisGroups'], queryFn: () => AnalysisGroup.list() });
@@ -173,12 +183,18 @@ export default function ReadingsTab({ visit, readOnly }) {
                     const catalogItem = allEquipments.find(e => e.id === le.equipment_id);
                     if (!catalogItem) return null;
 
-                    // 1. Tests linked via Equipment Configuration (with Limits override support)
-                    // Get 'EquipmentTest' links
+                    // 1. Tests linked via Equipment Configuration (Standard)
                     const linkedTestsData = equipmentTestsLinks.filter(et => et.equipment_id === catalogItem.id);
                     const linkedTestIds = linkedTestsData.map(et => et.test_definition_id);
 
-                    // 2. Tests linked via Selected Analysis Group (if any)
+                    // 2. Custom Tests from LocationEquipmentTest (Overrides/Additions)
+                    const customTestsData = allLocationTests ? allLocationTests.filter(letest => letest.location_equipment_id === le.id) : [];
+                    const customTestIds = customTestsData.map(ct => ct.test_definition_id);
+                    // Use Set to combine IDs
+                    const allRelevantTestIds = [...new Set([...linkedTestIds, ...customTestIds])];
+
+                    // 3. Tests linked via Selected Analysis Group (if any)
+                    // Currently analysis groups link to Test Definitions directly.
                     let groupTestIds = [];
                     const sample = getSample(le.id);
                     if (sample?.analysis_group_id && analysisGroupItems) {
@@ -187,24 +203,34 @@ export default function ReadingsTab({ visit, readOnly }) {
                             .map(agi => agi.test_definition_id);
                     }
 
-                    // 3. Merge Lists
-                    const allTestIds = [...new Set([...linkedTestIds, ...groupTestIds])];
-                    const tests = allTestIds.map(testId => {
+                    // Final Merge
+                    const finalTestIds = [...new Set([...allRelevantTestIds, ...groupTestIds])];
+
+                    const tests = finalTestIds.map(testId => {
                         const originalTest = allTests.find(t => t.id === testId);
                         if (!originalTest) return null;
 
-                        // Check for override in linkedTestsData
-                        const override = linkedTestsData.find(et => et.test_definition_id === testId);
+                        // Check for override in Custom Tests (First Priority)
+                        const customOverride = customTestsData.find(ct => ct.test_definition_id === testId);
 
-                        // Merge Override
+                        // Check for standard config (Second Priority)
+                        const standardConfig = linkedTestsData.find(et => et.test_definition_id === testId);
+
+                        // If it's a "Custom Added" test (not in standard), it works as pure override.
+                        // If it's an "Overridden Standard" test, it also works as override.
+
                         return {
                             ...originalTest, // Base definition
-                            // Priorities: Override > Definition
-                            min_value: override?.min_value ?? originalTest.min_value,
-                            max_value: override?.max_value ?? originalTest.max_value,
-                            unit: override?.unit ?? originalTest.unit
+                            // Priorities: Custom Override > Standard Config > Base Definition
+                            min_value: customOverride?.min_value ?? standardConfig?.min_value ?? originalTest.min_value,
+                            max_value: customOverride?.max_value ?? standardConfig?.max_value ?? originalTest.max_value,
+                            unit: customOverride?.unit ?? standardConfig?.unit ?? originalTest.unit,
+                            isCustom: !!customOverride
                         };
-                    }).filter(Boolean);
+                    }).filter(Boolean)
+                        // Sort: Custom/Configured first, then alphabetical? Or use display_order?
+                        // Using name for simplicity or standard sort.
+                        .sort((a, b) => a.name.localeCompare(b.name));
 
                     return {
                         ...catalogItem,
@@ -219,7 +245,7 @@ export default function ReadingsTab({ visit, readOnly }) {
 
             return { ...location, equipments: equipmentsWithTests };
         }).filter(l => l.equipments.length > 0);
-    }, [locations, allLocationEquipments, allEquipments, equipmentTestsLinks, allTests, visitSamples, analysisGroupItems]);
+    }, [locations, allLocationEquipments, allEquipments, equipmentTestsLinks, allLocationTests, allTests, visitSamples, analysisGroupItems]);
 
     // Auto-apply default analysis group for equipments that have one configured
     useEffect(() => {

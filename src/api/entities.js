@@ -133,6 +133,9 @@ export const ClientContact = createAdapter('client_contacts', 'created_at');
 export const Role = createAdapter('roles', 'created_at');
 export const RolePermission = createAdapter('role_permissions', 'created_at');
 
+// V1.4 Commercial Proposal Entities
+export const LocationEquipmentTest = createAdapter('location_equipment_tests', 'created_at');
+
 // Helper to get formatted Report Number
 export const getNextReportNumber = async () => {
     // This would likely be a server-side function or an RPC, 

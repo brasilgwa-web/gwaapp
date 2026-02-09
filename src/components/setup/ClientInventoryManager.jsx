@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ClientProduct, Product } from "@/api/entities";
+import { Client, ClientProduct, Product } from "@/api/entities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Pencil, Package, AlertTriangle, ArrowLeft } from "lucide-react";
 
-export default function ClientInventoryManager({ client }) {
+export default function ClientInventoryManager({ client, onUpdate }) {
     const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
@@ -27,6 +27,16 @@ export default function ClientInventoryManager({ client }) {
     });
 
     // Mutations
+    const updateClientAccess = useMutation({
+        mutationFn: async (hasAccess) => {
+            return Client.update(client.id, { has_stock_access: hasAccess });
+        },
+        onSuccess: (updatedClient) => {
+            queryClient.invalidateQueries({ queryKey: ['clients'] });
+            if (onUpdate) onUpdate(updatedClient);
+        }
+    });
+
     const saveStock = useMutation({
         mutationFn: async (data) => {
             if (data.id) {
@@ -87,14 +97,44 @@ export default function ClientInventoryManager({ client }) {
     const getProductName = (id) => products?.find(p => p.id === id)?.name || 'Produto Desconhecido';
     const getProductUnit = (id) => products?.find(p => p.id === id)?.unit || '';
 
+    const hasStockAccess = client.has_stock_access !== false; // default true
+
     return (
         <Card className="w-full">
-            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <CardTitle>Estoque do Cliente: {client.name}</CardTitle>
-                    <CardDescription>Gerencie o estoque atual e o estoque mínimo para alertas.</CardDescription>
+            <CardHeader>
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                        <CardTitle>Estoque do Cliente: {client.name}</CardTitle>
+                        <CardDescription>Gerencie o estoque atual e o estoque mínimo para alertas.</CardDescription>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="no_stock_access"
+                                    className="w-6 h-6 border-2 border-slate-900 rounded text-slate-900 focus:ring-slate-900 cursor-pointer"
+                                    checked={!hasStockAccess}
+                                    onChange={(e) => updateClientAccess.mutate(!e.target.checked)}
+                                />
+                                <Label htmlFor="no_stock_access" className="text-slate-900 font-bold cursor-pointer">Sem Acesso</Label>
+                            </div>
+                            <Button
+                                onClick={openNew}
+                                disabled={!hasStockAccess}
+                                className={!hasStockAccess ? "opacity-50 cursor-not-allowed" : ""}
+                            >
+                                <Plus className="w-4 h-4 mr-2" /> Adicionar Produto
+                            </Button>
+                        </div>
+                        {!hasStockAccess && (
+                            <p className="text-xs text-slate-900 font-semibold max-w-md text-right">
+                                Se o botão Sem acesso estiver marcado o botão adicionar produto ficará inabilitado e no momento da visita o calculo de estoque não será feito
+                            </p>
+                        )}
+                    </div>
                 </div>
-                <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Adicionar Produto</Button>
             </CardHeader>
 
             <CardContent>

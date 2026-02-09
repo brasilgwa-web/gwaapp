@@ -172,28 +172,32 @@ export function ReportTemplate({ data }) {
         <>
             {includeCover && <CoverPage settings={reportSettings} />}
 
-            <div className="bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 p-6 md:p-12 max-w-[210mm] mx-auto min-h-[297mm]">
+            <div className="bg-white text-slate-900 font-sans text-[11px] leading-tight relative z-10 p-5 max-w-[210mm] mx-auto min-h-[297mm]">
 
                 {/* Header */}
                 <header className="mb-6">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <h1 className="text-lg font-medium text-slate-700 pb-1 inline-block">
-                                Relatório de Atendimento Técnico em Campo
+                    <div className="flex justify-between items-center h-20 gap-4"> {/* Added gap, kept items-center for middle alignment */}
+                        <div className="w-2/3"> {/* Give Title more space (66%) */}
+                            <h1 className="text-xl font-bold text-slate-800 leading-tight">
+                                {reportSettings?.report_title || 'Relatório de Atendimento Técnico em Campo'}
                             </h1>
                         </div>
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center justify-end gap-4 w-1/3"> {/* Limit Logos to 33% */}
                             {logoUrl && (
-                                <img src={logoUrl} alt="Logo 1" className="h-12 w-auto max-w-[150px] object-contain" />
+                                <div className="h-14 flex items-center justify-center"> {/* Slightly reduced height container */}
+                                    <img src={logoUrl} alt="Logo 1" className="h-full w-auto object-contain max-w-[140px]" />
+                                </div>
                             )}
                             {logo2Url && (
-                                <img src={logo2Url} alt="Logo 2" className="h-12 w-auto max-w-[150px] object-contain" />
+                                <div className="h-14 flex items-center justify-center">
+                                    <img src={logo2Url} alt="Logo 2" className="h-full w-auto object-contain max-w-[140px]" />
+                                </div>
                             )}
                             {!logoUrl && !logo2Url && (
-                                <>
-                                    <div className="text-blue-600 font-bold text-xl">WGA</div>
+                                <div className="text-right">
+                                    <div className="text-blue-600 font-bold text-2xl">WGA</div>
                                     <span className="text-slate-700 font-medium">Brasil</span>
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -277,67 +281,81 @@ export function ReportTemplate({ data }) {
                         <p className="text-slate-500 italic text-center py-4">Nenhum resultado registrado.</p>
                     ) : (
                         <div className="space-y-6">
-                            {fullReportStructure.map((loc, idx) => (
-                                <div key={idx} className="space-y-4">
-                                    <div className="font-bold text-slate-700 uppercase text-xs tracking-wider border-b border-slate-100 pb-1">
-                                        Local: {loc.location.name}
-                                    </div>
+                            {fullReportStructure.map((loc, idx) => {
+                                // Filter equipments that have at least one valid test result
+                                const activeEquipments = loc.equipments.filter(eq =>
+                                    eq.tests?.some(t => t.result?.measured_value !== null && t.result?.measured_value !== undefined && t.result?.measured_value !== '')
+                                );
 
-                                    {loc.equipments.map((eq, eqIdx) => (
-                                        <div key={eqIdx} className="mb-4">
-                                            <div className="bg-blue-50/50 px-3 py-2 border border-blue-100 rounded-t-sm flex justify-between items-center text-xs">
-                                                <div className="font-bold text-blue-900 flex items-center gap-2">
-                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                    {eq.equipment.name}
-                                                </div>
-                                                <div className="flex gap-4 text-slate-600">
-                                                    {eq.sample?.collection_time && <span><span className="font-semibold">Coleta:</span> {eq.sample.collection_time.substring(0, 5)}h</span>}
-                                                    {eq.sample?.complementary_info && <span><span className="font-semibold">Análises comp. em laboratório:</span> {eq.sample.complementary_info}</span>}
-                                                </div>
-                                            </div>
+                                if (activeEquipments.length === 0) return null;
 
-                                            <div className="overflow-hidden">
-                                                <table className="w-full text-[10px] border-x border-b border-slate-200">
-                                                    <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
-                                                        <tr>
-                                                            <th className="px-2 py-1.5">Parâmetro</th>
-                                                            <th className="px-2 py-1.5 text-center">Und.</th>
-                                                            <th className="px-2 py-1.5 text-center">VMP</th>
-                                                            <th className="px-2 py-1.5 text-center">LD</th>
-                                                            <th className="px-2 py-1.5 text-center">LQ</th>
-                                                            <th className="px-2 py-1.5 text-center">Incerteza</th>
-                                                            <th className="px-2 py-1.5 text-center">Resultado</th>
-                                                            <th className="px-2 py-1.5 text-right">Metodologia</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-slate-100">
-                                                        {eq.tests.map((test, tIdx) => (
-                                                            <tr key={tIdx} className={tIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
-                                                                <td className="px-2 py-1 font-medium text-slate-700">{test.name}</td>
-                                                                <td className="px-2 py-1 text-center text-slate-500">{test.unit || '-'}</td>
-                                                                <td className="px-2 py-1 text-center font-mono text-slate-500 text-[10px]">{test.min_value} - {test.max_value}</td>
-                                                                <td className="px-2 py-1 text-center text-slate-400">{test.ld || '-'}</td>
-                                                                <td className="px-2 py-1 text-center text-slate-400">{test.lq || '-'}</td>
-                                                                <td className="px-2 py-1 text-center text-slate-400 text-[10px]">{test.method_uncertainty || '-'}</td>
-                                                                <td className="px-2 py-1 text-center font-bold">
-                                                                    {test.result ? (
-                                                                        <span className={test.result.status_light === 'red' ? 'text-red-600' : test.result.status_light === 'green' ? 'text-green-600' : 'text-yellow-600'}>
-                                                                            {test.result.measured_value}
-                                                                        </span>
-                                                                    ) : '-'}
-                                                                </td>
-                                                                <td className="px-2 py-1 text-right text-[9px] text-slate-400 truncate max-w-[80px]" title={test.methodology}>
-                                                                    {test.methodology || '-'}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                return (
+                                    <div key={idx} className="space-y-4">
+                                        <div className="font-bold text-slate-700 uppercase text-xs tracking-wider border-b border-slate-100 pb-1">
+                                            Local: {loc.location.name}
                                         </div>
-                                    ))}
-                                </div>
-                            ))}
+
+                                        {activeEquipments.map((eq, eqIdx) => {
+                                            // Filter tests for this equipment
+                                            const activeTests = eq.tests.filter(t => t.result?.measured_value !== null && t.result?.measured_value !== undefined && t.result?.measured_value !== '');
+
+                                            return (
+                                                <div key={eqIdx} className="mb-4">
+                                                    <div className="bg-blue-50/50 px-3 py-2 border border-blue-100 rounded-t-sm flex justify-between items-center text-xs">
+                                                        <div className="font-bold text-blue-900 flex items-center gap-2">
+                                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                            {eq.equipment.name}
+                                                        </div>
+                                                        <div className="flex gap-4 text-slate-600">
+                                                            {eq.sample?.collection_time && <span><span className="font-semibold">Coleta:</span> {eq.sample.collection_time.substring(0, 5)}h</span>}
+                                                            {eq.sample?.complementary_info && <span><span className="font-semibold">Análises comp. em laboratório:</span> {eq.sample.complementary_info}</span>}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="overflow-hidden">
+                                                        <table className="w-full text-[10px] border-x border-b border-slate-200">
+                                                            <thead className="bg-slate-50 text-slate-500 font-semibold text-left">
+                                                                <tr>
+                                                                    <th className="px-2 py-1.5">Parâmetro</th>
+                                                                    <th className="px-2 py-1.5 text-center">Und.</th>
+                                                                    <th className="px-2 py-1.5 text-center">VMP</th>
+                                                                    <th className="px-2 py-1.5 text-center">LD</th>
+                                                                    <th className="px-2 py-1.5 text-center">LQ</th>
+                                                                    <th className="px-2 py-1.5 text-center">Incerteza</th>
+                                                                    <th className="px-2 py-1.5 text-center">Resultado</th>
+                                                                    <th className="px-2 py-1.5 text-right">Metodologia</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-slate-100">
+                                                                {activeTests.map((test, tIdx) => (
+                                                                    <tr key={tIdx} className={tIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}>
+                                                                        <td className="px-2 py-1 font-medium text-slate-700">{test.name}</td>
+                                                                        <td className="px-2 py-1 text-center text-slate-500">{test.unit || '-'}</td>
+                                                                        <td className="px-2 py-1 text-center font-mono text-slate-500 text-[10px]">{test.min_value} - {test.max_value}</td>
+                                                                        <td className="px-2 py-1 text-center text-slate-400">{test.ld || '-'}</td>
+                                                                        <td className="px-2 py-1 text-center text-slate-400">{test.lq || '-'}</td>
+                                                                        <td className="px-2 py-1 text-center text-slate-400 text-[10px]">{test.method_uncertainty || '-'}</td>
+                                                                        <td className="px-2 py-1 text-center font-bold">
+                                                                            {test.result ? (
+                                                                                <span className={test.result.status_light === 'red' ? 'text-red-600' : test.result.status_light === 'green' ? 'text-green-600' : 'text-yellow-600'}>
+                                                                                    {test.result.measured_value}
+                                                                                </span>
+                                                                            ) : '-'}
+                                                                        </td>
+                                                                        <td className="px-2 py-1 text-right text-[9px] text-slate-400 truncate max-w-[80px]" title={test.methodology}>
+                                                                            {test.methodology || '-'}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )
+                            })}
                         </div>
                     )}
                     <div className="mt-4 text-[9px] text-slate-500 border-t border-slate-100 pt-2">
@@ -357,7 +375,7 @@ export function ReportTemplate({ data }) {
                             {fullReportStructure.map((loc, idx) => (
                                 <div key={idx} className="space-y-4">
                                     {loc.equipments.map((eq, eqIdx) => {
-                                        const activeDosages = eq.dosages.filter(d => d.product);
+                                        const activeDosages = eq.dosages.filter(d => d.product && d.record?.dosage_applied !== null && d.record?.dosage_applied !== undefined && d.record?.dosage_applied !== '');
                                         if (activeDosages.length === 0) return null;
 
                                         return (
