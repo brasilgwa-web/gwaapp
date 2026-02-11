@@ -19,12 +19,12 @@ Font.register({
 // Styles
 const styles = StyleSheet.create({
     page: {
-        paddingTop: 20, // Reduced from 30
-        paddingBottom: 40, // Reduced from 60
-        paddingHorizontal: 20, // Reduced from 30
+        paddingTop: 90, // Increased from 20 to 90 to prevent header overlap
+        paddingBottom: 40,
+        paddingHorizontal: 20,
         fontFamily: 'Inter',
         fontSize: 9,
-        color: '#1e293b', // slate-800
+        color: '#1e293b',
     },
     coverPage: {
         padding: 0,

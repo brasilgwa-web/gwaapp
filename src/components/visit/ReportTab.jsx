@@ -534,9 +534,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         setUploadStatus('Carregando dados e configurações...');
 
         try {
-            const { data } = await refetchReport();
-            if (!data) throw new Error('Falha ao carregar dados do relatório.');
-
             // 1. Fetch Report Settings Global
             const { data: reportSettings } = await supabase
                 .from('report_settings')
@@ -544,77 +541,29 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 .limit(1)
                 .single();
 
-            setUploadStatus('Gerando PDF Nativo...');
-
-            // --- REACT-PDF GENERATION ---
-            // Generate Blob using the new ReportPdf component
-            const blob = await pdf(<ReportPdf data={data} settings={reportSettings} />).toBlob();
-
-            // Convert blob to base64 for existing Drive API
-            const pdfBase64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = () => {
-                    // Extract base64 part
-                    const base64data = reader.result?.toString().split(',')[1];
-                    resolve(base64data);
-                };
-                reader.onerror = reject;
-            });
-            // ----------------------------
-
-            let safeDate = new Date();
-            if (visit.visit_date) {
-                const dateStr = visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date;
-                const [y, m, d] = dateStr.split('-').map(Number);
-                safeDate = new Date(y, m - 1, d, 12, 0, 0);
-            }
-
-            const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
-
-            // Upload to Drive
-            const driveFolderId = visit.client?.google_drive_folder_id;
-            let driveLink = null;
-
-            if (driveFolderId) {
-                setUploadStatus('Enviando para o Google Drive (~100KB)...');
-                const uploadRes = await fetch('/api/upload-drive', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileBase64: pdfBase64,
-                        fileName: fileName,
-                        folderId: driveFolderId
-                    })
-                });
-
-                if (!uploadRes.ok) {
-                    console.error("Drive upload failed", await uploadRes.json());
-                    alert("Aviso: Falha ao salvar no Google Drive. Verifique o ID da pasta.");
-                } else {
-                    const responseData = await uploadRes.json();
-                    driveLink = responseData.webViewLink;
-                }
-            }
-
-            // Send Email
-            setUploadStatus('Enviando email...');
-
-            // Generate and save report number if not already set
+            // --- FIX: Generate Number BEFORE PDF ---
             let reportNumber = visit.report_number;
             if (!reportNumber && !readOnly) {
                 // Using previously fetched reportSettings
                 if (reportSettings) {
                     const currentNum = reportSettings.current_report_number || 1;
-                    reportNumber = `${format(safeDate, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
 
-                    // Update visit with report number
+                    let safeDateForNum = new Date();
+                    if (visit.visit_date) {
+                        const dateStr = visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date;
+                        const [y, m, d] = dateStr.split('-').map(Number);
+                        safeDateForNum = new Date(y, m - 1, d, 12, 0, 0);
+                    }
+
+                    reportNumber = `${format(safeDateForNum, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
+
+                    // Update visit with report number immediately
                     await supabase
                         .from('visits')
                         .update({ report_number: reportNumber })
                         .eq('id', visit.id);
 
-                    // Increment counter and update highest emitted
+                    // Increment counter
                     await supabase
                         .from('report_settings')
                         .update({
@@ -623,8 +572,27 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             updated_at: new Date().toISOString()
                         })
                         .eq('id', reportSettings.id);
+
+                    // Update local visit object (crucial for PDF generation)
+                    visit.report_number = reportNumber;
                 }
             }
+
+            // Refetch to ensure we have everything fresh OR just patch the data object
+            const { data } = await refetchReport();
+            if (!data) throw new Error('Falha ao carregar dados do relatório.');
+
+            // Ensure data has the report number if refetch was too fast or race condition
+            if (reportNumber && !data.visit.report_number) {
+                data.visit.report_number = reportNumber;
+                data.reportNumber = reportNumber;
+            }
+
+            setUploadStatus('Gerando PDF Nativo...');
+
+            // --- REACT-PDF GENERATION ---
+            // Generate Blob using the new ReportPdf component
+            const blob = await pdf(<ReportPdf data={data} settings={reportSettings} />).toBlob();
 
             if (!readOnly) {
                 await Visit.update(visit.id, { status: 'completed' });
