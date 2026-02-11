@@ -19,7 +19,7 @@ Font.register({
 // Styles
 const styles = StyleSheet.create({
     page: {
-        paddingTop: 130, // Increased to accommodate vertical header
+        paddingTop: 100, // Adjusted for horizontal header + spacing
         paddingBottom: 40,
         paddingHorizontal: 20,
         fontFamily: 'Inter',
@@ -29,24 +29,34 @@ const styles = StyleSheet.create({
     // ...
     header: {
         position: 'absolute',
-        top: 10,
+        top: 20,
         left: 20,
         right: 20,
-        height: 100,
-        flexDirection: 'column', // Vertical Stack
-        justifyContent: 'flex-start',
-        alignItems: 'flex-start', // Align left
+        height: 60,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: '#cbd5e1', // slate-300
+        paddingBottom: 10,
+    },
+    headerTitle: {
+        fontSize: 16,
+        fontWeight: 700,
+        color: '#0f172a', // slate-900 (darker)
+        flex: 1,
+        marginRight: 20,
+        // Removed textTransform: 'uppercase' to match screenshot
     },
     headerLogos: {
-        width: '100%',
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'flex-end', // Logos on the right
-        height: 50,
-        marginBottom: 5,
+        justifyContent: 'flex-end',
+        height: 40,
+        flexShrink: 0,
     },
     headerLogoImage: {
-        height: 50,
+        height: 40,
         width: 'auto',
         objectFit: 'contain',
         marginLeft: 10,
