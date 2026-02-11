@@ -41,12 +41,12 @@ const styles = StyleSheet.create({
     header: {
         position: 'absolute',
         top: 0,
-        left: 20, // Match horizontal padding
-        right: 20, // Match horizontal padding
-        height: 70, // Slightly reduced
+        left: 20,
+        right: 20,
+        height: 70,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center', // Center vertically
+        alignItems: 'center',
         paddingTop: 10,
         marginBottom: 10,
     },
@@ -54,14 +54,19 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: 700,
         color: '#1e293b',
-        maxWidth: '65%', // Increased from 55% to prevent wrapping
+        flex: 1,           // Take available space
+        marginRight: 10,   // Gap between title and logos
         textTransform: 'uppercase',
     },
     headerLogos: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        maxWidth: '35%', // Reduced to balance
+        flexShrink: 0,     // Do not shrink logos
+        // maxWidth removed to allow content to dictate width, but title takes precedence in flow if needed? 
+        // actually flex:1 on title effectively pushes logos if they are flexShrink 0.
+        // We might want max width on logos to avoid them taking 100%. 
+        maxWidth: '40%',
         height: 50,
     },
     // ...
