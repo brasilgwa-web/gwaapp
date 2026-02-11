@@ -19,55 +19,47 @@ Font.register({
 // Styles
 const styles = StyleSheet.create({
     page: {
-        paddingTop: 90, // Increased from 20 to 90 to prevent header overlap
+        paddingTop: 130, // Increased to accommodate vertical header
         paddingBottom: 40,
         paddingHorizontal: 20,
         fontFamily: 'Inter',
         fontSize: 9,
         color: '#1e293b',
     },
-    coverPage: {
-        padding: 0,
-        margin: 0,
-    },
-    coverImage: {
-        position: 'absolute',
-        minWidth: '100%',
-        minHeight: '100%',
-        display: 'block',
-        height: '100%',
-        width: '100%',
-    },
+    // ...
     header: {
         position: 'absolute',
-        top: 0,
+        top: 10,
         left: 20,
         right: 20,
-        height: 70,
+        height: 100,
+        flexDirection: 'column', // Vertical Stack
+        justifyContent: 'flex-start',
+        alignItems: 'flex-start', // Align left
+    },
+    headerLogos: {
+        width: '100%',
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 10,
+        justifyContent: 'flex-end', // Logos on the right
+        height: 40,
         marginBottom: 10,
     },
     headerTitle: {
         fontSize: 14,
         fontWeight: 700,
         color: '#1e293b',
-        flex: 1,           // Take available space
-        marginRight: 10,   // Gap between title and logos
+        width: '100%',
+        textAlign: 'left',
         textTransform: 'uppercase',
     },
     headerLogos: {
+        width: '100%',
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'flex-end',
-        flexShrink: 0,     // Do not shrink logos
-        // maxWidth removed to allow content to dictate width, but title takes precedence in flow if needed? 
-        // actually flex:1 on title effectively pushes logos if they are flexShrink 0.
-        // We might want max width on logos to avoid them taking 100%. 
-        maxWidth: '40%',
-        height: 50,
+        justifyContent: 'flex-end', // Logos on the right
+        height: 40,
+        marginBottom: 10,
     },
     // ...
     footer: {
