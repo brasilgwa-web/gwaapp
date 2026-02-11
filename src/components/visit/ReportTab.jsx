@@ -596,6 +596,49 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             // Generate Blob using the new ReportPdf component
             const blob = await pdf(<ReportPdf data={data} settings={reportSettings} />).toBlob();
 
+            // Convert blob to base64 for existing Drive API
+            const pdfBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = () => {
+                    // Extract base64 part
+                    const base64data = reader.result?.toString().split(',')[1];
+                    resolve(base64data);
+                };
+                reader.onerror = reject;
+            });
+
+            // Uses safeDate defined above
+            const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
+
+            // Upload to Drive
+            const driveFolderId = visit.client?.google_drive_folder_id;
+            let driveLink = null;
+
+            if (driveFolderId) {
+                setUploadStatus('Enviando para o Google Drive (~100KB)...');
+                const uploadRes = await fetch('/api/upload-drive', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileBase64: pdfBase64,
+                        fileName: fileName,
+                        folderId: driveFolderId
+                    })
+                });
+
+                if (!uploadRes.ok) {
+                    console.error("Drive upload failed", await uploadRes.json());
+                    await alert({ title: 'Aviso', message: 'Falha ao salvar no Google Drive. Verifique o ID da pasta.', type: 'warning' });
+                } else {
+                    const responseData = await uploadRes.json();
+                    driveLink = responseData.webViewLink;
+                }
+            }
+
+            // Send Email
+            setUploadStatus('Enviando email...');
+
             if (!readOnly) {
                 await Visit.update(visit.id, { status: 'completed' });
             }
