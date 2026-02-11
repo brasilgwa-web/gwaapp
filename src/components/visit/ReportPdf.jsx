@@ -54,10 +54,11 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         height: 40,
         flexShrink: 0,
+        maxWidth: '35%', // Limit container width
     },
     headerLogoImage: {
         height: 40,
-        width: 'auto',
+        width: 120, // Constrain image width to prevent blowout
         objectFit: 'contain',
         marginLeft: 10,
     },
