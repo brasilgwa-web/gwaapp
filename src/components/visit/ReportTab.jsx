@@ -541,6 +541,14 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 .limit(1)
                 .single();
 
+            // Define safeDate for use in Report Number and Email Templates
+            let safeDate = new Date();
+            if (visit.visit_date) {
+                const dateStr = visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date;
+                const [y, m, d] = dateStr.split('-').map(Number);
+                safeDate = new Date(y, m - 1, d, 12, 0, 0);
+            }
+
             // --- FIX: Generate Number BEFORE PDF ---
             let reportNumber = visit.report_number;
             if (!reportNumber && !readOnly) {
@@ -548,14 +556,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 if (reportSettings) {
                     const currentNum = reportSettings.current_report_number || 1;
 
-                    let safeDateForNum = new Date();
-                    if (visit.visit_date) {
-                        const dateStr = visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date;
-                        const [y, m, d] = dateStr.split('-').map(Number);
-                        safeDateForNum = new Date(y, m - 1, d, 12, 0, 0);
-                    }
-
-                    reportNumber = `${format(safeDateForNum, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
+                    // Uses safeDate defined above
+                    reportNumber = `${format(safeDate, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
 
                     // Update visit with report number immediately
                     await supabase
