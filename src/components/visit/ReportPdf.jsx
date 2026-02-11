@@ -42,24 +42,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end', // Logos on the right
-        height: 40,
-        marginBottom: 10,
+        height: 50,
+        marginBottom: 5,
     },
-    headerTitle: {
-        fontSize: 14,
-        fontWeight: 700,
-        color: '#1e293b',
-        width: '100%',
-        textAlign: 'left',
-        textTransform: 'uppercase',
-    },
-    headerLogos: {
-        width: '100%',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end', // Logos on the right
-        height: 40,
-        marginBottom: 10,
+    headerLogoImage: {
+        height: 50,
+        width: 'auto',
+        objectFit: 'contain',
+        marginLeft: 10,
     },
 
     // ...
