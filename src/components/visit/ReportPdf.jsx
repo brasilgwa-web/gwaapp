@@ -61,257 +61,260 @@ const styles = StyleSheet.create({
         height: 40,
         marginBottom: 10,
     },
+    height: 40,
+    marginBottom: 10,
+},
     // ...
     footer: {
-        position: 'absolute',
-        bottom: 20,
-        left: 20,
-        right: 20,
-        textAlign: 'center',
-        fontSize: 8,
-        color: '#94a3b8', // slate-400
-        borderTopWidth: 1,
-        borderTopColor: '#f1f5f9', // slate-100
-        paddingTop: 8,
-    },
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    textAlign: 'center',
+    fontSize: 8,
+    color: '#94a3b8', // slate-400
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9', // slate-100
+    paddingTop: 8,
+},
     pageNumber: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        fontSize: 8,
-        color: '#94a3b8',
-    },
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    fontSize: 8,
+    color: '#94a3b8',
+},
     // Sections
     section: {
-        marginBottom: 15,
-    },
+    marginBottom: 15,
+},
     sectionTitle: {
-        fontSize: 10,
-        fontWeight: 700,
-        textTransform: 'uppercase',
-        color: '#1e293b', // slate-800
-        borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0', // slate-200
-        marginBottom: 8,
-        paddingBottom: 2,
-        flexDirection: 'row',
-        alignItems: 'center',
-        // gap removed
-    },
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    color: '#1e293b', // slate-800
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0', // slate-200
+    marginBottom: 8,
+    paddingBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    // gap removed
+},
     sectionIndicator: {
-        width: 4,
-        height: 12,
-        borderRadius: 2,
-        marginRight: 6, // Increased spacing
-    },
+    width: 4,
+    height: 12,
+    borderRadius: 2,
+    marginRight: 6, // Increased spacing
+},
     // Client Grid
     clientGrid: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 15,
-        paddingTop: 10,
-    },
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+    paddingTop: 10,
+},
     clientInfoColumn: {
-        flex: 1,
-        paddingRight: 20,
-    },
+    flex: 1,
+    paddingRight: 20,
+},
     clientRow: {
-        flexDirection: 'row',
-        marginBottom: 4,
-    },
+    flexDirection: 'row',
+    marginBottom: 4,
+},
     clientLabel: {
-        width: 100, // Increased width
-        fontSize: 9,
-        color: '#64748b', // slate-500
-    },
+    width: 100, // Increased width
+    fontSize: 9,
+    color: '#64748b', // slate-500
+},
     clientValue: {
-        flex: 1,
-        fontSize: 9,
-        fontWeight: 600, // bolder
-        color: '#0f172a', // slate-900
-    },
+    flex: 1,
+    fontSize: 9,
+    fontWeight: 600, // bolder
+    color: '#0f172a', // slate-900
+},
     reportNumberBox: {
-        borderWidth: 1,
-        borderColor: '#94a3b8', // darker border
-        padding: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: 140,
-        height: 60,
-    },
+    borderWidth: 1,
+    borderColor: '#94a3b8', // darker border
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 140,
+    height: 60,
+},
     reportNumberLabel: {
-        fontSize: 8,
-        color: '#64748b',
-        marginBottom: 2,
-    },
+    fontSize: 8,
+    color: '#64748b',
+    marginBottom: 2,
+},
     reportNumberValue: {
-        fontSize: 18, // Larger
-        fontWeight: 700,
-        color: '#0f172a', // slate-900
-    },
+    fontSize: 18, // Larger
+    fontWeight: 700,
+    color: '#0f172a', // slate-900
+},
     reportDate: {
-        fontSize: 8,
-        color: '#94a3b8', // slate-400
-        marginTop: 2,
-    },
+    fontSize: 8,
+    color: '#94a3b8', // slate-400
+    marginTop: 2,
+},
     // Visit Times Box
     timesBox: {
-        flexDirection: 'row',
-        backgroundColor: '#f8fafc', // slate-50
-        borderWidth: 1,
-        borderColor: '#e2e8f0', // slate-200
-        padding: 10,
-        borderRadius: 4,
-        marginBottom: 15,
-    },
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc', // slate-50
+    borderWidth: 1,
+    borderColor: '#e2e8f0', // slate-200
+    padding: 10,
+    borderRadius: 4,
+    marginBottom: 15,
+},
     timeCol: {
-        flex: 1,
-        borderLeftWidth: 1,
-        borderLeftColor: '#e2e8f0',
-        paddingLeft: 12,
-    },
+    flex: 1,
+    borderLeftWidth: 1,
+    borderLeftColor: '#e2e8f0',
+    paddingLeft: 12,
+},
     firstTimeCol: {
-        flex: 1,
-        borderLeftWidth: 0,
-        paddingLeft: 0,
-    },
+    flex: 1,
+    borderLeftWidth: 0,
+    paddingLeft: 0,
+},
     timeLabel: {
-        fontSize: 7,
-        color: '#64748b', // slate-500
-        textTransform: 'uppercase',
-        fontWeight: 600,
-        marginBottom: 4,
-    },
+    fontSize: 7,
+    color: '#64748b', // slate-500
+    textTransform: 'uppercase',
+    fontWeight: 600,
+    marginBottom: 4,
+},
     timeValue: {
-        fontSize: 10,
-        fontWeight: 700,
-        color: '#1e293b', // slate-800
-    },
+    fontSize: 10,
+    fontWeight: 700,
+    color: '#1e293b', // slate-800
+},
     // Tables
     table: {
-        width: '100%',
-        borderWidth: 1,
-        borderColor: '#e2e8f0', // slate-200
-        marginBottom: 10,
-    },
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#e2e8f0', // slate-200
+    marginBottom: 10,
+},
     tableHeader: {
-        flexDirection: 'row',
-        backgroundColor: '#f8fafc', // slate-50
-        borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
-    },
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc', // slate-50
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+},
     tableRow: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9', // slate-100
-        backgroundColor: '#ffffff',
-    },
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9', // slate-100
+    backgroundColor: '#ffffff',
+},
     tableRowAlt: {
-        backgroundColor: '#f8fafc', // slate-50/30 approx
-    },
+    backgroundColor: '#f8fafc', // slate-50/30 approx
+},
     tableCell: {
-        padding: 4,
-        fontSize: 8,
-        textAlign: 'center',
-        borderRightWidth: 0,
-    },
+    padding: 4,
+    fontSize: 8,
+    textAlign: 'center',
+    borderRightWidth: 0,
+},
     tableCellLeft: {
-        textAlign: 'left',
-    },
+    textAlign: 'left',
+},
     // Analysis
     equipmentHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        backgroundColor: '#eff6ff', // blue-50
-        borderColor: '#dbeafe', // blue-100
-        borderWidth: 1,
-        padding: 6,
-        borderTopLeftRadius: 2,
-        borderTopRightRadius: 2,
-        marginTop: 10,
-    },
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#eff6ff', // blue-50
+    borderColor: '#dbeafe', // blue-100
+    borderWidth: 1,
+    padding: 6,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    marginTop: 10,
+},
     equipmentTitle: {
-        color: '#1e3a8a', // blue-900
-        fontWeight: 700,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
+    color: '#1e3a8a', // blue-900
+    fontWeight: 700,
+    flexDirection: 'row',
+    alignItems: 'center',
+},
     dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#3b82f6', // blue-500
-        marginRight: 4,
-    },
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#3b82f6', // blue-500
+    marginRight: 4,
+},
     // Text blocks
     textBlock: {
-        backgroundColor: '#f8fafc',
-        padding: 10,
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-        borderRadius: 4,
-        textAlign: 'justify',
-        fontSize: 9,
-        lineHeight: 1.4,
-    },
+    backgroundColor: '#f8fafc',
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 4,
+    textAlign: 'justify',
+    fontSize: 9,
+    lineHeight: 1.4,
+},
     // Photos
     photoGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        // gap removed
-    },
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    // gap removed
+},
     photoContainer: {
-        width: '48%',
-        aspectRatio: 1.77, // 16:9
-        backgroundColor: '#f1f5f9',
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-        borderRadius: 4,
-        overflow: 'hidden',
-        marginBottom: 10, // Replacement for vertical gap
-        marginRight: '2%', // Replacement for horizontal gap (approx)
-    },
+    width: '48%',
+    aspectRatio: 1.77, // 16:9
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 10, // Replacement for vertical gap
+    marginRight: '2%', // Replacement for horizontal gap (approx)
+},
     photoImage: {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-    },
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+},
     // Signatures
     signaturesSection: {
-        marginTop: 30,
-        paddingTop: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#e2e8f0',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-    },
+    marginTop: 30,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+},
     signatureBlock: {
-        alignItems: 'center',
-        width: '45%',
-        marginBottom: 24,
-    },
+    alignItems: 'center',
+    width: '45%',
+    marginBottom: 24,
+},
     signatureImage: {
-        height: 50,
-        marginBottom: 4,
-        objectFit: 'contain',
-    },
+    height: 50,
+    marginBottom: 4,
+    objectFit: 'contain',
+},
     signatureLine: {
-        width: '100%',
-        borderTopWidth: 1,
-        borderTopColor: '#cbd5e1', // slate-300
-        paddingTop: 4,
-        alignItems: 'center',
-    },
+    width: '100%',
+    borderTopWidth: 1,
+    borderTopColor: '#cbd5e1', // slate-300
+    paddingTop: 4,
+    alignItems: 'center',
+},
     signatureName: {
-        fontWeight: 700,
-        fontSize: 9,
-        textTransform: 'uppercase',
-    },
+    fontWeight: 700,
+    fontSize: 9,
+    textTransform: 'uppercase',
+},
     signatureRole: {
-        fontSize: 8,
-        color: '#64748b',
-    },
+    fontSize: 8,
+    color: '#64748b',
+},
 });
 
 // Helper for Markdown to Text nodes (Simple approach for now)
