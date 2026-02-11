@@ -58,9 +58,9 @@ const styles = StyleSheet.create({
     },
     headerLogoImage: {
         height: 40,
-        width: 120, // Constrain image width to prevent blowout
+        width: 80, // Reduced from 120 to ensure 2 fit with gap in 35% width
         objectFit: 'contain',
-        marginLeft: 10,
+        marginLeft: 15, // Increased gap
     },
 
     // ...
