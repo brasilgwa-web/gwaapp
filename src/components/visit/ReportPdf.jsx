@@ -58,9 +58,9 @@ const styles = StyleSheet.create({
     },
     headerLogoImage: {
         height: 40,
-        width: 80, // Reduced from 120 to ensure 2 fit with gap in 35% width
+        width: 80, // Reduced from 120
         objectFit: 'contain',
-        marginLeft: 15, // Increased gap
+        // marginLeft removed to use explicit spacer
     },
 
     // ...
@@ -350,10 +350,14 @@ const ReportPdf = ({ data, settings }) => {
             <View style={styles.headerLogos}>
                 {/* Only show logos if valid URL string */}
                 {settings?.logo_url && typeof settings.logo_url === 'string' && settings.logo_url.startsWith('http') && (
-                    <Image src={settings.logo_url} style={styles.logo} />
+                    <Image src={settings.logo_url} style={styles.headerLogoImage} />
+                )}
+                {/* Spacer if both logos exist */}
+                {settings?.logo_url && settings?.logo2_url && (
+                    <View style={{ width: 15 }} />
                 )}
                 {settings?.logo2_url && typeof settings.logo2_url === 'string' && settings.logo2_url.startsWith('http') && (
-                    <Image src={settings.logo2_url} style={styles.logo} />
+                    <Image src={settings.logo2_url} style={styles.headerLogoImage} />
                 )}
                 {/* Fallback for logos if neither are provided or valid */}
                 {(!settings?.logo_url || !(typeof settings.logo_url === 'string' && settings.logo_url.startsWith('http'))) &&
