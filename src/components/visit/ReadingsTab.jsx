@@ -24,27 +24,27 @@ export default function ReadingsTab({ visit, readOnly }) {
     };
 
     // --- Queries ---
-    const { data: locations } = useQuery({ queryKey: ['locations', visit.client_id], queryFn: () => Location.filter({ client_id: visit.client_id }, undefined, 200) });
-    const { data: allLocationEquipments } = useQuery({ queryKey: ['locationEquipments'], queryFn: () => LocationEquipment.list(undefined, 1000) });
-    const { data: allEquipments } = useQuery({ queryKey: ['equipments'], queryFn: () => Equipment.list(undefined, 1000) });
-    const { data: equipmentTestsLinks } = useQuery({ queryKey: ['equipmentTests'], queryFn: () => EquipmentTest.list(undefined, 1000) });
+    const { data: locations } = useQuery({ queryKey: ['locations', visit.client_id], queryFn: () => Location.filter({ client_id: visit.client_id }, undefined, 1000) });
+    const { data: allLocationEquipments } = useQuery({ queryKey: ['locationEquipments'], queryFn: () => LocationEquipment.list(undefined, 10000) });
+    const { data: allEquipments } = useQuery({ queryKey: ['equipments'], queryFn: () => Equipment.list(undefined, 10000) });
+    const { data: equipmentTestsLinks } = useQuery({ queryKey: ['equipmentTests'], queryFn: () => EquipmentTest.list(undefined, 10000) });
     // Fetch custom tests for this client's equipments
     // We can fetch all LocationEquipmentTests and filter in memory since we don't have a simple "in" filter for list() yet without custom query, 
     // but if list() gets too big, we should filter by location_equipment ids.
     // For now assuming list() is okay or improvements later.
     const { data: allLocationTests } = useQuery({
         queryKey: ['locationEquipmentTests'],
-        queryFn: () => LocationEquipmentTest.list(undefined, 2000),
+        queryFn: () => LocationEquipmentTest.list(undefined, 10000),
         enabled: !!allLocationEquipments
     });
 
-    const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list(undefined, 1000) });
-    const { data: results } = useQuery({ queryKey: ['results', visit.id], queryFn: () => TestResult.filter({ visit_id: visit.id }, undefined, 1000) });
+    const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list(undefined, 10000) });
+    const { data: results } = useQuery({ queryKey: ['results', visit.id], queryFn: () => TestResult.filter({ visit_id: visit.id }, undefined, 10000) });
     const { data: analysisGroups } = useQuery({ queryKey: ['analysisGroups'], queryFn: () => AnalysisGroup.list() });
-    const { data: analysisGroupItems } = useQuery({ queryKey: ['analysisGroupItems'], queryFn: () => AnalysisGroupItem.list(undefined, 2000) });
+    const { data: analysisGroupItems } = useQuery({ queryKey: ['analysisGroupItems'], queryFn: () => AnalysisGroupItem.list(undefined, 10000) });
     const { data: visitSamples } = useQuery({
         queryKey: ['visitSamples', visit.id],
-        queryFn: () => VisitEquipmentSample.filter({ visit_id: visit.id }, undefined, 1000)
+        queryFn: () => VisitEquipmentSample.filter({ visit_id: visit.id }, undefined, 10000)
     });
 
     // --- Mutations ---

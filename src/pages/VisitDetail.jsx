@@ -56,9 +56,9 @@ export default function VisitDetailPage() {
         queryKey: ['testResults', id],
         queryFn: async () => {
             if (!id) return [];
-            const results = await TestResult.filter({ visit_id: id }, undefined, 1000);
+            const results = await TestResult.filter({ visit_id: id }, undefined, 10000);
             // Enrich with test definition names
-            const testDefs = await TestDefinition.list(undefined, 1000);
+            const testDefs = await TestDefinition.list(undefined, 10000);
             return results.map(r => {
                 const def = testDefs.find(t => t.id === r.test_definition_id);
                 return {

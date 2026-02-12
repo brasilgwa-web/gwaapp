@@ -50,18 +50,18 @@ export function useReportData(id) {
                 clientProducts,
                 allAnalysisGroupItems
             ] = await Promise.all([
-                TestResult.filter({ visit_id: id }, undefined, 2000),
-                TestDefinition.list(undefined, 1000),
-                Equipment.list(undefined, 1000),
-                EquipmentTest.list(undefined, 1000),
+                TestResult.filter({ visit_id: id }, undefined, 10000),
+                TestDefinition.list(undefined, 10000),
+                Equipment.list(undefined, 10000),
+                EquipmentTest.list(undefined, 10000),
                 VisitPhoto.filter({ visit_id: id }, undefined, 100),
-                User.list(undefined, 1000),
-                VisitDosage.filter({ visit_id: id }, undefined, 1000),
-                VisitEquipmentSample.filter({ visit_id: id }, undefined, 1000),
-                Product.list(undefined, 1000),
-                EquipmentDosageParams.list(undefined, 1000),
-                visit.client_id ? ClientProduct.filter({ client_id: visit.client_id }, undefined, 1000) : Promise.resolve([]),
-                AnalysisGroupItem.list(undefined, 2000)
+                User.list(undefined, 10000),
+                VisitDosage.filter({ visit_id: id }, undefined, 10000),
+                VisitEquipmentSample.filter({ visit_id: id }, undefined, 10000),
+                Product.list(undefined, 10000),
+                EquipmentDosageParams.list(undefined, 10000),
+                visit.client_id ? ClientProduct.filter({ client_id: visit.client_id }, undefined, 10000) : Promise.resolve([]),
+                AnalysisGroupItem.list(undefined, 10000)
             ]);
 
             // Attempt to find technician
