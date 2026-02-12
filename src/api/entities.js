@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 // Helper to create a standard CRUD adapter for a table
 const createAdapter = (tableName, defaultSortField = 'created_at') => ({
     list: async (orderBy = defaultSortField, limit = 10000) => {
-        // Handle sorting if string provided like '-visit_date'
+        // Handle sorting
         let orderCol = orderBy;
         let ascending = false;
 
@@ -17,31 +17,46 @@ const createAdapter = (tableName, defaultSortField = 'created_at') => ({
             }
         }
 
-        // Standardize default sorting if passed explicitly as 'created_at' but table uses 'created_date'
         if (orderCol === 'created_at' && defaultSortField === 'created_date') {
             orderCol = 'created_date';
         }
 
-        const { data, error } = await supabase
-            .from(tableName)
-            .select('*')
-            .order(orderCol, { ascending })
-            .limit(limit);
+        let allData = [];
+        let from = 0;
+        const chunkSize = 1000;
 
-        if (error) {
-            console.error(`Error fetching ${tableName}:`, error);
-            throw error;
+        while (true) {
+            const to = from + chunkSize - 1;
+            const { data, error } = await supabase
+                .from(tableName)
+                .select('*')
+                .order(orderCol, { ascending })
+                .range(from, to);
+
+            if (error) {
+                console.error(`Error fetching ${tableName}:`, error);
+                throw error;
+            }
+
+            if (!data || data.length === 0) break;
+
+            allData = [...allData, ...data];
+
+            if (data.length < chunkSize) break;
+            if (allData.length >= limit) break;
+
+            from += chunkSize;
         }
-        return data || [];
+
+        return allData.slice(0, limit);
     },
 
     create: async (data) => {
-        // Remove 'id' if present to let DB generate it (uuid)
         const { id, ...payload } = data;
         const { data: created, error } = await supabase
             .from(tableName)
             .insert([payload])
-            .select() // Needed to return the object
+            .select()
             .single();
 
         if (error) {
@@ -81,24 +96,58 @@ const createAdapter = (tableName, defaultSortField = 'created_at') => ({
 
     // Used for specific queries like filter({ client_id: '...' })
     filter: async (criteria = {}, orderBy, limit = 10000) => {
-        let query = supabase.from(tableName).select('*');
+        let allData = [];
+        let from = 0;
+        const chunkSize = 1000;
 
-        Object.entries(criteria).forEach(([key, value]) => {
-            query = query.eq(key, value);
-        });
+        // Sorting logic for filter (minimal support compared to list, but consistent)
+        let orderCol = orderBy || 'created_at';
+        let ascending = false; // Default desc usually? 
+        // NOTE: The previous code didn't handle orderBy in filter well ("Simple sort if needed...").
+        // We will stick to simple default or implied sort to avoid breaking compilation of query.
+        // But for range() to work reliably, we NEED a stable sort order.
+        // Assuming 'id' or defaultSortField if not provided. Use defaultSortField from adapter closure.
 
-        if (limit) query = query.limit(limit);
-
-        // Simple sort if needed, strictly defaulting to created_at if not specified might be risky if column missing,
-        // but typically filter() usage in this app doesn't rely heavily on implicit sort.
-        // We will skip explicit sort unless passed to avoid "column does not exist" errors in filter too.
-
-        const { data, error } = await query;
-        if (error) {
-            console.error(`Error filtering ${tableName}:`, error);
-            throw error;
+        let sortField = orderBy || defaultSortField;
+        if (sortField === 'created_at' && defaultSortField === 'created_date') {
+            sortField = 'created_date';
         }
-        return data || [];
+
+        while (true) {
+            let query = supabase.from(tableName).select('*');
+
+            Object.entries(criteria).forEach(([key, value]) => {
+                query = query.eq(key, value);
+            });
+
+            // We MUST order for range pagination to be stable
+            // If orderBy is not provided, use defaultSortField
+            query = query.order(sortField, { ascending: true }); // Default ascending for stability? Or specific?
+            // Original code: "We will skip explicit sort unless passed". 
+            // Issue: Range pagination WITHOUT sort is unstable in Postgres. 
+            // We should enforce sort. 'id' is safest if available, or defaultSortField.
+
+            const to = from + chunkSize - 1;
+            query = query.range(from, to);
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error(`Error filtering ${tableName}:`, error);
+                throw error;
+            }
+
+            if (!data || data.length === 0) break;
+
+            allData = [...allData, ...data];
+
+            if (data.length < chunkSize) break;
+            if (allData.length >= limit) break;
+
+            from += chunkSize;
+        }
+
+        return allData.slice(0, limit);
     }
 });
 
