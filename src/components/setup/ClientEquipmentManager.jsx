@@ -269,7 +269,7 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                 </div>
 
                 <Tabs defaultValue="chemical_tech" className="flex-1 overflow-hidden flex flex-col">
-                    <TabsList>
+                    <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
                         <TabsTrigger value="chemical_tech">Tecnologia Química</TabsTrigger>
                         <TabsTrigger value="products">Produtos & Dosagens</TabsTrigger>
                         <TabsTrigger value="analysis_params">Parâmetros de Análise</TabsTrigger>
@@ -285,7 +285,7 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                             <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                                 <h5 className="text-xs font-semibold text-slate-700 mb-2">Adicionar Teste Específico</h5>
                                 <form
-                                    className="flex gap-2 items-end"
+                                    className="flex flex-col gap-3"
                                     onSubmit={(e) => {
                                         e.preventDefault();
                                         if (!selectedTestId) return;
@@ -305,29 +305,34 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                                         setSelectedTestId('');
                                     }}
                                 >
-                                    <div className="flex-1 space-y-1">
-                                        <Label className="text-xs">Teste</Label>
+                                    <div className="w-full space-y-1">
+                                        <Label className="text-xs uppercase text-slate-500 font-bold">Teste</Label>
                                         <SearchableSelect
                                             value={selectedTestId}
                                             onValueChange={setSelectedTestId}
                                             options={allTests?.map(t => ({ value: t.id, label: t.name })) || []}
-                                            placeholder="Selecione..."
+                                            placeholder="Selecionar teste..."
                                             searchPlaceholder="Buscar teste..."
                                         />
                                     </div>
-                                    <div className="w-20 space-y-1">
-                                        <Label className="text-xs">Min</Label>
-                                        <Input name="min_value" className="h-9 text-xs bg-white" placeholder="Min" />
+
+                                    <div className="flex gap-2 items-end">
+                                        <div className="flex-1 space-y-1">
+                                            <Label className="text-xs uppercase text-slate-500 font-bold">Min</Label>
+                                            <Input name="min_value" className="h-10 bg-white" placeholder="0.0" />
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                            <Label className="text-xs uppercase text-slate-500 font-bold">Max</Label>
+                                            <Input name="max_value" className="h-10 bg-white" placeholder="10.0" />
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                            <Label className="text-xs uppercase text-slate-500 font-bold">Unidade</Label>
+                                            <Input name="unit" className="h-10 bg-white" placeholder="ppm" />
+                                        </div>
+                                        <div className="pb-0.5">
+                                            <Button type="submit" size="icon" className="h-10 w-10 bg-blue-100 text-blue-600 hover:bg-blue-200"><Plus className="w-5 h-5" /></Button>
+                                        </div>
                                     </div>
-                                    <div className="w-20 space-y-1">
-                                        <Label className="text-xs">Max</Label>
-                                        <Input name="max_value" className="h-9 text-xs bg-white" placeholder="Max" />
-                                    </div>
-                                    <div className="w-20 space-y-1">
-                                        <Label className="text-xs">Unidade</Label>
-                                        <Input name="unit" className="h-9 text-xs bg-white" placeholder="Unit" />
-                                    </div>
-                                    <Button type="submit" size="sm" className="h-9"><Plus className="w-4 h-4" /></Button>
                                 </form>
                             </div>
 
