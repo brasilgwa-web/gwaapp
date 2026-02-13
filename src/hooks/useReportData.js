@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product, EquipmentDosageParams, ClientProduct, AnalysisGroupItem } from "@/api/entities";
+import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product, EquipmentDosageParams, ClientProduct, AnalysisGroupItem, LocationEquipmentTest } from "@/api/entities";
 
 export function useReportData(id) {
     return useQuery({
@@ -48,7 +48,8 @@ export function useReportData(id) {
                 allProducts,
                 allDosageParams,
                 clientProducts,
-                allAnalysisGroupItems
+                allAnalysisGroupItems,
+                allLocationTests // NEW: Custom Tests
             ] = await Promise.all([
                 TestResult.filter({ visit_id: id }, undefined, 10000),
                 TestDefinition.list(undefined, 10000),
@@ -61,7 +62,8 @@ export function useReportData(id) {
                 Product.list(undefined, 10000),
                 EquipmentDosageParams.list(undefined, 10000),
                 visit.client_id ? ClientProduct.filter({ client_id: visit.client_id }, undefined, 10000) : Promise.resolve([]),
-                AnalysisGroupItem.list(undefined, 10000)
+                AnalysisGroupItem.list(undefined, 10000),
+                LocationEquipmentTest.list(undefined, 10000) // Fetch Custom Tests
             ]);
 
             // Attempt to find technician
@@ -84,12 +86,15 @@ export function useReportData(id) {
                         // Attach Sample Info (Time, Complementary)
                         const sampleInfo = allSamples.find(s => s.location_equipment_id === le.id);
 
-                        // 1. Tests linked via Equipment Configuration
-                        const linkedTestIds = allEquipmentTests
-                            .filter(et => et.equipment_id === catalogItem.id)
-                            .map(et => et.test_definition_id);
+                        // 1. Tests linked via Equipment Configuration (Standard)
+                        const linkedTestsData = allEquipmentTests.filter(et => et.equipment_id === catalogItem.id);
+                        const linkedTestIds = linkedTestsData.map(et => et.test_definition_id);
 
-                        // 2. Tests linked via Selected Analysis Group (if any)
+                        // 2. Custom Tests from LocationEquipmentTest (Overrides/Additions)
+                        const customTestsData = allLocationTests ? allLocationTests.filter(letest => letest.location_equipment_id === le.id) : [];
+                        const customTestIds = customTestsData.map(ct => ct.test_definition_id);
+
+                        // 3. Tests linked via Selected Analysis Group (if any)
                         let groupTestIds = [];
                         if (sampleInfo?.analysis_group_id && allAnalysisGroupItems) {
                             groupTestIds = allAnalysisGroupItems
@@ -97,8 +102,8 @@ export function useReportData(id) {
                                 .map(agi => agi.test_definition_id);
                         }
 
-                        // 3. Merge Lists
-                        const allTestIds = [...new Set([...linkedTestIds, ...groupTestIds])];
+                        // 4. Merge Lists (Standard + Custom + Group)
+                        const allTestIds = [...new Set([...linkedTestIds, ...customTestIds, ...groupTestIds])];
 
                         const tests = allDefinitions.filter(t => allTestIds.includes(t.id));
 
@@ -108,17 +113,17 @@ export function useReportData(id) {
                                 (r.equipment_id === le.id || r.equipment_id === catalogItem.id) // Check both instance and catalog IDs
                             );
 
-                            // Check for override in allEquipmentTests (only for linked ones, but simplified here)
-                            // We should technically look for override in allEquipmentTests...
-                            // But for report purposes, using base definition is usually fine unless limits are critical.
-                            // Let's replicate ReadingsTab logic for limits overriding if present in linkedTests
-                            const override = allEquipmentTests.find(et => et.equipment_id === catalogItem.id && et.test_definition_id === test.id);
+                            // Priority 1: Custom Override (LocationEquipmentTest)
+                            const customOverride = customTestsData.find(ct => ct.test_definition_id === test.id);
+
+                            // Priority 2: Standard Config (EquipmentTest)
+                            const standardConfig = linkedTestsData.find(et => et.test_definition_id === test.id);
 
                             const effectiveTest = {
                                 ...test,
-                                min_value: override?.min_value ?? test.min_value,
-                                max_value: override?.max_value ?? test.max_value,
-                                unit: override?.unit ?? test.unit,
+                                min_value: customOverride?.min_value ?? standardConfig?.min_value ?? test.min_value,
+                                max_value: customOverride?.max_value ?? standardConfig?.max_value ?? test.max_value,
+                                unit: customOverride?.unit ?? standardConfig?.unit ?? test.unit,
                                 result
                             };
 
