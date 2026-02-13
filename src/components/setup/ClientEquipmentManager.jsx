@@ -269,10 +269,10 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                 </div>
 
                 <Tabs defaultValue="chemical_tech" className="flex-1 overflow-hidden flex flex-col">
-                    <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
-                        <TabsTrigger value="chemical_tech">Tecnologia Química</TabsTrigger>
-                        <TabsTrigger value="products">Produtos & Dosagens</TabsTrigger>
-                        <TabsTrigger value="analysis_params">Parâmetros de Análise</TabsTrigger>
+                    <TabsList className="w-full justify-start overflow-x-auto flex-nowrap overflow-y-hidden">
+                        <TabsTrigger value="chemical_tech" className="flex-shrink-0">Tecnologia Química</TabsTrigger>
+                        <TabsTrigger value="products" className="flex-shrink-0">Produtos & Dosagens</TabsTrigger>
+                        <TabsTrigger value="analysis_params" className="flex-shrink-0">Parâmetros de Análise</TabsTrigger>
                     </TabsList>
 
                     {/* Tab 1: Tecnologia Química (Custom Tests) */}
