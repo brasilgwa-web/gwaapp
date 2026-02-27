@@ -592,28 +592,43 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             setUploadStatus('Carregando fotos para o PDF...');
 
-            // --- PRE-FETCH PHOTOS AS BASE64 ---
-            // @react-pdf/renderer's <Image> does its own fetch() internally,
-            // which is blocked by CORS on Supabase Storage. Converting to base64
-            // data URIs in the browser context bypasses this restriction entirely.
+            // --- PRE-FETCH & COMPRESS PHOTOS AS BASE64 ---
+            // @react-pdf/renderer's <Image> does its own fetch() blocked by CORS.
+            // We also compress photos via Canvas to avoid 413 (Content Too Large) on Drive upload.
             if (data.photos && data.photos.length > 0) {
+                const compressPhoto = (url) => new Promise((resolve) => {
+                    if (!url || !url.startsWith('http')) { resolve(url); return; }
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => {
+                        try {
+                            // Resize to max 900x675 keeping aspect ratio
+                            const MAX_W = 900, MAX_H = 675;
+                            let w = img.naturalWidth, h = img.naturalHeight;
+                            if (w > MAX_W) { h = Math.round(h * MAX_W / w); w = MAX_W; }
+                            if (h > MAX_H) { w = Math.round(w * MAX_H / h); h = MAX_H; }
+                            const canvas = document.createElement('canvas');
+                            canvas.width = w;
+                            canvas.height = h;
+                            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                            resolve(canvas.toDataURL('image/jpeg', 0.78));
+                        } catch {
+                            resolve(url); // fallback
+                        }
+                    };
+                    img.onerror = () => resolve(url); // fallback on load error
+                    img.src = url;
+                });
+
                 const photosWithBase64 = await Promise.all(
                     data.photos.map(async (p) => {
                         if (!p.photo_url || !p.photo_url.startsWith('http')) return p;
                         try {
-                            const response = await fetch(p.photo_url);
-                            if (!response.ok) return p; // fallback to original URL on error
-                            const blob = await response.blob();
-                            const base64 = await new Promise((res, rej) => {
-                                const reader = new FileReader();
-                                reader.onloadend = () => res(reader.result);
-                                reader.onerror = rej;
-                                reader.readAsDataURL(blob);
-                            });
-                            return { ...p, photo_url: base64 };
+                            const compressed = await compressPhoto(p.photo_url);
+                            return { ...p, photo_url: compressed };
                         } catch (err) {
-                            console.warn('PDF: failed to convert photo to base64, using original URL', p.photo_url, err);
-                            return p; // fallback to original URL
+                            console.warn('PDF: failed to compress photo, using original URL', p.photo_url, err);
+                            return p;
                         }
                     })
                 );
