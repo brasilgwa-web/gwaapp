@@ -494,7 +494,7 @@ const ReportPdf = ({ data, settings }) => {
                                         });
 
                                         return (
-                                            <View key={eqIdx} style={{ marginBottom: 8 }} break>
+                                            <View key={eqIdx} style={{ marginBottom: 8 }}>
                                                 {/* Eq Header */}
                                                 <View style={styles.equipmentHeader}>
                                                     <View style={styles.equipmentTitle}>
