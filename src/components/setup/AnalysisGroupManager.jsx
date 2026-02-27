@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnalysisGroup, AnalysisGroupItem, TestDefinition } from "@/api/entities";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -55,10 +56,19 @@ export default function AnalysisGroupManager() {
 
     const remove = useMutation({
         mutationFn: async (id) => {
+            // 1. Nullify references in visit_equipment_samples (FK constraint)
+            await supabase
+                .from('visit_equipment_samples')
+                .update({ analysis_group_id: null })
+                .eq('analysis_group_id', id);
+
+            // 2. Delete all analysis_group_items linked to this group
             const items = await AnalysisGroupItem.list().then(res => res.filter(i => i.group_id === id));
             if (items.length > 0) {
                 await Promise.all(items.map(i => AnalysisGroupItem.delete(i.id)));
             }
+
+            // 3. Delete the group itself
             await AnalysisGroup.delete(id);
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analysisGroups'] })
