@@ -658,11 +658,19 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 });
 
                 if (!uploadRes.ok) {
-                    console.error("Drive upload failed", await uploadRes.json());
+                    // Use .text() instead of .json() — Vercel/server errors may return plain text
+                    const errText = await uploadRes.text().catch(() => 'Erro desconhecido');
+                    console.error("Drive upload failed", errText);
                     await alert({ title: 'Aviso', message: 'Falha ao salvar no Google Drive. Verifique o ID da pasta.', type: 'warning' });
                 } else {
-                    const responseData = await uploadRes.json();
-                    driveLink = responseData.webViewLink;
+                    // Guard against non-JSON success responses too
+                    const resText = await uploadRes.text();
+                    try {
+                        const responseData = JSON.parse(resText);
+                        driveLink = responseData.webViewLink;
+                    } catch {
+                        console.warn("Drive upload response was not JSON:", resText);
+                    }
                 }
             }
 
