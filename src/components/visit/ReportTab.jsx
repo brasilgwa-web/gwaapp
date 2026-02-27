@@ -590,6 +590,36 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 data.reportNumber = reportNumber;
             }
 
+            setUploadStatus('Carregando fotos para o PDF...');
+
+            // --- PRE-FETCH PHOTOS AS BASE64 ---
+            // @react-pdf/renderer's <Image> does its own fetch() internally,
+            // which is blocked by CORS on Supabase Storage. Converting to base64
+            // data URIs in the browser context bypasses this restriction entirely.
+            if (data.photos && data.photos.length > 0) {
+                const photosWithBase64 = await Promise.all(
+                    data.photos.map(async (p) => {
+                        if (!p.photo_url || !p.photo_url.startsWith('http')) return p;
+                        try {
+                            const response = await fetch(p.photo_url);
+                            if (!response.ok) return p; // fallback to original URL on error
+                            const blob = await response.blob();
+                            const base64 = await new Promise((res, rej) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => res(reader.result);
+                                reader.onerror = rej;
+                                reader.readAsDataURL(blob);
+                            });
+                            return { ...p, photo_url: base64 };
+                        } catch (err) {
+                            console.warn('PDF: failed to convert photo to base64, using original URL', p.photo_url, err);
+                            return p; // fallback to original URL
+                        }
+                    })
+                );
+                data.photos = photosWithBase64;
+            }
+
             setUploadStatus('Gerando PDF Nativo...');
 
             // --- REACT-PDF GENERATION ---
