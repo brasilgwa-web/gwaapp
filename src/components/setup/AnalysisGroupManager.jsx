@@ -54,7 +54,13 @@ export default function AnalysisGroupManager() {
     });
 
     const remove = useMutation({
-        mutationFn: (id) => AnalysisGroup.delete(id),
+        mutationFn: async (id) => {
+            const items = await AnalysisGroupItem.list().then(res => res.filter(i => i.group_id === id));
+            if (items.length > 0) {
+                await Promise.all(items.map(i => AnalysisGroupItem.delete(i.id)));
+            }
+            await AnalysisGroup.delete(id);
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analysisGroups'] })
     });
 

@@ -89,7 +89,7 @@ export default function Dashboard() {
         queryKey: ['technicians'],
         queryFn: async () => {
             try {
-                const { data, error } = await supabase.from('profiles').select('*');
+                const { data, error } = await supabase.from('profiles').select('*').eq('is_deleted', false).eq('status', 'active');
                 if (error) {
                     console.warn('Error fetching technicians:', error.message);
                     return [];
@@ -436,7 +436,13 @@ export default function Dashboard() {
                                 <BarChart data={stats?.visitsByClient} layout="vertical">
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis type="number" allowDecimals={false} />
-                                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
+                                    <YAxis
+                                        dataKey="name"
+                                        type="category"
+                                        width={140}
+                                        tick={{ fontSize: 10 }}
+                                        tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                                    />
                                     <Tooltip />
                                     <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={16} />
                                 </BarChart>
@@ -455,7 +461,13 @@ export default function Dashboard() {
                                     <BarChart data={stats.criticalityRanking} layout="vertical">
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <XAxis type="number" allowDecimals={false} />
-                                        <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
+                                        <YAxis
+                                            dataKey="name"
+                                            type="category"
+                                            width={140}
+                                            tick={{ fontSize: 10 }}
+                                            tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                                        />
                                         <Tooltip />
                                         <Bar dataKey="count" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={16} />
                                     </BarChart>
