@@ -340,7 +340,10 @@ const ReportPdf = ({ data, settings }) => {
     const coverImageUrl = settings?.cover_image_url;
     const includeCover = settings?.cover_enabled !== false && !!coverImageUrl;
 
-    const visitDate = visit.visit_date ? new Date(visit.visit_date.includes('T') ? visit.visit_date : `${visit.visit_date}T12:00:00`) : new Date();
+    // Parse visit date always in GMT-3 (Brazil), regardless of user device timezone
+    const visitDate = visit.visit_date
+        ? new Date(`${visit.visit_date.split('T')[0]}T12:00:00-03:00`)
+        : new Date();
 
     const renderHeader = () => (
         <View style={styles.header} fixed>

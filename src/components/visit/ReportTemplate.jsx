@@ -153,7 +153,10 @@ export function ReportTemplate({ data }) {
     const techSignature = technicianUser?.signature_url;
 
     // Custom formatted dates
-    const visitDate = visit.visit_date ? new Date(visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date) : new Date();
+    // Parse visit date always in GMT-3 (Brazil), regardless of user device timezone
+    const visitDate = visit.visit_date
+        ? new Date(`${visit.visit_date.split('T')[0]}T12:00:00-03:00`)
+        : new Date();
 
     // Report number
     const reportNumber = visit.report_number ||
