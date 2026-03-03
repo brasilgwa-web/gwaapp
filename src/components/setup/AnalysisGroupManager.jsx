@@ -62,13 +62,19 @@ export default function AnalysisGroupManager() {
                 .update({ analysis_group_id: null })
                 .eq('analysis_group_id', id);
 
-            // 2. Delete all analysis_group_items linked to this group
+            // 2. Nullify references in location_equipments (FK constraint)
+            await supabase
+                .from('location_equipments')
+                .update({ analysis_group_id: null })
+                .eq('analysis_group_id', id);
+
+            // 3. Delete all analysis_group_items linked to this group
             const items = await AnalysisGroupItem.list().then(res => res.filter(i => i.group_id === id));
             if (items.length > 0) {
                 await Promise.all(items.map(i => AnalysisGroupItem.delete(i.id)));
             }
 
-            // 3. Delete the group itself
+            // 4. Delete the group itself
             await AnalysisGroup.delete(id);
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analysisGroups'] })
