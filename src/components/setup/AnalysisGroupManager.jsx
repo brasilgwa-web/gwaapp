@@ -65,8 +65,8 @@ export default function AnalysisGroupManager() {
             // 2. Nullify references in location_equipments (FK constraint)
             await supabase
                 .from('location_equipments')
-                .update({ analysis_group_id: null })
-                .eq('analysis_group_id', id);
+                .update({ default_analysis_group_id: null })
+                .eq('default_analysis_group_id', id);
 
             // 3. Delete all analysis_group_items linked to this group
             const items = await AnalysisGroupItem.list().then(res => res.filter(i => i.group_id === id));
