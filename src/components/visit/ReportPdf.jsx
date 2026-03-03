@@ -278,6 +278,78 @@ const styles = StyleSheet.create({
         height: '100%',
         objectFit: 'cover',
     },
+    // Cover Page
+    coverPage: {
+        backgroundColor: '#1e40af',
+        padding: 0,
+        margin: 0,
+    },
+    coverImage: {
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+    },
+    coverEditorPage: {
+        padding: 32,
+        flexDirection: 'column',
+    },
+    coverLogoSection: {
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.3)',
+        paddingBottom: 12,
+        marginBottom: 24,
+    },
+    coverLogoText: {
+        fontSize: 22,
+        fontWeight: 700,
+        color: '#ffffff',
+        letterSpacing: 2,
+    },
+    coverLogoSubText: {
+        fontSize: 9,
+        color: 'rgba(255,255,255,0.7)',
+        letterSpacing: 4,
+        textTransform: 'uppercase',
+    },
+    coverLogoImage: {
+        height: 48,
+        width: 160,
+        objectFit: 'contain',
+    },
+    coverContent: {
+        flex: 1,
+        color: '#ffffff',
+    },
+    coverH1: {
+        fontSize: 28,
+        fontWeight: 700,
+        color: '#ffffff',
+        marginBottom: 8,
+        lineHeight: 1.2,
+    },
+    coverH2: {
+        fontSize: 20,
+        fontWeight: 700,
+        color: '#ffffff',
+        marginBottom: 6,
+        lineHeight: 1.3,
+    },
+    coverH3: {
+        fontSize: 16,
+        fontWeight: 700,
+        color: '#ffffff',
+        marginBottom: 4,
+        lineHeight: 1.4,
+    },
+    coverP: {
+        fontSize: 12,
+        color: '#ffffff',
+        marginBottom: 4,
+        lineHeight: 1.4,
+    },
+    coverStrong: {
+        fontWeight: 700,
+    },
     // Signatures
     signaturesSection: {
         marginTop: 30,
@@ -324,6 +396,49 @@ const MarkdownText = ({ text }) => {
     return <Text>{cleanText}</Text>;
 };
 
+// Simple HTML-to-PDF parser for cover content from the rich text editor
+const renderCoverHtml = (html) => {
+    if (!html) return null;
+
+    // Strip style attributes to avoid noise
+    const clean = html.replace(/ style="[^"]*"/gi, '');
+
+    // Split by block-level tags
+    const blocks = clean.split(/(?=<(?:h[1-6]|p|ul|ol|hr|br)[ >])/i);
+
+    return blocks.map((block, i) => {
+        const h1Match = block.match(/^<h1[^>]*>(.*?)<\/h1>/is);
+        const h2Match = block.match(/^<h2[^>]*>(.*?)<\/h2>/is);
+        const h3Match = block.match(/^<h3[^>]*>(.*?)<\/h3>/is);
+        const pMatch = block.match(/^<p[^>]*>(.*?)<\/p>/is);
+        const hrMatch = block.match(/^<hr/i);
+        const brMatch = block.match(/^<br/i);
+
+        const stripInline = (s) => s
+            .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '$1')
+            .replace(/<em[^>]*>(.*?)<\/em>/gi, '$1')
+            .replace(/<a[^>]*>(.*?)<\/a>/gi, '$1')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&nbsp;/g, ' ')
+            .trim();
+
+        if (h1Match) return <Text key={i} style={styles.coverH1}>{stripInline(h1Match[1])}</Text>;
+        if (h2Match) return <Text key={i} style={styles.coverH2}>{stripInline(h2Match[1])}</Text>;
+        if (h3Match) return <Text key={i} style={styles.coverH3}>{stripInline(h3Match[1])}</Text>;
+        if (hrMatch) return <View key={i} style={{ borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.3)', marginVertical: 6 }} />;
+        if (brMatch) return <View key={i} style={{ height: 6 }} />;
+        if (pMatch) {
+            const text = stripInline(pMatch[1]);
+            if (!text) return <View key={i} style={{ height: 8 }} />;
+            return <Text key={i} style={styles.coverP}>{text}</Text>;
+        }
+        return null;
+    });
+};
+
 const ReportPdf = ({ data, settings }) => {
     const { visit, client, fullReportStructure, photos, primaryLocation, technicianUser, clientContact } = data;
     // Fallback for reportNumber
@@ -338,7 +453,9 @@ const ReportPdf = ({ data, settings }) => {
     const logoUrl = settings?.logo_url;
     const logo2Url = settings?.logo2_url;
     const coverImageUrl = settings?.cover_image_url;
-    const includeCover = settings?.cover_enabled !== false && !!coverImageUrl;
+    const coverContent = settings?.cover_content;
+    const coverBgColor = settings?.cover_background_color || '#1e40af';
+    const includeCover = settings?.cover_enabled !== false && !!(coverImageUrl || coverContent);
 
     // Parse visit date always in GMT-3 (Brazil), regardless of user device timezone
     const visitDate = visit.visit_date
@@ -387,9 +504,29 @@ const ReportPdf = ({ data, settings }) => {
         <Document>
             {/* Cover Page */}
             {includeCover && (
-                <Page size="A4" style={styles.coverPage}>
-                    <Image src={coverImageUrl} style={styles.coverImage} />
-                </Page>
+                coverImageUrl ? (
+                    <Page size="A4" style={styles.coverPage}>
+                        <Image src={coverImageUrl} style={styles.coverImage} />
+                    </Page>
+                ) : (
+                    <Page size="A4" style={[styles.coverEditorPage, { backgroundColor: coverBgColor }]}>
+                        {/* Logo */}
+                        <View style={styles.coverLogoSection}>
+                            {settings?.logo_url && typeof settings.logo_url === 'string' && settings.logo_url.startsWith('http') ? (
+                                <Image src={settings.logo_url} style={styles.coverLogoImage} />
+                            ) : (
+                                <View>
+                                    <Text style={styles.coverLogoText}>WGA BRASIL</Text>
+                                    <Text style={styles.coverLogoSubText}>Serviços</Text>
+                                </View>
+                            )}
+                        </View>
+                        {/* Content from editor */}
+                        <View style={styles.coverContent}>
+                            {renderCoverHtml(coverContent)}
+                        </View>
+                    </Page>
+                )
             )}
 
             {/* Content Pages */}
