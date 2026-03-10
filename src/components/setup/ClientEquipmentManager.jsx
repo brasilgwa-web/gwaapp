@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle, Search, AlertTriangle } from "lucide-react";
+import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 
 export default function ClientEquipmentManager({ client }) {
     const queryClient = useQueryClient();
@@ -156,6 +157,7 @@ export default function ClientEquipmentManager({ client }) {
 
 function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }) {
     const queryClient = useQueryClient();
+    const { executeWithFeedback } = useOperationFeedback();
     // Local state for selected group - needed because prop is snapshot when dialog opens
     const [selectedGroupId, setSelectedGroupId] = React.useState(locationEquipment?.default_analysis_group_id || null);
     const [selectedProductId, setSelectedProductId] = React.useState('');
@@ -188,11 +190,22 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
 
     const updateDefaultGroup = useMutation({
         mutationFn: async (groupId) => {
-            const { error } = await supabase.from('location_equipments')
-                .update({ default_analysis_group_id: groupId || null })
-                .eq('id', locationEquipment.id);
-            if (error) throw error;
-            return groupId;
+            const result = await executeWithFeedback({
+                operation: async () => {
+                    const { error } = await supabase.from('location_equipments')
+                        .update({ default_analysis_group_id: groupId || null })
+                        .eq('id', locationEquipment.id);
+                    if (error) throw error;
+                    return groupId;
+                },
+                loadingMessage: 'Atualizando grupo...',
+                successMessage: 'Grupo atualizado!',
+                errorMessage: 'Erro ao atualizar grupo.',
+                logCategory: 'crud',
+                logDetails: { action: 'update', entity: 'location_equipment', id: locationEquipment.id, default_analysis_group_id: groupId || null },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
         },
         onSuccess: (groupId) => {
             setSelectedGroupId(groupId); // Update local state immediately
@@ -201,27 +214,70 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
     });
 
     const addProduct = useMutation({
-        mutationFn: (data) => EquipmentDosageParams.create({ ...data, location_equipment_id: locationEquipment.id }),
+        mutationFn: async (data) => {
+            const result = await executeWithFeedback({
+                operation: () => EquipmentDosageParams.create({ ...data, location_equipment_id: locationEquipment.id }),
+                loadingMessage: 'Adicionando produto...',
+                successMessage: 'Produto adicionado!',
+                errorMessage: 'Erro ao adicionar produto.',
+                logCategory: 'crud',
+                logDetails: { action: 'create', entity: 'equipment_dosage_params', data: { ...data, location_equipment_id: locationEquipment.id } },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipmentDosageParams', locationEquipment.id] })
     });
 
     const removeProduct = useMutation({
-        mutationFn: (id) => EquipmentDosageParams.delete(id),
+        mutationFn: async (id) => {
+            const result = await executeWithFeedback({
+                operation: () => EquipmentDosageParams.delete(id),
+                loadingMessage: 'Removendo produto...',
+                successMessage: 'Produto removido!',
+                errorMessage: 'Erro ao remover produto.',
+                logCategory: 'crud',
+                logDetails: { action: 'delete', entity: 'equipment_dosage_params', id },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipmentDosageParams', locationEquipment.id] })
     });
 
     // Tests Mutations
     const addCustomTest = useMutation({
-        mutationFn: (data) => LocationEquipmentTest.create({
-            ...data,
-            location_equipment_id: locationEquipment.id,
-            // Default values from definition if not provided? Already handled in form
-        }),
+        mutationFn: async (data) => {
+            const result = await executeWithFeedback({
+                operation: () => LocationEquipmentTest.create({
+                    ...data,
+                    location_equipment_id: locationEquipment.id,
+                }),
+                loadingMessage: 'Adicionando teste...',
+                successMessage: 'Teste adicionado!',
+                errorMessage: 'Erro ao adicionar teste.',
+                logCategory: 'crud',
+                logDetails: { action: 'create', entity: 'location_equipment_test', data: { ...data, location_equipment_id: locationEquipment.id } },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locationEquipmentTests', locationEquipment.id] })
     });
 
     const removeCustomTest = useMutation({
-        mutationFn: (id) => LocationEquipmentTest.delete(id),
+        mutationFn: async (id) => {
+            const result = await executeWithFeedback({
+                operation: () => LocationEquipmentTest.delete(id),
+                loadingMessage: 'Removendo teste...',
+                successMessage: 'Teste removido!',
+                errorMessage: 'Erro ao remover teste.',
+                logCategory: 'crud',
+                logDetails: { action: 'delete', entity: 'location_equipment_test', id },
+            });
+            if (!result.success) throw result.error;
+            return result.data;
+        },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locationEquipmentTests', locationEquipment.id] })
     });
 

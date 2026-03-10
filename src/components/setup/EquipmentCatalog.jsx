@@ -105,7 +105,7 @@ export default function EquipmentCatalog() {
                 successMessage: 'Equipamento cadastrado com sucesso!',
                 errorMessage: 'Erro ao criar equipamento.',
                 logCategory: 'crud',
-                logDetails: { action: 'create', entity: 'equipment', data: data.equipment },
+                logDetails: { action: 'create', entity: 'equipment', data: data.equipment, tests: data.testLinks },
             });
             if (!result.success) throw result.error;
             return result.data;
@@ -158,7 +158,7 @@ export default function EquipmentCatalog() {
                 successMessage: 'Equipamento atualizado com sucesso!',
                 errorMessage: 'Erro ao atualizar equipamento.',
                 logCategory: 'crud',
-                logDetails: { action: 'update', entity: 'equipment', id: data.id },
+                logDetails: { action: 'update', entity: 'equipment', id: data.id, equipment_name: data.equipment.name, tests: data.testLinks },
             });
             if (!result.success) throw result.error;
             return result.data;
