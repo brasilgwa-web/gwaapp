@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useConfirm } from "@/context/ConfirmContext";
@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bot, Save, RefreshCw, AlertTriangle, CheckCircle2, Key, MessageSquare, Eye, EyeOff } from "lucide-react";
+import { Bot, Save, RefreshCw, AlertTriangle, CheckCircle2, Key, MessageSquare, Eye, EyeOff, Loader2, ShieldCheck, ShieldX } from "lucide-react";
 
-const AVAILABLE_MODELS = [
+// Fallback models shown when no API key is provided or validation hasn't run
+const FALLBACK_MODELS = [
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Rápido)' },
     { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (Mais Rápido)' },
     { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
@@ -27,6 +28,87 @@ export default function SetupAI() {
     const [chatPrompt, setChatPrompt] = useState('');
     const [showApiKey, setShowApiKey] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
+
+    // Dynamic model states
+    const [availableModels, setAvailableModels] = useState(FALLBACK_MODELS);
+    const [keyStatus, setKeyStatus] = useState('idle'); // 'idle' | 'validating' | 'valid' | 'invalid'
+    const [keyError, setKeyError] = useState('');
+
+    // Validate API key and fetch available models from Google API
+    const validateAndFetchModels = useCallback(async (key) => {
+        if (!key || !key.trim()) {
+            setKeyStatus('idle');
+            setKeyError('');
+            setAvailableModels(FALLBACK_MODELS);
+            return;
+        }
+
+        setKeyStatus('validating');
+        setKeyError('');
+
+        try {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models?key=${key.trim()}&pageSize=100`
+            );
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                const errMsg = errData.error?.message || `Erro ${response.status}`;
+                setKeyStatus('invalid');
+                setKeyError(
+                    response.status === 400 ? 'Chave da API inválida.' :
+                    response.status === 403 ? 'Chave da API sem permissão.' :
+                    errMsg
+                );
+                setAvailableModels(FALLBACK_MODELS);
+                return;
+            }
+
+            const data = await response.json();
+            const models = (data.models || [])
+                .filter(m =>
+                    m.supportedGenerationMethods?.includes('generateContent') &&
+                    !m.name?.includes('embedding') &&
+                    !m.name?.includes('aqa')
+                )
+                .map(m => {
+                    const id = m.name.replace('models/', '');
+                    return {
+                        value: id,
+                        label: m.displayName || id,
+                    };
+                })
+                // Sort: Gemini 2.5 first, then 2.0, then others
+                .sort((a, b) => {
+                    const order = (v) => {
+                        if (v.includes('2.5')) return 0;
+                        if (v.includes('2.0')) return 1;
+                        if (v.includes('1.5')) return 2;
+                        return 3;
+                    };
+                    return order(a.value) - order(b.value);
+                });
+
+            if (models.length === 0) {
+                setKeyStatus('invalid');
+                setKeyError('Nenhum modelo compatível encontrado para esta chave.');
+                setAvailableModels(FALLBACK_MODELS);
+                return;
+            }
+
+            setAvailableModels(models);
+            setKeyStatus('valid');
+
+            // If current model is not in the new list, auto-select the first available
+            if (!models.find(m => m.value === model)) {
+                setModel(models[0].value);
+            }
+        } catch (err) {
+            setKeyStatus('invalid');
+            setKeyError('Erro de conexão ao validar a chave.');
+            setAvailableModels(FALLBACK_MODELS);
+        }
+    }, [model]);
 
     // Fetch current AI settings
     const { data: settings, isLoading } = useQuery({
@@ -56,7 +138,11 @@ export default function SetupAI() {
             if (promptSetting?.setting_value) setPrompt(promptSetting.setting_value);
             if (modelSetting?.setting_value) setModel(modelSetting.setting_value);
             if (tokensSetting?.setting_value) setMaxTokens(tokensSetting.setting_value);
-            if (apiKeySetting?.setting_value) setApiKey(apiKeySetting.setting_value);
+            if (apiKeySetting?.setting_value) {
+                setApiKey(apiKeySetting.setting_value);
+                // Auto-validate saved key on load
+                validateAndFetchModels(apiKeySetting.setting_value);
+            }
             if (chatPromptSetting?.setting_value) setChatPrompt(chatPromptSetting.setting_value);
         }
     }, [settings]);
@@ -213,18 +299,30 @@ Responda em português brasileiro:`);
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Model Selection */}
                         <div className="space-y-2">
-                            <Label htmlFor="model">Modelo Gemini</Label>
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="model">Modelo Gemini</Label>
+                                {keyStatus === 'valid' && (
+                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                                        {availableModels.length} modelos disponíveis
+                                    </span>
+                                )}
+                            </div>
                             <Select value={model} onValueChange={setModel}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecione o modelo" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {AVAILABLE_MODELS.map(m => (
+                                    {availableModels.map(m => (
                                         <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <p className="text-xs text-slate-500">Modelos disponíveis variam conforme sua API key.</p>
+                            <p className="text-xs text-slate-500">
+                                {keyStatus === 'valid'
+                                    ? 'Lista atualizada com base na sua API key.'
+                                    : 'Valide sua API key para ver os modelos disponíveis.'
+                                }
+                            </p>
                         </div>
 
                         {/* Max Tokens */}
@@ -253,38 +351,83 @@ Responda em português brasileiro:`);
                         Chave da API Gemini
                     </CardTitle>
                     <CardDescription>
-                        Configure a chave da API do Gemini para usar a IA.
+                        Configure e valide a chave da API do Gemini. A validação busca os modelos disponíveis automaticamente.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="apiKey">API Key</Label>
-                        <div className="relative">
-                            <Input
-                                id="apiKey"
-                                type={showApiKey ? "text" : "password"}
-                                value={apiKey}
-                                onChange={(e) => setApiKey(e.target.value)}
-                                placeholder="AIza..."
-                                className="pr-10 font-mono"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowApiKey(!showApiKey)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <Input
+                                    id="apiKey"
+                                    type={showApiKey ? "text" : "password"}
+                                    value={apiKey}
+                                    onChange={(e) => {
+                                        setApiKey(e.target.value);
+                                        // Reset validation status when key changes
+                                        if (keyStatus !== 'idle') {
+                                            setKeyStatus('idle');
+                                            setKeyError('');
+                                            setAvailableModels(FALLBACK_MODELS);
+                                        }
+                                    }}
+                                    placeholder="AIza..."
+                                    className="pr-10 font-mono"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowApiKey(!showApiKey)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                            <Button
+                                variant="outline"
+                                onClick={() => validateAndFetchModels(apiKey)}
+                                disabled={!apiKey.trim() || keyStatus === 'validating'}
+                                className="shrink-0"
                             >
-                                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
+                                {keyStatus === 'validating' ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : keyStatus === 'valid' ? (
+                                    <ShieldCheck className="w-4 h-4 mr-2 text-green-600" />
+                                ) : keyStatus === 'invalid' ? (
+                                    <ShieldX className="w-4 h-4 mr-2 text-red-500" />
+                                ) : (
+                                    <Key className="w-4 h-4 mr-2" />
+                                )}
+                                {keyStatus === 'validating' ? 'Validando...' : 'Validar Chave'}
+                            </Button>
                         </div>
                         <p className="text-xs text-slate-500">
-                            Insira sua chave da API do Google AI Studio (Gemini).
+                            Insira sua chave da API do Google AI Studio (Gemini) e clique em "Validar Chave".
                         </p>
                     </div>
-                    {apiKey && (
+
+                    {/* Validation Status */}
+                    {keyStatus === 'valid' && (
                         <div className="bg-green-50 p-3 rounded-lg border border-green-200 flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <ShieldCheck className="w-4 h-4 text-green-600 flex-shrink-0" />
                             <span className="text-sm text-green-700">
-                                Usando chave personalizada ({apiKey.substring(0, 8)}...)
+                                Chave válida! ({apiKey.substring(0, 8)}...) — {availableModels.length} modelos disponíveis.
+                            </span>
+                        </div>
+                    )}
+                    {keyStatus === 'invalid' && (
+                        <div className="bg-red-50 p-3 rounded-lg border border-red-200 flex items-center gap-2">
+                            <ShieldX className="w-4 h-4 text-red-500 flex-shrink-0" />
+                            <span className="text-sm text-red-700">
+                                {keyError || 'Chave da API inválida ou sem permissão.'}
+                            </span>
+                        </div>
+                    )}
+                    {keyStatus === 'idle' && apiKey && (
+                        <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                            <span className="text-sm text-amber-700">
+                                Chave não validada. Clique em "Validar Chave" para verificar e carregar os modelos disponíveis.
                             </span>
                         </div>
                     )}
