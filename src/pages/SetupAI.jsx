@@ -53,13 +53,10 @@ export default function SetupAI() {
 
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
-                const errMsg = errData.error?.message || `Erro ${response.status}`;
+                const errMsg = errData.error?.message || `Erro HTTP ${response.status}`;
+                console.error('API Key validation error:', response.status, errData);
                 setKeyStatus('invalid');
-                setKeyError(
-                    response.status === 400 ? 'Chave da API inválida.' :
-                    response.status === 403 ? 'Chave da API sem permissão.' :
-                    errMsg
-                );
+                setKeyError(errMsg);
                 setAvailableModels(FALLBACK_MODELS);
                 return;
             }
