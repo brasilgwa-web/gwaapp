@@ -194,7 +194,27 @@ Responda em português brasileiro:`;
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
             if (!text) {
-                throw new Error('Resposta vazia da API Gemini');
+                // Diagnóstico detalhado
+                const finishReason = data.candidates?.[0]?.finishReason;
+                const safetyRatings = data.candidates?.[0]?.safetyRatings;
+                const blockReason = data.promptFeedback?.blockReason;
+                
+                console.error('Gemini empty response debug:', {
+                    model: aiSettings.model,
+                    finishReason,
+                    blockReason,
+                    safetyRatings,
+                    candidatesCount: data.candidates?.length,
+                    fullResponse: JSON.stringify(data).substring(0, 500)
+                });
+
+                if (blockReason) {
+                    throw new Error(`Prompt bloqueado pelo filtro de segurança: ${blockReason} (modelo: ${aiSettings.model})`);
+                }
+                if (finishReason === 'SAFETY') {
+                    throw new Error(`Resposta bloqueada por filtro de segurança (modelo: ${aiSettings.model})`);
+                }
+                throw new Error(`Resposta vazia da API Gemini (modelo: ${aiSettings.model}, finishReason: ${finishReason || 'N/A'})`);
             }
 
             return text.trim();
