@@ -208,16 +208,16 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             let equipmentDataText = '';
             if (freshReportData?.fullReportStructure?.length > 0) {
                 freshReportData.fullReportStructure.forEach(location => {
-                    equipmentDataText += `\n\nðŸ“  LOCAL: ${location.name}\n`;
+                    equipmentDataText += `\n\n📍  LOCAL: ${location.name}\n`;
                     location.equipments?.forEach(eq => {
-                        equipmentDataText += `\n  ðŸ”§ EQUIPAMENTO: ${eq.equipment.name}\n`;
+                        equipmentDataText += `\n  🔧 EQUIPAMENTO: ${eq.equipment.name}\n`;
                         if (eq.sample?.collection_time) {
                             equipmentDataText += `     Coleta: ${eq.sample.collection_time}\n`;
                         }
                         if (eq.tests?.length > 0) {
                             eq.tests.forEach(test => {
-                                const status = test.result?.status_light === 'red' ? 'ðŸ”´ CRÃ TICO' :
-                                    test.result?.status_light === 'yellow' ? 'ðŸŸ¡ ALERTA' : 'ðŸŸ¢ OK';
+                                const status = test.result?.status_light === 'red' ? '🔴 CRÍTICO' :
+                                    test.result?.status_light === 'yellow' ? '🟡 ALERTA' : '🟢 OK';
                                 const value = test.result?.measured_value ?? 'N/R';
                                 const range = `${test.min_value || '-'} a ${test.max_value || '-'}`;
                                 equipmentDataText += `     - ${test.name}: ${value} ${test.unit || ''} (Faixa: ${range}) [${status}]\n`;
@@ -252,13 +252,13 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             Logger.info('USER_ACTION', 'AI generated successfully', { visitId: visit.id });
 
             const newObs = observations
-                ? observations + "\n\n--- AnÃ¡lise IA (Gemini) ---\n" + aiAnalysis
+                ? observations + "\n\n--- Análise IA (Gemini) ---\n" + aiAnalysis
                 : aiAnalysis;
             setObservations(newObs);
             updateMutation.mutate({ observations: newObs, ai_generated_analysis: true });
         } catch (error) {
             console.error("AI Error:", error);
-            alert("Erro ao gerar anÃ¡lise IA: " + (error.message || 'Erro desconhecido'));
+            alert("Erro ao gerar análise IA: " + (error.message || 'Erro desconhecido'));
         } finally {
             setIsGenerating(false);
         }
@@ -380,7 +380,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             onUpdateVisit({ ...visit, technical_responsible_id: value });
         } catch (error) {
             console.error("Error updating responsible:", error);
-            alert({ title: "Erro", message: "Erro ao atualizar responsÃ¡vel tÃ©cnico", type: "error" });
+            alert({ title: "Erro", message: "Erro ao atualizar responsável técnico", type: "error" });
         }
     };
 
@@ -878,7 +878,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 )
             }
 
-            {/* 0. HorÃ¡rios */}
+            {/* 0. Horários */}
             <Card>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2"><Clock className="w-4 h-4 text-blue-500" />Horários da Visita</CardTitle>
@@ -929,7 +929,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </CardContent>
             </Card>
 
-            {/* 2. AnÃ¡lise TÃ©cnica (ObservaÃ§Ãµes) */}
+            {/* 2. Análise Técnica (Observações) */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
@@ -986,7 +986,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </CardContent>
             </Card>
 
-            {/* 3. ObservaÃ§Ãµes Gerais */}
+            {/* 3. Observações Gerais */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
