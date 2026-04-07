@@ -33,18 +33,23 @@ export const AuthProvider = ({ children }) => {
         let currentUser = session?.user ?? null;
 
         if (currentUser) {
-            // Fetch fresh profile data including signature_url
-            // We do this to ensure we have the custom columns like signature_url that are NOT in user_metadata by default
+            // Fetch fresh profile data including signature_url and role info
+            // Join with roles table to resolve role name from role_id (FK), supporting both models
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('*')
+                .select('*, role_data:roles(id, name)')
                 .eq('id', currentUser.id)
                 .single();
 
             if (profile) {
+                // Normalize role to always be a string:
+                // Priority: direct 'role' column (legacy) > role via role_id FK > default 'user'
+                const resolvedRole = profile.role || profile.role_data?.name || 'user';
+
                 currentUser = {
                     ...currentUser,
-                    ...profile, // Merge profile columns (signature_url, full_name, role) into user object
+                    ...profile,
+                    role: resolvedRole, // Always a string: 'admin', 'user', etc.
                 };
             }
         }
