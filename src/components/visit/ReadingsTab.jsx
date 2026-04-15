@@ -216,15 +216,14 @@ export default function ReadingsTab({ visit, readOnly }) {
                         // Check for standard config (Second Priority)
                         const standardConfig = linkedTestsData.find(et => et.test_definition_id === testId);
 
-                        // If it's a "Custom Added" test (not in standard), it works as pure override.
-                        // If it's an "Overridden Standard" test, it also works as override.
+                        const getValidVal = (val) => (val !== null && val !== undefined && val !== "") ? val : undefined;
 
                         return {
                             ...originalTest, // Base definition
                             // Priorities: Custom Override > Standard Config > Base Definition
-                            min_value: customOverride?.min_value ?? standardConfig?.min_value ?? originalTest.min_value,
-                            max_value: customOverride?.max_value ?? standardConfig?.max_value ?? originalTest.max_value,
-                            unit: customOverride?.unit ?? standardConfig?.unit ?? originalTest.unit,
+                            min_value: getValidVal(customOverride?.min_value) ?? getValidVal(standardConfig?.min_value) ?? originalTest.min_value,
+                            max_value: getValidVal(customOverride?.max_value) ?? getValidVal(standardConfig?.max_value) ?? originalTest.max_value,
+                            unit: getValidVal(customOverride?.unit) ?? getValidVal(standardConfig?.unit) ?? originalTest.unit,
                             isCustom: !!customOverride
                         };
                     }).filter(Boolean)
@@ -241,7 +240,7 @@ export default function ReadingsTab({ visit, readOnly }) {
                         sample
                     };
                 })
-                .filter(item => item && item.tests.length > 0);
+                .filter(item => item !== null);
 
             return { ...location, equipments: equipmentsWithTests };
         }).filter(l => l.equipments.length > 0);
