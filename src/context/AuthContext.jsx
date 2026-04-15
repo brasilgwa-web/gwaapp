@@ -43,8 +43,9 @@ export const AuthProvider = ({ children }) => {
 
             if (profile) {
                 // Normalize role to always be a string:
-                // Priority: direct 'role' column (legacy) > role via role_id FK > default 'user'
-                const resolvedRole = profile.role || profile.role_data?.name || 'user';
+                // Priority: role via role_id FK (role_data.name) > direct 'role' column (legacy) > default 'user'
+                // Note: role_data (FK) takes priority because the direct 'role' column can be stale/incorrect
+                const resolvedRole = profile.role_data?.name || profile.role || 'user';
 
                 currentUser = {
                     ...currentUser,

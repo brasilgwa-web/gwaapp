@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import RichTextEditor from "@/components/ui/RichTextEditor";
 import ColorPicker from "@/components/ui/ColorPicker";
 // ... imports
-import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate } from "lucide-react";
+import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate, MessageSquareText } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -131,6 +131,10 @@ export default function SetupReport() {
     const [emailSubject, setEmailSubject] = useState('');
     const [emailBody, setEmailBody] = useState('');
 
+    // Comments/Orientations States
+    const [commentsEnabled, setCommentsEnabled] = useState(true);
+    const [commentsText, setCommentsText] = useState('');
+
     // Cover States
     const [coverEnabled, setCoverEnabled] = useState(true);
     const [coverContent, setCoverContent] = useState(''); // Unified cover content
@@ -190,6 +194,10 @@ export default function SetupReport() {
             setEmailSubject(settings.email_subject_default || 'Relatório de Visita Técnica - {client_name} - {date}');
 
             setEmailBody(settings.email_body_default || '');
+
+            // Comments/Orientations settings
+            setCommentsEnabled(settings.comments_orientations_enabled !== false);
+            setCommentsText(settings.comments_orientations_text || '');
 
             // Cover settings
             setCoverEnabled(settings.cover_enabled !== false); // Default true
@@ -398,7 +406,9 @@ export default function SetupReport() {
                 cover_enabled: coverEnabled,
                 cover_content: coverContent,
                 cover_background_color: coverBackgroundColor,
-                cover_image_url: coverImageUrl
+                cover_image_url: coverImageUrl,
+                comments_orientations_enabled: commentsEnabled,
+                comments_orientations_text: commentsText
             });
 
         } catch (error) {
@@ -737,6 +747,50 @@ export default function SetupReport() {
                                 </p>
                             </div>
                         </CardContent>
+                    </Card>
+
+                    {/* Comentários/Orientações */}
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <MessageSquareText className="w-4 h-4 text-amber-500" />
+                                    Comentários / Orientações
+                                </CardTitle>
+                                <CardDescription>
+                                    Texto fixo que aparece ao final do relatório com instruções, notas importantes e metodologia analítica.
+                                </CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="comments-switch" className="text-sm text-slate-600">
+                                    {commentsEnabled ? 'Exibir no relatório' : 'Oculto'}
+                                </Label>
+                                <Switch
+                                    id="comments-switch"
+                                    checked={commentsEnabled}
+                                    onCheckedChange={setCommentsEnabled}
+                                />
+                            </div>
+                        </CardHeader>
+                        {commentsEnabled && (
+                            <CardContent className="space-y-4">
+                                <div className="bg-amber-50 border border-amber-200 rounded-md px-4 py-3">
+                                    <p className="text-xs text-amber-800">
+                                        💡 <strong>Dica:</strong> Este texto é compartilhado por todos os relatórios. Edite com cuidado pois afetará todos os próximos relatórios gerados.
+                                    </p>
+                                </div>
+                                <Textarea
+                                    value={commentsText}
+                                    onChange={(e) => setCommentsText(e.target.value)}
+                                    placeholder="Digite o texto de comentários e orientações que aparecerá no relatório..."
+                                    rows={20}
+                                    className="font-mono text-xs leading-relaxed"
+                                />
+                                <p className="text-xs text-slate-500">
+                                    Use linhas em branco para separar parágrafos. O texto será renderizado preservando quebras de linha.
+                                </p>
+                            </CardContent>
+                        )}
                     </Card>
 
                 </TabsContent>

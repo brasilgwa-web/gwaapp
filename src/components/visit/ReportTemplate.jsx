@@ -475,70 +475,63 @@ export function ReportTemplate({ data }) {
                 )}
 
                 {/* 7. Comentários/Orientações */}
-                {fullReportStructure?.length > 0 && (
+                {fullReportStructure?.length > 0 && reportSettings?.comments_orientations_enabled !== false && (
                     <section className="mb-8">
                         <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4">Comentários/Orientações</h2>
-                        <div className="bg-slate-50 p-4 rounded border border-slate-200 text-[10px] text-justify space-y-3 leading-relaxed">
-                            <p className="font-bold">Observações Gerais</p>
-                            <p>Neste momento, este relatório apresenta exclusivamente os resultados analíticos obtidos.</p>
-                            <p>Análises complementares que não fazem parte do escopo contratado devem ser solicitadas ao setores técnico-comercial da WGA Brasil para o envio do orçamento e aprovação.</p>
-                            <p>Recomenda-se seguir as orientações repassadas durante as visitas técnicas presenciais da equipe da WGA Brasil.</p>
+                        <div className="bg-slate-50 p-4 rounded border border-slate-200 text-[10px] text-justify space-y-3 leading-relaxed whitespace-pre-wrap">
+                            {reportSettings?.comments_orientations_text || `Observações Gerais
 
-                            <p className="font-semibold mt-2">Destacamos a importância de:</p>
-                            <ul className="list-disc pl-5 space-y-1">
-                                <li>Verificar atentamente os parâmetros sinalizados no sistema de farol (verde, amarelo e vermelho), dando prioridade às ações corretivas nos indicadores em amarelo (atenção) e vermelho (crítico);</li>
-                                <li>Manter a aplicação dos produtos conforme as dosagens recomendadas pela engenharia da WGA Brasil;</li>
-                                <li>Realizar as purgas operacionais de acordo com o plano de operação definido;</li>
-                                <li>Manusear e armazenar os produtos químicos, especialmente os produtos NALCO, com todos os cuidados de segurança previstos nas fichas de informações de segurança dos produtos (SDS);</li>
-                                <li>Manter o acompanhamento dos parâmetros operacionais e enviar periodicamente os dados à WGA Brasil para controle e atualização de recomendações.</li>
-                            </ul>
+Neste momento, este relatório apresenta exclusivamente os resultados analíticos obtidos.
+Análises complementares que não fazem parte do escopo contratado devem ser solicitadas ao setores técnico-comercial da WGA Brasil para o envio do orçamento e aprovação.
+Recomenda-se seguir as orientações repassadas durante as visitas técnicas presenciais da equipe da WGA Brasil.
 
-                            <hr className="border-slate-300 my-3" />
+Destacamos a importância de:
+• Verificar atentamente os parâmetros sinalizados no sistema de farol (verde, amarelo e vermelho), dando prioridade às ações corretivas nos indicadores em amarelo (atenção) e vermelho (crítico);
+• Manter a aplicação dos produtos conforme as dosagens recomendadas pela engenharia da WGA Brasil;
+• Realizar as purgas operacionais de acordo com o plano de operação definido;
+• Manusear e armazenar os produtos químicos, especialmente os produtos NALCO, com todos os cuidados de segurança previstos nas fichas de informações de segurança dos produtos (SDS);
+• Manter o acompanhamento dos parâmetros operacionais e enviar periodicamente os dados à WGA Brasil para controle e atualização de recomendações.
 
-                            <p className="font-bold">NOTAS IMPORTANTES</p>
-                            <ul className="list-none space-y-2 mt-1">
-                                <li>- Antes de efetuar qualquer operação com Produtos NALCO (transferência/ transporte/reposição), ler atentamente a FDS (FICHA DE SEGURANÇA DE PRODUTOS QUÍMICOS) dos mesmos;</li>
-                                <li>1. Não descartar resíduos em áreas inapropriadas, certificar que as bombonas vazias sejam enviadas para local específico para descarte;</li>
-                                <li>2. Não reutilize embalagens químicas, a reação com produtos incompatíveis podem acarretar acidentes;</li>
-                                <li>3. Ao checar sistemas de dosagens, certifique-se o funcionamento das bombas dosadoras, caso seja necessário, efetue a remoção de ar nas linhas pelo respiro da bomba, localizada na lado posterior da bomba, certifique-se de retomar a dosagem via fechamento do respiro (válvula 3 vias);</li>
-                                <li>4. Registre quaisquer ocorrência pertinente à operação, utilização, reposição e demanda de químicos para os sistemas assistidos e entre em contato pelos canais de comunicação informados: atendimento@wgabrasil.com.br; adriano@wgabrasil.com.br ou Cel. (11) 9.634,8922 (11) 9.8331.7957.</li>
-                            </ul>
+──────────────────────────
 
-                            <p className="mt-2"><span className="font-bold">CARACTERISTICA DA AMOSTRA ANÁLISE VISUAL:</span> Quando reportado a presença de resíduos não filtráveis recomenda-se que os procedimentos de trabalho sejam confirmados, e se as abertura de válvulas de purga na garrafa de nivel, fornalha e corpo principal da Caldeira estão sendo realizadas corretamente. Este procecimento é necessário para evitar o acúmulo de sedimentos e formação de depósitos e incrustações que possam afetar a segurança do equipamento.</p>
+NOTAS IMPORTANTES
+- Antes de efetuar qualquer operação com Produtos NALCO (transferência/ transporte/reposição), ler atentamente a FDS (FICHA DE SEGURANÇA DE PRODUTOS QUÍMICOS) dos mesmos;
+1. Não descartar resíduos em áreas inapropriadas, certificar que as bombonas vazias sejam enviadas para local específico para descarte;
+2. Não reutilize embalagens químicas, a reação com produtos incompatíveis podem acarretar acidentes;
+3. Ao checar sistemas de dosagens, certifique-se o funcionamento das bombas dosadoras, caso seja necessário, efetue a remoção de ar nas linhas pelo respiro da bomba, localizada na lado posterior da bomba, certifique-se de retomar a dosagem via fechamento do respiro (válvula 3 vias);
+4. Registre quaisquer ocorrência pertinente à operação, utilização, reposição e demanda de químicos para os sistemas assistidos e entre em contato pelos canais de comunicação informados: atendimento@wgabrasil.com.br; adriano@wgabrasil.com.br ou Cel. (11) 9.634,8922 (11) 9.8331.7957.
 
-                            <p><span className="font-bold">TRASAR:</span> É uma leitura de fluorescência obtida proporcionalmente à concentração do produto na amostra lida, na qual contém uma substância trasante que permite que o mesmo seja monitorado com precisão de 0,1 mg/l, no entanto a fluorescência não deve ser considerada no Balanço de Cátions e Ânions dissolvidos na água.</p>
+CARACTERISTICA DA AMOSTRA ANÁLISE VISUAL: Quando reportado a presença de resíduos não filtráveis recomenda-se que os procedimentos de trabalho sejam confirmados, e se as abertura de válvulas de purga na garrafa de nivel, fornalha e corpo principal da Caldeira estão sendo realizadas corretamente. Este procecimento é necessário para evitar o acúmulo de sedimentos e formação de depósitos e incrustações que possam afetar a segurança do equipamento.
 
-                            <hr className="border-slate-300 my-3" />
+TRASAR: É uma leitura de fluorescência obtida proporcionalmente à concentração do produto na amostra lida, na qual contém uma substância trasante que permite que o mesmo seja monitorado com precisão de 0,1 mg/l, no entanto a fluorescência não deve ser considerada no Balanço de Cátions e Ânions dissolvidos na água.
 
-                            <p>Em caso de dúvidas, entrar em contato com nosso serviço de atendimento a Clientes através de nosso telefone: (11) 9.6348.9922 e/ou através dos seguintes E-mails: atendimento@wgabrasil.com.br; laboratorio1@wgabrasil.com.br</p>
+──────────────────────────
 
-                            <p>A ocorrência de resultados fora dos padrões não necessariamente representa riscos para o sistema, desde que, não sejam sistêmicos. Pequenas variações podem ocorrer nos itens de tratamento, motivado, principalmente pelas oscilações na qualidade de água de reposição e/ou alimentação.</p>
+Em caso de dúvidas, entrar em contato com nosso serviço de atendimento a Clientes através de nosso telefone: (11) 9.6348.9922 e/ou através dos seguintes E-mails: atendimento@wgabrasil.com.br; laboratorio1@wgabrasil.com.br
 
-                            <p>É importante saber que, em todos os casos anômalos, ações corretivas devem ser implantadas, seguidas posteriormente de novas análises para constatação da regularidade da situação e do quadro analítico.</p>
+A ocorrência de resultados fora dos padrões não necessariamente representa riscos para o sistema, desde que, não sejam sistêmicos. Pequenas variações podem ocorrer nos itens de tratamento, motivado, principalmente pelas oscilações na qualidade de água de reposição e/ou alimentação.
 
-                            <hr className="border-slate-300 my-3" />
+É importante saber que, em todos os casos anômalos, ações corretivas devem ser implantadas, seguidas posteriormente de novas análises para constatação da regularidade da situação e do quadro analítico.
 
-                            <p className="font-bold">Metodologia Analítica:</p>
-                            <ul className="list-inside space-y-1">
-                                <li>- Procedimento para coletas: PR. 8.5.2 Revisão 02 (IDENTIFICAÇÃO, RASTREABILIDADE, COLETA E PRESERVAÇÃO DO PRODUTO).</li>
-                                <li>- As análises foram executadas dentro do prazo de validade de cada parâmetro segundo guia de coleta de preservação de amostras.</li>
-                                <li>- NR: Não referido; ND= Não detectado; LMD= Limite Mínimo de Detecção; LAP= Laboratório de Apoio; * = A/C: Análise em Campo; IE = Índice de Incerteza Analítica Expandida;</li>
-                            </ul>
+──────────────────────────
 
-                            <p className="font-bold mt-2">"OS RESULTADOS REFEREM-SE EXCLUSIVAMENTE À AMOSTRA ANALISADA, COMO RECEBIDA".</p>
-                            <p>As amostras analisadas ficam em retenção por 15 dias, após este período são descartadas, salvo aquelas que são analisadas diariamente.</p>
-                            <p>O excedente da amostra não utilizada nos ensaios poderá retornará ao cliente para o destino adequado.</p>
+Metodologia Analítica:
+- Procedimento para coletas: PR. 8.5.2 Revisão 02 (IDENTIFICAÇÃO, RASTREABILIDADE, COLETA E PRESERVAÇÃO DO PRODUTO).
+- As análises foram executadas dentro do prazo de validade de cada parâmetro segundo guia de coleta de preservação de amostras.
+- NR: Não referido; ND= Não detectado; LMD= Limite Mínimo de Detecção; LAP= Laboratório de Apoio; * = A/C: Análise em Campo; IE = Índice de Incerteza Analítica Expandida;
 
-                            <hr className="border-slate-300 my-3" />
+"OS RESULTADOS REFEREM-SE EXCLUSIVAMENTE À AMOSTRA ANALISADA, COMO RECEBIDA".
+As amostras analisadas ficam em retenção por 15 dias, após este período são descartadas, salvo aquelas que são analisadas diariamente.
+O excedente da amostra não utilizada nos ensaios poderá retornará ao cliente para o destino adequado.
 
-                            <p>A WGA BRASIL garantem a qualidade de seus produtos e serviços analíticos, não se responsabilizando pelo uso inadequado dos produtos e orientações</p>
-                            <p>A WGA BRASIL não se responsabiliza por quaisquer danos indiretos e ou consequenciais, negligenciais, impericiais, imprudenciais ou omissões, incluindo, porém nao se limitando a perda de lucros e ou produção.</p>
-                            <p className="uppercase">A INTEGRIDADE DOS RESULTADOS REPORTADOS NESTE RELATÓRIO DE ENSAIO É GARANTIDA, MANTIDA E CONTROLADA NA DATA BASE DO SISTEMA DE ADMINISTRAÇÃO DE LAUDOS.</p>
+──────────────────────────
 
-                            <div className="mt-4 text-center font-semibold italic">
-                                <p>"Este Relatório de Ensaio somente pode ser reproduzido na sua totalidade e sem alterações"</p>
-                                <p>"A reprodução parcial requer aprovação escrita do Laboratório."</p>
-                            </div>
+A WGA BRASIL garantem a qualidade de seus produtos e serviços analíticos, não se responsabilizando pelo uso inadequado dos produtos e orientações
+A WGA BRASIL não se responsabiliza por quaisquer danos indiretos e ou consequenciais, negligenciais, impericiais, imprudenciais ou omissões, incluindo, porém nao se limitando a perda de lucros e ou produção.
+A INTEGRIDADE DOS RESULTADOS REPORTADOS NESTE RELATÓRIO DE ENSAIO É GARANTIDA, MANTIDA E CONTROLADA NA DATA BASE DO SISTEMA DE ADMINISTRAÇÃO DE LAUDOS.
+
+"Este Relatório de Ensaio somente pode ser reproduzido na sua totalidade e sem alterações"
+"A reprodução parcial requer aprovação escrita do Laboratório."`}
                         </div>
                     </section>
                 )}

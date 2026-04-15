@@ -785,58 +785,43 @@ const ReportPdf = ({ data, settings }) => {
                     </View>
                 )}
 
-                {/* --- COMMENTS / ORIENTATIONS (Fixed Text) --- */}
-                {fullReportStructure?.length > 0 && (
+                {/* --- COMMENTS / ORIENTATIONS (Dynamic Text from Settings) --- */}
+                {fullReportStructure?.length > 0 && settings?.comments_orientations_enabled !== false && (
                     <View style={styles.section}>
                         <View style={styles.sectionTitle}>
                             <Text>Comentários/Orientações</Text>
                         </View>
                         <View style={styles.textBlock}>
-                            <Text style={{ fontWeight: 700, marginBottom: 4 }}>Observações Gerais</Text>
-                            <Text style={{ marginBottom: 4 }}>Neste momento, este relatório apresenta exclusivamente os resultados analíticos obtidos.</Text>
-                            <Text style={{ marginBottom: 4 }}>Análises complementares que não fazem parte do escopo contratado devem ser solicitadas ao setores técnico-comercial da WGA Brasil para o envio do orçamento e aprovação.</Text>
-                            <Text style={{ marginBottom: 8 }}>Recomenda-se seguir as orientações repassadas durante as visitas técnicas presenciais da equipe da WGA Brasil.</Text>
+                            {(settings?.comments_orientations_text || `Observações Gerais
 
-                            <Text style={{ fontWeight: 600, marginBottom: 4 }}>Destacamos a importância de:</Text>
-                            <View style={{ marginLeft: 10 }}>
-                                <Text>• Verificar atentamente os parâmetros sinalizados no sistema de farol (verde, amarelo e vermelho), dando prioridade às ações corretivas nos indicadores em amarelo (atenção) e vermelho (crítico);</Text>
-                                <Text>• Manter a aplicação dos produtos conforme as dosagens recomendadas pela engenharia da WGA Brasil;</Text>
-                                <Text>• Realizar as purgas operacionais de acordo com o plano de operação definido;</Text>
-                                <Text>• Manusear e armazenar os produtos químicos, especialmente os produtos NALCO, com todos os cuidados de segurança previstos nas fichas de informações de segurança dos produtos (SDS);</Text>
-                                <Text>• Manter o acompanhamento dos parâmetros operacionais e enviar periodicamente os dados à WGA Brasil para controle e atualização de recomendações.</Text>
-                            </View>
+Neste momento, este relatório apresenta exclusivamente os resultados analíticos obtidos.
+Análises complementares que não fazem parte do escopo contratado devem ser solicitadas ao setores técnico-comercial da WGA Brasil para o envio do orçamento e aprovação.
+Recomenda-se seguir as orientações repassadas durante as visitas técnicas presenciais da equipe da WGA Brasil.
 
-                            <View style={{ borderBottomWidth: 1, borderBottomColor: '#cbd5e1', marginVertical: 8 }} />
+Destacamos a importância de:
+• Verificar atentamente os parâmetros sinalizados no sistema de farol (verde, amarelo e vermelho), dando prioridade às ações corretivas nos indicadores em amarelo (atenção) e vermelho (crítico);
+• Manter a aplicação dos produtos conforme as dosagens recomendadas pela engenharia da WGA Brasil;
+• Realizar as purgas operacionais de acordo com o plano de operação definido;
+• Manusear e armazenar os produtos químicos, especialmente os produtos NALCO, com todos os cuidados de segurança previstos nas fichas de informações de segurança dos produtos (SDS);
+• Manter o acompanhamento dos parâmetros operacionais e enviar periodicamente os dados à WGA Brasil para controle e atualização de recomendações.
 
-                            <Text style={{ fontWeight: 700, marginBottom: 4 }}>NOTAS IMPORTANTES</Text>
-                            <View style={{ marginLeft: 0 }}>
-                                <Text>• Antes de efetuar qualquer operação com Produtos NALCO (transferência/ transporte/reposição), ler atentamente a FDS (FICHA DE SEGURANÇA DE PRODUTOS QUÍMICOS) dos mesmos;</Text>
-                                <Text>1. Não descartar resíduos em áreas inapropriadas, certificar que as bombonas vazias sejam enviadas para local específico para descarte;</Text>
-                                <Text>2. Não reutilize embalagens químicas, a reação com produtos incompatíveis podem acarretar acidentes;</Text>
-                                <Text>3. Ao checar sistemas de dosagens, certifique-se o funcionamento das bombas dosadoras, caso seja necessário, efetue a remoção de ar nas linhas pelo respiro da bomba, localizada na lado posterior da bomba, certifique-se de retomar a dosagem via fechamento do respiro (válvula 3 vias);</Text>
-                                <Text>4. Registre quaisquer ocorrência pertinente à operação, utilização, reposição e demanda de químicos para os sistemas assistidos e entre em contato pelos canais de comunicação informados: atendimento@wgabrasil.com.br; adriano@wgabrasil.com.br.</Text>
-                            </View>
+NOTAS IMPORTANTES
+- Antes de efetuar qualquer operação com Produtos NALCO (transferência/ transporte/reposição), ler atentamente a FDS (FICHA DE SEGURANÇA DE PRODUTOS QUÍMICOS) dos mesmos;
+1. Não descartar resíduos em áreas inapropriadas, certificar que as bombonas vazias sejam enviadas para local específico para descarte;
+2. Não reutilize embalagens químicas, a reação com produtos incompatíveis podem acarretar acidentes;
+3. Ao checar sistemas de dosagens, certifique-se o funcionamento das bombas dosadoras, caso seja necessário, efetue a remoção de ar nas linhas pelo respiro da bomba;
+4. Registre quaisquer ocorrência pertinente à operação e entre em contato pelos canais de comunicação informados.
 
-                            <View style={{ borderBottomWidth: 1, borderBottomColor: '#cbd5e1', marginVertical: 8 }} />
+Metodologia Analítica:
+- Procedimento para coletas: PR. 8.5.2 Revisão 02 (IDENTIFICAÇÃO, RASTREABILIDADE, COLETA E PRESERVAÇÃO DO PRODUTO).
+- As análises foram executadas dentro do prazo de validade de cada parâmetro segundo guia de coleta de preservação de amostras.
+- NR: Não referido; ND= Não detectado; LMD= Limite Mínimo de Detecção; LAP= Laboratório de Apoio; * = A/C: Análise em Campo; IE = Índice de Incerteza Analítica Expandida;
 
-                            <Text style={{ marginBottom: 8 }}>
-                                <Text style={{ fontWeight: 700 }}>CARACTERISTICA DA AMOSTRA ANÁLISE VISUAL: </Text>
-                                Quando reportado a presença de resíduos não filtráveis recomenda-se que os procedimentos de trabalho sejam confirmados, e se as abertura de válvulas de purga na garrafa de nivel, fornalha e corpo principal da Caldeira estão sendo realizadas corretamente.
-                            </Text>
-
-                            <Text style={{ marginBottom: 8 }}>
-                                <Text style={{ fontWeight: 700 }}>TRASAR: </Text>
-                                É uma leitura de fluorescência obtida proporcionalmente à concentração do produto na amostra lida...
-                            </Text>
-
-                            <View style={{ borderBottomWidth: 1, borderBottomColor: '#cbd5e1', marginVertical: 8 }} />
-
-                            <Text style={{ fontWeight: 700, marginBottom: 4 }}>Metodologia Analítica</Text>
-                            <Text>• Procedimento para coletas: PR. 8.5.2 Revisão 02 (IDENTIFICAÇÃO, RASTREABILIDADE, COLETA E PRESERVAÇÃO DO PRODUTO).</Text>
-                            <Text>• As análises foram executadas dentro do prazo de validade de cada parâmetro segundo guia de coleta de preservação de amostras.</Text>
-                            <Text>• NR: Não referido; ND= Não detectado; LMD= Limite Mínimo de Detecção; LAP= Laboratório de Apoio; * = A/C: Análise em Campo; IE = Índice de Incerteza Analítica Expandida;</Text>
-
-                            <Text style={{ fontWeight: 700, marginTop: 8 }}>"OS RESULTADOS REFEREM-SE EXCLUSIVAMENTE À AMOSTRA ANALISADA, COMO RECEBIDA".</Text>
+"OS RESULTADOS REFEREM-SE EXCLUSIVAMENTE À AMOSTRA ANALISADA, COMO RECEBIDA".`).split('\n').map((line, i) => (
+                                <Text key={i} style={{ marginBottom: line.trim() === '' ? 6 : 2 }}>
+                                    {line}
+                                </Text>
+                            ))}
                         </View>
                     </View>
                 )}

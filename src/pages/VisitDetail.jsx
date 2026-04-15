@@ -101,7 +101,7 @@ export default function VisitDetailPage() {
         );
     }
 
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role_data?.name?.toLowerCase() === 'admin';
     // Now safe to access visit properties
     const isReadOnly = (visit.status === 'completed' || visit.status === 'synced');
 
