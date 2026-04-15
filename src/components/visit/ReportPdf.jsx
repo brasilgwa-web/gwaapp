@@ -439,6 +439,104 @@ const renderCoverHtml = (html) => {
     });
 };
 
+// Default HTML for Comments/Orientations (PDF fallback)
+const DEFAULT_COMMENTS_HTML_PDF = `
+<p><strong>Observações Gerais</strong></p>
+<p>Neste momento, este relatório apresenta exclusivamente os resultados analíticos obtidos.</p>
+<p>Recomenda-se seguir as orientações repassadas durante as visitas técnicas presenciais da equipe da WGA Brasil.</p>
+<p><strong>Destacamos a importância de:</strong></p>
+<ul>
+<li>Verificar atentamente os parâmetros sinalizados no sistema de farol (verde, amarelo e vermelho);</li>
+<li>Manter a aplicação dos produtos conforme as dosagens recomendadas pela engenharia da WGA Brasil;</li>
+<li>Realizar as purgas operacionais de acordo com o plano de operação definido;</li>
+<li>Manusear e armazenar os produtos químicos com todos os cuidados de segurança previstos nas fichas de informações de segurança dos produtos (SDS);</li>
+</ul>
+<hr/>
+<p><strong>NOTAS IMPORTANTES</strong></p>
+<p>Antes de efetuar qualquer operação com Produtos NALCO, ler atentamente a FDS (FICHA DE SEGURANÇA DE PRODUTOS QUÍMICOS) dos mesmos.</p>
+<hr/>
+<p><strong>Metodologia Analítica:</strong></p>
+<ul>
+<li>Procedimento para coletas: PR. 8.5.2 Revisão 02.</li>
+<li>NR: Não referido; ND= Não detectado; LMD= Limite Mínimo de Detecção;</li>
+</ul>
+<p><strong>"OS RESULTADOS REFEREM-SE EXCLUSIVAMENTE À AMOSTRA ANALISADA, COMO RECEBIDA".</strong></p>
+`;
+
+// HTML-to-PDF parser for comments/orientations content (similar to renderCoverHtml but styled for body text)
+const renderCommentsHtml = (html) => {
+    if (!html) return null;
+
+    // Strip style attributes
+    const clean = html.replace(/ style="[^"]*"/gi, '');
+
+    // Split by block-level tags
+    const blocks = clean.split(/(?=<(?:h[1-6]|p|ul|ol|hr|br)[ >])/i);
+
+    const stripInline = (s) => s
+        .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '$1')
+        .replace(/<em[^>]*>(.*?)<\/em>/gi, '$1')
+        .replace(/<a[^>]*>(.*?)<\/a>/gi, '$1')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+
+    // Check if text has <strong> wrapper
+    const hasBold = (s) => /<strong[^>]*>/.test(s);
+    const hasItalic = (s) => /<em[^>]*>/.test(s);
+
+    return blocks.map((block, i) => {
+        const h1Match = block.match(/^<h1[^>]*>(.*?)<\/h1>/is);
+        const h2Match = block.match(/^<h2[^>]*>(.*?)<\/h2>/is);
+        const h3Match = block.match(/^<h3[^>]*>(.*?)<\/h3>/is);
+        const pMatch = block.match(/^<p[^>]*>(.*?)<\/p>/is);
+        const hrMatch = block.match(/^<hr/i);
+        const brMatch = block.match(/^<br/i);
+        const ulMatch = block.match(/^<ul[^>]*>(.*?)<\/ul>/is);
+        const olMatch = block.match(/^<ol[^>]*>(.*?)<\/ol>/is);
+
+        if (h1Match) return <Text key={i} style={{ fontWeight: 700, fontSize: 11, marginBottom: 4, marginTop: 6 }}>{stripInline(h1Match[1])}</Text>;
+        if (h2Match) return <Text key={i} style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, marginTop: 6 }}>{stripInline(h2Match[1])}</Text>;
+        if (h3Match) return <Text key={i} style={{ fontWeight: 600, fontSize: 9, marginBottom: 3, marginTop: 4 }}>{stripInline(h3Match[1])}</Text>;
+        if (hrMatch) return <View key={i} style={{ borderBottomWidth: 1, borderBottomColor: '#cbd5e1', marginVertical: 6 }} />;
+        if (brMatch) return <View key={i} style={{ height: 4 }} />;
+
+        if (ulMatch || olMatch) {
+            const listContent = ulMatch ? ulMatch[1] : olMatch[1];
+            const items = listContent.match(/<li[^>]*>(.*?)<\/li>/gis) || [];
+            return (
+                <View key={i} style={{ marginLeft: 10, marginBottom: 4 }}>
+                    {items.map((item, j) => {
+                        const content = item.match(/<li[^>]*>(.*?)<\/li>/is);
+                        if (!content) return null;
+                        const text = stripInline(content[1]);
+                        const bold = hasBold(content[1]);
+                        return (
+                            <View key={j} style={{ flexDirection: 'row', marginBottom: 2 }}>
+                                <Text style={{ width: 10 }}>{ulMatch ? '•' : `${j + 1}.`}</Text>
+                                <Text style={{ flex: 1, fontWeight: bold ? 700 : 400 }}>{text}</Text>
+                            </View>
+                        );
+                    })}
+                </View>
+            );
+        }
+
+        if (pMatch) {
+            const rawContent = pMatch[1];
+            const text = stripInline(rawContent);
+            if (!text) return <View key={i} style={{ height: 4 }} />;
+            const bold = hasBold(rawContent);
+            const italic = hasItalic(rawContent);
+            return <Text key={i} style={{ marginBottom: 3, fontWeight: bold ? 700 : 400, fontStyle: italic ? 'italic' : 'normal' }}>{text}</Text>;
+        }
+        return null;
+    }).filter(Boolean);
+};
+
 const ReportPdf = ({ data, settings }) => {
     const { visit, client, fullReportStructure, photos, primaryLocation, technicianUser, clientContact } = data;
     // Fallback for reportNumber
@@ -785,43 +883,14 @@ const ReportPdf = ({ data, settings }) => {
                     </View>
                 )}
 
-                {/* --- COMMENTS / ORIENTATIONS (Dynamic Text from Settings) --- */}
+                {/* --- COMMENTS / ORIENTATIONS (Dynamic HTML from Settings) --- */}
                 {fullReportStructure?.length > 0 && settings?.comments_orientations_enabled !== false && (
                     <View style={styles.section}>
                         <View style={styles.sectionTitle}>
                             <Text>Comentários/Orientações</Text>
                         </View>
                         <View style={styles.textBlock}>
-                            {(settings?.comments_orientations_text || `Observações Gerais
-
-Neste momento, este relatório apresenta exclusivamente os resultados analíticos obtidos.
-Análises complementares que não fazem parte do escopo contratado devem ser solicitadas ao setores técnico-comercial da WGA Brasil para o envio do orçamento e aprovação.
-Recomenda-se seguir as orientações repassadas durante as visitas técnicas presenciais da equipe da WGA Brasil.
-
-Destacamos a importância de:
-• Verificar atentamente os parâmetros sinalizados no sistema de farol (verde, amarelo e vermelho), dando prioridade às ações corretivas nos indicadores em amarelo (atenção) e vermelho (crítico);
-• Manter a aplicação dos produtos conforme as dosagens recomendadas pela engenharia da WGA Brasil;
-• Realizar as purgas operacionais de acordo com o plano de operação definido;
-• Manusear e armazenar os produtos químicos, especialmente os produtos NALCO, com todos os cuidados de segurança previstos nas fichas de informações de segurança dos produtos (SDS);
-• Manter o acompanhamento dos parâmetros operacionais e enviar periodicamente os dados à WGA Brasil para controle e atualização de recomendações.
-
-NOTAS IMPORTANTES
-- Antes de efetuar qualquer operação com Produtos NALCO (transferência/ transporte/reposição), ler atentamente a FDS (FICHA DE SEGURANÇA DE PRODUTOS QUÍMICOS) dos mesmos;
-1. Não descartar resíduos em áreas inapropriadas, certificar que as bombonas vazias sejam enviadas para local específico para descarte;
-2. Não reutilize embalagens químicas, a reação com produtos incompatíveis podem acarretar acidentes;
-3. Ao checar sistemas de dosagens, certifique-se o funcionamento das bombas dosadoras, caso seja necessário, efetue a remoção de ar nas linhas pelo respiro da bomba;
-4. Registre quaisquer ocorrência pertinente à operação e entre em contato pelos canais de comunicação informados.
-
-Metodologia Analítica:
-- Procedimento para coletas: PR. 8.5.2 Revisão 02 (IDENTIFICAÇÃO, RASTREABILIDADE, COLETA E PRESERVAÇÃO DO PRODUTO).
-- As análises foram executadas dentro do prazo de validade de cada parâmetro segundo guia de coleta de preservação de amostras.
-- NR: Não referido; ND= Não detectado; LMD= Limite Mínimo de Detecção; LAP= Laboratório de Apoio; * = A/C: Análise em Campo; IE = Índice de Incerteza Analítica Expandida;
-
-"OS RESULTADOS REFEREM-SE EXCLUSIVAMENTE À AMOSTRA ANALISADA, COMO RECEBIDA".`).split('\n').map((line, i) => (
-                                <Text key={i} style={{ marginBottom: line.trim() === '' ? 6 : 2 }}>
-                                    {line}
-                                </Text>
-                            ))}
+                            {renderCommentsHtml(settings?.comments_orientations_text || DEFAULT_COMMENTS_HTML_PDF)}
                         </View>
                     </View>
                 )}

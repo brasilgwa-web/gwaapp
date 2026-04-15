@@ -186,3 +186,37 @@ button:focus-visible {
 .animate-shrink-width {
   animation: shrinkWidth 2s linear forwards;
 }
+
+/* Styles for HTML content inside report Comentários/Orientações section */
+.report-comments-html p {
+  margin-bottom: 6px;
+}
+.report-comments-html ul,
+.report-comments-html ol {
+  padding-left: 18px;
+  margin-bottom: 6px;
+}
+.report-comments-html ul {
+  list-style-type: disc;
+}
+.report-comments-html ol {
+  list-style-type: decimal;
+}
+.report-comments-html li {
+  margin-bottom: 2px;
+}
+.report-comments-html hr {
+  border: none;
+  border-top: 1px solid #cbd5e1;
+  margin: 10px 0;
+}
+.report-comments-html h1,
+.report-comments-html h2,
+.report-comments-html h3 {
+  font-weight: 700;
+  margin-bottom: 4px;
+  margin-top: 8px;
+}
+.report-comments-html h1 { font-size: 13px; }
+.report-comments-html h2 { font-size: 12px; }
+.report-comments-html h3 { font-size: 11px; }

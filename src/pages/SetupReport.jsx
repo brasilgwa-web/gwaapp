@@ -779,15 +779,14 @@ export default function SetupReport() {
                                         💡 <strong>Dica:</strong> Este texto é compartilhado por todos os relatórios. Edite com cuidado pois afetará todos os próximos relatórios gerados.
                                     </p>
                                 </div>
-                                <Textarea
+                                <RichTextEditor
                                     value={commentsText}
-                                    onChange={(e) => setCommentsText(e.target.value)}
+                                    onChange={setCommentsText}
                                     placeholder="Digite o texto de comentários e orientações que aparecerá no relatório..."
-                                    rows={20}
-                                    className="font-mono text-xs leading-relaxed"
+                                    minHeight="400px"
                                 />
                                 <p className="text-xs text-slate-500">
-                                    Use linhas em branco para separar parágrafos. O texto será renderizado preservando quebras de linha.
+                                    Use a barra de ferramentas para formatar o texto com negrito, listas, títulos e cores.
                                 </p>
                             </CardContent>
                         )}
