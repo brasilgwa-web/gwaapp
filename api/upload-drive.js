@@ -3,6 +3,14 @@ import { google } from 'googleapis';
 import path from 'path';
 import fs from 'fs';
 
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '15mb',
+        },
+    },
+};
+
 // Vercel Serverless Function
 export default async function handler(request, response) {
     // CORS
