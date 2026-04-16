@@ -329,7 +329,7 @@ export function useReportData(id) {
                             historicalChartData = {
                                 chartSettings,
                                 charts,
-                                clientCity: client?.city_state || ''
+                                clientName: client?.name || ''
                             };
                         } else {
                             // No historical visits found — still show empty charts with VMP bands
@@ -344,7 +344,7 @@ export function useReportData(id) {
                             historicalChartData = {
                                 chartSettings,
                                 charts,
-                                clientCity: client?.city_state || ''
+                                clientName: client?.name || ''
                             };
                         }
                     }

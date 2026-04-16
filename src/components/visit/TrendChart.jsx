@@ -24,7 +24,7 @@ const CHART_COLORS = [
  * TrendChart - Renders a line chart for a single parameter across multiple equipment/points
  * Styled to match the WGA reference images (light blue VMP band, colored lines, etc.)
  */
-export default function TrendChart({ chart, clientCity, periodDays, forPdf = false }) {
+export default function TrendChart({ chart, clientName, periodDays, forPdf = false }) {
     const { testName, unit, minVmp, maxVmp, series } = chart;
 
     // Merge all dates from all series into a unified timeline
@@ -73,7 +73,7 @@ export default function TrendChart({ chart, clientCity, periodDays, forPdf = fal
         }
     };
 
-    const chartTitle = `Trend - Pontos de consumo - ${testName} - ${clientCity || 'BRA'} - Last ${periodDays} days`;
+    const chartTitle = `Trend - Pontos de consumo - ${testName} - ${clientName || ''} - período ${periodDays} dias`;
 
     const containerHeight = forPdf ? 280 : 320;
     const fontSize = forPdf ? 8 : 10;
@@ -82,9 +82,8 @@ export default function TrendChart({ chart, clientCity, periodDays, forPdf = fal
         <div className={`bg-white border border-slate-200 rounded-sm overflow-hidden ${forPdf ? '' : 'mb-6'}`}
              style={forPdf ? { width: '100%', pageBreakInside: 'avoid' } : {}}>
             {/* Header */}
-            <div className="flex justify-between items-center px-4 py-2 border-b border-slate-200">
+            <div className="flex items-center px-4 py-2 border-b border-slate-200">
                 <span className="text-xs font-semibold text-blue-600">{chartTitle}</span>
-                <span className="text-xs text-slate-500 font-medium">All Data Chart</span>
             </div>
 
             {/* Chart */}

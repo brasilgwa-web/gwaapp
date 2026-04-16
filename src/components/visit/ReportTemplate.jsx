@@ -427,7 +427,7 @@ export function ReportTemplate({ data }) {
                                 <TrendChart
                                     key={idx}
                                     chart={chart}
-                                    clientCity={historicalChartData.clientCity}
+                                    clientName={historicalChartData.clientName}
                                     periodDays={historicalChartData.chartSettings?.period_days || 365}
                                 />
                             ))}
