@@ -788,6 +788,24 @@ const ReportPdf = ({ data, settings }) => {
                     </Text>
                 </View>
 
+                {/* --- TREND CHARTS (as images) --- */}
+                {data.chartImages?.length > 0 && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionTitle}>
+                            <View style={{ ...styles.sectionIndicator, backgroundColor: '#0891b2' }} />
+                            <Text>Gráficos de Tendência</Text>
+                        </View>
+                        {data.chartImages.map((imgBase64, idx) => (
+                            <View key={idx} style={{ marginBottom: 10 }}>
+                                <Image
+                                    src={imgBase64}
+                                    style={{ width: '100%', height: 'auto', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 2 }}
+                                />
+                            </View>
+                        ))}
+                    </View>
+                )}
+
                 {/* --- DOSAGES --- */}
                 <View style={styles.section}>
                     <View style={styles.sectionTitle}>

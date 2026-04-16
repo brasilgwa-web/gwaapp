@@ -119,11 +119,13 @@ export function useReportData(id) {
                             // Priority 2: Standard Config (EquipmentTest)
                             const standardConfig = linkedTestsData.find(et => et.test_definition_id === test.id);
 
+                            const getValidVal = (val) => (val !== null && val !== undefined && val !== "") ? val : undefined;
+
                             const effectiveTest = {
                                 ...test,
-                                min_value: customOverride?.min_value ?? standardConfig?.min_value ?? test.min_value,
-                                max_value: customOverride?.max_value ?? standardConfig?.max_value ?? test.max_value,
-                                unit: customOverride?.unit ?? standardConfig?.unit ?? test.unit,
+                                min_value: getValidVal(customOverride?.min_value) ?? getValidVal(standardConfig?.min_value) ?? test.min_value,
+                                max_value: getValidVal(customOverride?.max_value) ?? getValidVal(standardConfig?.max_value) ?? test.max_value,
+                                unit: getValidVal(customOverride?.unit) ?? getValidVal(standardConfig?.unit) ?? test.unit,
                                 result
                             };
 
@@ -206,7 +208,137 @@ export function useReportData(id) {
                 if (cc) clientContact = cc;
             }
 
-            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, technicalResponsibles, selectedTechnicalResponsible, clientContact };
+            // Fetch Chart Settings and Historical Data for Trend Charts
+            let historicalChartData = null;
+            if (visit.client_id) {
+                try {
+                    const { data: chartSettingsArr } = await supabase
+                        .from('client_report_chart_settings')
+                        .select('*')
+                        .eq('client_id', visit.client_id)
+                        .limit(1);
+
+                    const chartSettings = chartSettingsArr?.[0] || null;
+
+                    if (chartSettings?.enabled && chartSettings.selected_test_ids?.length > 0) {
+                        const periodDays = chartSettings.period_days || 365;
+                        const cutoffDate = new Date();
+                        cutoffDate.setDate(cutoffDate.getDate() - periodDays);
+                        const cutoffISO = cutoffDate.toISOString().split('T')[0];
+
+                        // Fetch historical visits
+                        const { data: histVisits } = await supabase
+                            .from('visits')
+                            .select('id, visit_date')
+                            .eq('client_id', visit.client_id)
+                            .gte('visit_date', cutoffISO)
+                            .in('status', ['completed', 'synced'])
+                            .order('visit_date', { ascending: true });
+
+                        if (histVisits?.length > 0) {
+                            const histVisitIds = histVisits.map(v => v.id);
+
+                            // Fetch test results in chunks
+                            let histResults = [];
+                            const chunkSize = 50;
+                            for (let i = 0; i < histVisitIds.length; i += chunkSize) {
+                                const chunk = histVisitIds.slice(i, i + chunkSize);
+                                const { data: results } = await supabase
+                                    .from('test_results')
+                                    .select('*')
+                                    .in('visit_id', chunk)
+                                    .in('test_definition_id', chartSettings.selected_test_ids);
+                                if (results) histResults = [...histResults, ...results];
+                            }
+
+                            // Fetch test definitions for chart names
+                            const { data: chartTestDefs } = await supabase
+                                .from('test_definitions')
+                                .select('*')
+                                .in('id', chartSettings.selected_test_ids);
+
+                            // Build lookup maps (reuse existing data where possible)
+                            const histVisitMap = new Map(histVisits.map(v => [v.id, v]));
+                            const locationMap = new Map(allLocations.map(l => [l.id, l]));
+                            const equipCatalogMap = new Map(allEquipments.map(e => [e.id, e]));
+                            const locEquipLookup = new Map(allLocationEquipments.map(le => [le.id, le]));
+
+                            const getPointName = (equipmentId) => {
+                                const locEquip = locEquipLookup.get(equipmentId);
+                                if (locEquip) {
+                                    const loc = locationMap.get(locEquip.location_id);
+                                    const equip = equipCatalogMap.get(locEquip.equipment_id);
+                                    return `${equip?.name || 'Equipamento'} | ${loc?.name || 'Local'}`;
+                                }
+                                const equip = equipCatalogMap.get(equipmentId);
+                                return equip?.name || 'Ponto';
+                            };
+
+                            const CHART_COLORS = ['#2563eb', '#dc2626', '#0ea5e9', '#eab308', '#16a34a', '#8b5cf6', '#f97316', '#06b6d4', '#ec4899', '#14b8a6'];
+
+                            // Deterministic hash: same equipmentId always gets the same color
+                            const hashToIndex = (str, max) => {
+                                let hash = 0;
+                                for (let i = 0; i < str.length; i++) {
+                                    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                                    hash |= 0;
+                                }
+                                return Math.abs(hash) % max;
+                            };
+
+                            const charts = (chartTestDefs || []).map(testDef => {
+                                const testResults = histResults.filter(r => r.test_definition_id === testDef.id);
+                                if (testResults.length === 0) return null;
+
+                                const byEquipment = {};
+                                testResults.forEach(r => {
+                                    const eqId = r.equipment_id;
+                                    if (!byEquipment[eqId]) {
+                                        byEquipment[eqId] = { name: getPointName(eqId), data: [] };
+                                    }
+                                    const hv = histVisitMap.get(r.visit_id);
+                                    if (hv && r.measured_value !== null && r.measured_value !== undefined && r.measured_value !== '') {
+                                        const numVal = parseFloat(r.measured_value);
+                                        if (!isNaN(numVal)) {
+                                            byEquipment[eqId].data.push({ date: hv.visit_date, value: numVal });
+                                        }
+                                    }
+                                });
+
+                                const series = Object.entries(byEquipment)
+                                    .filter(([_, s]) => s.data.length > 0)
+                                    .map(([eqId, s]) => ({
+                                        ...s,
+                                        color: CHART_COLORS[hashToIndex(eqId, CHART_COLORS.length)],
+                                        data: s.data.sort((a, b) => a.date.localeCompare(b.date))
+                                    }));
+
+                                if (series.length === 0) return null;
+
+                                return {
+                                    testId: testDef.id,
+                                    testName: testDef.name,
+                                    unit: testDef.unit || '',
+                                    minVmp: testDef.min_value !== null ? parseFloat(testDef.min_value) : null,
+                                    maxVmp: testDef.max_value !== null ? parseFloat(testDef.max_value) : null,
+                                    series
+                                };
+                            }).filter(Boolean);
+
+                            historicalChartData = {
+                                chartSettings,
+                                charts,
+                                clientCity: client?.city_state || ''
+                            };
+                        }
+                    }
+                } catch (chartError) {
+                    console.warn('Error fetching chart data:', chartError);
+                    // Non-critical: don't block report generation
+                }
+            }
+
+            return { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, technicalResponsibles, selectedTechnicalResponsible, clientContact, historicalChartData };
         },
         // Cache for 5 minutes
         staleTime: 1000 * 60 * 5

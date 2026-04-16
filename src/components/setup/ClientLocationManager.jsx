@@ -16,6 +16,7 @@ import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 // V1.2 Managers
 import ClientInventoryManager from "./ClientInventoryManager";
 import ClientEquipmentManager from "./ClientEquipmentManager";
+import ClientChartSettingsManager from "./ClientChartSettingsManager";
 
 function SortableClientRow({ client, sortOrder, openEditClient, removeClient, setSelectedClient, setView, index }) {
     const {
@@ -207,6 +208,9 @@ export default function ClientLocationManager() {
 
                 {/* Equipments Section (Full Width) */}
                 <ClientEquipmentManager client={selectedClient} />
+
+                {/* Chart Settings Section */}
+                <ClientChartSettingsManager client={selectedClient} />
             </div>
         );
     }

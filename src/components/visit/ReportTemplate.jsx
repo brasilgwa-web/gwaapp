@@ -3,6 +3,7 @@ import React from 'react';
 import { formatDateAsLocal } from '@/lib/utils';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import TrendChart from './TrendChart';
 
 // Helper para converter markdown básico em HTML
 function renderMarkdown(text) {
@@ -188,7 +189,7 @@ function CoverPage({ settings }) {
 }
 
 export function ReportTemplate({ data }) {
-    const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, clientContact } = data;
+    const { visit, client, primaryLocation, fullReportStructure, photos, technicianUser, reportSettings, clientContact, historicalChartData } = data;
 
 
     // Technician and Visit Metadata
@@ -413,6 +414,26 @@ export function ReportTemplate({ data }) {
                         <span className="font-semibold text-slate-700">Legenda:</span> VMP - Valor Máximo Permitido | LQ - Limite de Quantificação | LD - Limite Mínimo Detectável | Incerteza: Percentual de Incerteza Expandida
                     </div>
                 </section>
+
+                {/* 1.5 Gráficos de Tendência */}
+                {historicalChartData?.charts?.length > 0 && (
+                    <section className="mb-8">
+                        <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-4 flex items-center gap-2">
+                            <span className="bg-cyan-600 w-1 h-4 block rounded-sm"></span>
+                            Gráficos de Tendência
+                        </h2>
+                        <div className="space-y-4">
+                            {historicalChartData.charts.map((chart, idx) => (
+                                <TrendChart
+                                    key={idx}
+                                    chart={chart}
+                                    clientCity={historicalChartData.clientCity}
+                                    periodDays={historicalChartData.chartSettings?.period_days || 365}
+                                />
+                            ))}
+                        </div>
+                    </section>
+                )}
 
                 {/* 2. Quadro de Dosagens */}
                 <section className="mb-8">

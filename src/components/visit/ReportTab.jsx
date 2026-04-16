@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from "@/lib/supabase";
 import { generateTechnicalAnalysis } from "@/lib/gemini";
@@ -633,6 +633,111 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     })
                 );
                 data.photos = photosWithBase64;
+            }
+
+            // --- GENERATE TREND CHART IMAGES FOR PDF ---
+            if (data.historicalChartData?.charts?.length > 0) {
+                setUploadStatus('Gerando gráficos de tendência...');
+                try {
+                    const chartImages = [];
+                    const { createRoot } = await import('react-dom/client');
+                    const { renderToStaticMarkup } = await import('react-dom/server');
+
+                    for (const chart of data.historicalChartData.charts) {
+                        try {
+                            // Create a temporary container for the chart
+                            const container = document.createElement('div');
+                            container.style.width = '800px';
+                            container.style.height = '340px';
+                            container.style.position = 'fixed';
+                            container.style.left = '-9999px';
+                            container.style.top = '0';
+                            container.style.backgroundColor = 'white';
+                            document.body.appendChild(container);
+
+                            // Dynamically import TrendChart
+                            const { default: TrendChart } = await import('./TrendChart');
+
+                            // Render into container
+                            const root = createRoot(container);
+                            await new Promise((resolve) => {
+                                root.render(
+                                    <TrendChart
+                                        chart={chart}
+                                        clientCity={data.historicalChartData.clientCity}
+                                        periodDays={data.historicalChartData.chartSettings?.period_days || 365}
+                                        forPdf={true}
+                                    />
+                                );
+                                // Wait for Recharts to render (it uses requestAnimationFrame)
+                                setTimeout(resolve, 500);
+                            });
+
+                            // Get SVG from the rendered chart
+                            const svgElement = container.querySelector('.recharts-wrapper svg');
+                            if (svgElement) {
+                                // Clone the entire container content for full rendering
+                                const canvas = document.createElement('canvas');
+                                const scale = 2; // High DPI
+                                canvas.width = 800 * scale;
+                                canvas.height = 340 * scale;
+                                const ctx = canvas.getContext('2d');
+                                ctx.scale(scale, scale);
+                                ctx.fillStyle = 'white';
+                                ctx.fillRect(0, 0, 800, 340);
+
+                                // Serialize SVG
+                                const svgData = new XMLSerializer().serializeToString(svgElement);
+                                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                                const svgUrl = URL.createObjectURL(svgBlob);
+
+                                const img = new Image();
+                                await new Promise((resolve, reject) => {
+                                    img.onload = resolve;
+                                    img.onerror = reject;
+                                    img.src = svgUrl;
+                                });
+
+                                // Draw header text
+                                const chartTitle = `Trend - ${chart.testName} - ${data.historicalChartData.clientCity || 'BRA'} - Last ${data.historicalChartData.chartSettings?.period_days || 365} days`;
+                                ctx.font = 'bold 11px sans-serif';
+                                ctx.fillStyle = '#2563eb';
+                                ctx.fillText(chartTitle, 16, 20);
+
+                                // Draw chart SVG
+                                ctx.drawImage(img, 0, 30, 800, 260);
+
+                                // Draw legend
+                                let legendX = 16;
+                                const legendY = 305;
+                                ctx.font = '9px sans-serif';
+                                chart.series.forEach((s, idx) => {
+                                    ctx.fillStyle = s.color || '#2563eb';
+                                    ctx.fillRect(legendX, legendY - 6, 10, 10);
+                                    ctx.fillStyle = '#334155';
+                                    ctx.fillText(`${chart.testName} - ${s.name}`, legendX + 14, legendY + 3);
+                                    legendX += ctx.measureText(`${chart.testName} - ${s.name}`).width + 30;
+                                });
+
+                                URL.revokeObjectURL(svgUrl);
+
+                                const base64 = canvas.toDataURL('image/png', 0.9);
+                                chartImages.push(base64);
+                            }
+
+                            root.unmount();
+                            document.body.removeChild(container);
+                        } catch (chartErr) {
+                            console.warn('Failed to generate chart image for', chart.testName, chartErr);
+                        }
+                    }
+
+                    // Attach chart images to data for PDF
+                    data.chartImages = chartImages;
+                } catch (chartGenErr) {
+                    console.warn('Chart image generation failed:', chartGenErr);
+                    data.chartImages = [];
+                }
             }
 
             setUploadStatus('Gerando PDF Nativo...');
