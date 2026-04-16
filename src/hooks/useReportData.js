@@ -232,8 +232,14 @@ export function useReportData(id) {
                             .select('id, visit_date')
                             .eq('client_id', visit.client_id)
                             .gte('visit_date', cutoffISO)
-                            .in('status', ['completed', 'synced'])
+                            .not('status', 'eq', 'draft') // Include all non-draft visits (in_progress, completed, synced)
                             .order('visit_date', { ascending: true });
+
+                        // Fetch test definitions for chart names (needed even if no historical visits)
+                        const { data: chartTestDefs } = await supabase
+                            .from('test_definitions')
+                            .select('*')
+                            .in('id', chartSettings.selected_test_ids);
 
                         if (histVisits?.length > 0) {
                             const histVisitIds = histVisits.map(v => v.id);
@@ -251,11 +257,7 @@ export function useReportData(id) {
                                 if (results) histResults = [...histResults, ...results];
                             }
 
-                            // Fetch test definitions for chart names
-                            const { data: chartTestDefs } = await supabase
-                                .from('test_definitions')
-                                .select('*')
-                                .in('id', chartSettings.selected_test_ids);
+                            // chartTestDefs already fetched above
 
                             // Build lookup maps (reuse existing data where possible)
                             const histVisitMap = new Map(histVisits.map(v => [v.id, v]));
@@ -313,8 +315,7 @@ export function useReportData(id) {
                                         data: s.data.sort((a, b) => a.date.localeCompare(b.date))
                                     }));
 
-                                if (series.length === 0) return null;
-
+                            // Always include the chart entry — even if series is empty (shows VMP band + empty state)
                                 return {
                                     testId: testDef.id,
                                     testName: testDef.name,
@@ -323,8 +324,23 @@ export function useReportData(id) {
                                     maxVmp: testDef.max_value !== null ? parseFloat(testDef.max_value) : null,
                                     series
                                 };
-                            }).filter(Boolean);
+                            });
 
+                            historicalChartData = {
+                                chartSettings,
+                                charts,
+                                clientCity: client?.city_state || ''
+                            };
+                        } else {
+                            // No historical visits found — still show empty charts with VMP bands
+                            const charts = (chartTestDefs || []).map(testDef => ({
+                                testId: testDef.id,
+                                testName: testDef.name,
+                                unit: testDef.unit || '',
+                                minVmp: testDef.min_value !== null ? parseFloat(testDef.min_value) : null,
+                                maxVmp: testDef.max_value !== null ? parseFloat(testDef.max_value) : null,
+                                series: []
+                            }));
                             historicalChartData = {
                                 chartSettings,
                                 charts,

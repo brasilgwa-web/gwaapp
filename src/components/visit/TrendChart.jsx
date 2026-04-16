@@ -88,7 +88,16 @@ export default function TrendChart({ chart, clientCity, periodDays, forPdf = fal
             </div>
 
             {/* Chart */}
-            <div style={{ width: '100%', height: containerHeight }} className="px-2 pt-2">
+            <div style={{ width: '100%', height: containerHeight }} className="px-2 pt-2 relative">
+                {series.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                        <div className="bg-white/80 rounded-lg px-4 py-2 text-center">
+                            <p className="text-xs text-slate-400 italic">
+                                Sem dados históricos para este parâmetro no período selecionado
+                            </p>
+                        </div>
+                    </div>
+                )}
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={mergedData} margin={{ top: 10, right: 40, left: 10, bottom: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
