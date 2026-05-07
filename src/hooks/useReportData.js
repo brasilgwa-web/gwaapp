@@ -265,87 +265,53 @@ export function useReportData(id) {
                             const equipCatalogMap = new Map(allEquipments.map(e => [e.id, e]));
                             const locEquipLookup = new Map(allLocationEquipments.map(le => [le.id, le]));
 
-                            const getPointName = (equipmentId) => {
-                                const locEquip = locEquipLookup.get(equipmentId);
-                                if (locEquip) {
-                                    const loc = locationMap.get(locEquip.location_id);
-                                    const equip = equipCatalogMap.get(locEquip.equipment_id);
-                                    return `${equip?.name || 'Equipamento'} | ${loc?.name || 'Local'}`;
-                                }
-                                const equip = equipCatalogMap.get(equipmentId);
-                                return equip?.name || 'Ponto';
-                            };
-
                             const CHART_COLORS = ['#2563eb', '#dc2626', '#0ea5e9', '#eab308', '#16a34a', '#8b5cf6', '#f97316', '#06b6d4', '#ec4899', '#14b8a6'];
+                            const testDefMap = new Map((chartTestDefs || []).map(t => [t.id, t]));
+                            const selectedTestIds = chartSettings.selected_test_ids || [];
 
-                            // Deterministic hash: same equipmentId always gets the same color
-                            const hashToIndex = (str, max) => {
-                                let hash = 0;
-                                for (let i = 0; i < str.length; i++) {
-                                    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                                    hash |= 0;
-                                }
-                                return Math.abs(hash) % max;
-                            };
+                            // Group by equipment: one chart per equipment showing all configured tests
+                            const allEquipmentIds = [...new Set(histResults.map(r => r.equipment_id))];
 
-                            const charts = (chartTestDefs || []).map(testDef => {
-                                const testResults = histResults.filter(r => r.test_definition_id === testDef.id);
-                                if (testResults.length === 0) return null;
+                            const charts = allEquipmentIds.map(eqId => {
+                                const locEquip = locEquipLookup.get(eqId);
+                                const loc = locEquip ? locationMap.get(locEquip.location_id) : null;
+                                const equip = locEquip ? equipCatalogMap.get(locEquip.equipment_id) : null;
+                                const equipmentName = equip?.name || 'Equipamento';
+                                const locationName = loc?.name || '';
 
-                                const byEquipment = {};
-                                testResults.forEach(r => {
-                                    const eqId = r.equipment_id;
-                                    if (!byEquipment[eqId]) {
-                                        byEquipment[eqId] = { name: getPointName(eqId), data: [] };
-                                    }
-                                    const hv = histVisitMap.get(r.visit_id);
-                                    if (hv && r.measured_value !== null && r.measured_value !== undefined && r.measured_value !== '') {
-                                        const numVal = parseFloat(r.measured_value);
-                                        if (!isNaN(numVal)) {
-                                            byEquipment[eqId].data.push({ date: hv.visit_date, value: numVal });
-                                        }
-                                    }
-                                });
+                                const tests = selectedTestIds.map((testId, testIdx) => {
+                                    const testDef = testDefMap.get(testId);
+                                    if (!testDef) return null;
 
-                                const series = Object.entries(byEquipment)
-                                    .filter(([_, s]) => s.data.length > 0)
-                                    .map(([eqId, s]) => ({
-                                        ...s,
-                                        color: CHART_COLORS[hashToIndex(eqId, CHART_COLORS.length)],
-                                        data: s.data.sort((a, b) => a.date.localeCompare(b.date))
-                                    }));
+                                    const data = histResults
+                                        .filter(r => r.equipment_id === eqId && r.test_definition_id === testId)
+                                        .map(r => {
+                                            const hv = histVisitMap.get(r.visit_id);
+                                            if (!hv || r.measured_value === null || r.measured_value === undefined || r.measured_value === '') return null;
+                                            const numVal = parseFloat(r.measured_value);
+                                            if (isNaN(numVal)) return null;
+                                            return { date: hv.visit_date, value: numVal };
+                                        })
+                                        .filter(Boolean)
+                                        .sort((a, b) => a.date.localeCompare(b.date));
 
-                            // Always include the chart entry — even if series is empty (shows VMP band + empty state)
-                                return {
-                                    testId: testDef.id,
-                                    testName: testDef.name,
-                                    unit: testDef.unit || '',
-                                    minVmp: testDef.min_value !== null ? parseFloat(testDef.min_value) : null,
-                                    maxVmp: testDef.max_value !== null ? parseFloat(testDef.max_value) : null,
-                                    series
-                                };
-                            });
+                                    if (data.length === 0) return null;
+                                    return {
+                                        testId, testName: testDef.name, unit: testDef.unit || '',
+                                        minVmp: testDef.min_value !== null ? parseFloat(testDef.min_value) : null,
+                                        maxVmp: testDef.max_value !== null ? parseFloat(testDef.max_value) : null,
+                                        color: CHART_COLORS[testIdx % CHART_COLORS.length],
+                                        data
+                                    };
+                                }).filter(Boolean);
 
-                            historicalChartData = {
-                                chartSettings,
-                                charts,
-                                clientName: client?.name || ''
-                            };
+                                if (tests.length === 0) return null;
+                                return { equipmentId: eqId, equipmentName, locationName, tests };
+                            }).filter(Boolean);
+
+                            historicalChartData = { chartSettings, charts, clientName: client?.name || '' };
                         } else {
-                            // No historical visits found — still show empty charts with VMP bands
-                            const charts = (chartTestDefs || []).map(testDef => ({
-                                testId: testDef.id,
-                                testName: testDef.name,
-                                unit: testDef.unit || '',
-                                minVmp: testDef.min_value !== null ? parseFloat(testDef.min_value) : null,
-                                maxVmp: testDef.max_value !== null ? parseFloat(testDef.max_value) : null,
-                                series: []
-                            }));
-                            historicalChartData = {
-                                chartSettings,
-                                charts,
-                                clientName: client?.name || ''
-                            };
+                            historicalChartData = { chartSettings, charts: [], clientName: client?.name || '' };
                         }
                     }
                 } catch (chartError) {

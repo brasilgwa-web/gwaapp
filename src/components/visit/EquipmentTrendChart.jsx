@@ -35,7 +35,7 @@ const CustomTooltip = ({ active, payload, label, tests }) => {
 };
 
 export default function EquipmentTrendChart({ chart, clientName, periodDays, forPdf = false }) {
-    const { equipmentName, locationName, tests } = chart;
+    const { equipmentName = '', locationName = '', tests = [] } = chart || {};
 
     // Merge all dates from all tests into unified timeline
     const mergedData = useMemo(() => {
