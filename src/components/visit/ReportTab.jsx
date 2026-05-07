@@ -687,16 +687,16 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             container.style.backgroundColor = 'white';
                             document.body.appendChild(container);
 
-                            // Dynamically import TrendChart
-                            const { default: TrendChart } = await import('./TrendChart');
+                            // Dynamically import EquipmentTrendChart
+                            const { default: EquipmentTrendChart } = await import('./EquipmentTrendChart');
 
                             // Render into container
                             const root = createRoot(container);
                             await new Promise((resolve) => {
                                 root.render(
-                                    <TrendChart
+                                    <EquipmentTrendChart
                                         chart={chart}
-                                        clientCity={data.historicalChartData.clientCity}
+                                        clientName={data.historicalChartData.clientName}
                                         periodDays={data.historicalChartData.chartSettings?.period_days || 365}
                                         forPdf={true}
                                     />

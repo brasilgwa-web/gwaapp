@@ -15,16 +15,6 @@ const CHART_COLORS = [
     '#14b8a6', // teal-500
 ];
 
-// Deterministic hash function: same equipmentId always gets the same color
-function hashStringToIndex(str, max) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return Math.abs(hash) % max;
-}
 
 export function useHistoricalChartData(clientId, enabled = true) {
     return useQuery({
@@ -125,70 +115,58 @@ export function useHistoricalChartData(clientId, enabled = true) {
             const equipMap = new Map(allEquipments.map(e => [e.id, e]));
             const locEquipMap = new Map(allLocEquips.map(le => [le.id, le]));
 
-            // Get equipment name for a location_equipment_id (used as equipment_id in results)
-            const getPointName = (equipmentId) => {
-                // equipmentId in test_results might be location_equipment ID or catalog equipment ID
-                const locEquip = locEquipMap.get(equipmentId);
-                if (locEquip) {
-                    const loc = locationMap.get(locEquip.location_id);
-                    const equip = equipMap.get(locEquip.equipment_id);
-                    return `${equip?.name || 'Equipamento'} | ${loc?.name || 'Local'}`;
-                }
-                // Fallback: try catalog equipment
-                const equip = equipMap.get(equipmentId);
-                return equip?.name || 'Ponto';
-            };
+            // 6. Build chart data grouped by equipment
+            const testDefMap = new Map((testDefs || []).map(t => [t.id, t]));
 
-            // 6. Build chart data grouped by test_definition
-            const charts = (testDefs || []).map(testDef => {
-                const testResults = allResults.filter(r => r.test_definition_id === testDef.id);
+            // Collect all equipment IDs that have results
+            const allEquipmentIds = [...new Set(allResults.map(r => r.equipment_id))];
 
-                if (testResults.length === 0) return null;
+            const charts = allEquipmentIds.map(eqId => {
+                const eqResults = allResults.filter(r => r.equipment_id === eqId);
+                if (eqResults.length === 0) return null;
 
-                // Group by equipment (point of consumption)
-                const byEquipment = {};
-                testResults.forEach(r => {
-                    const eqId = r.equipment_id;
-                    if (!byEquipment[eqId]) {
-                        byEquipment[eqId] = {
-                            name: getPointName(eqId),
-                            data: []
-                        };
-                    }
-                    const visit = visitMap.get(r.visit_id);
-                    if (visit && r.measured_value !== null && r.measured_value !== undefined && r.measured_value !== '') {
-                        const numValue = parseFloat(r.measured_value);
-                        if (!isNaN(numValue)) {
-                            byEquipment[eqId].data.push({
-                                date: visit.visit_date,
-                                value: numValue,
-                                visitId: visit.id
-                            });
-                        }
-                    }
-                });
+                // Resolve equipment name and location
+                const locEquip = locEquipMap.get(eqId);
+                const loc = locEquip ? locationMap.get(locEquip.location_id) : null;
+                const equip = locEquip ? equipMap.get(locEquip.equipment_id) : null;
+                const equipmentName = equip?.name || 'Equipamento';
+                const locationName = loc?.name || '';
 
-                // Sort each series by date
-                const series = Object.entries(byEquipment)
-                    .filter(([_, s]) => s.data.length > 0)
-                    .map(([eqId, s]) => ({
-                        ...s,
-                        color: CHART_COLORS[hashStringToIndex(eqId, CHART_COLORS.length)],
-                        data: s.data.sort((a, b) => a.date.localeCompare(b.date))
-                    }));
+                // Build one series per test for this equipment
+                const tests = selectedTestIds.map((testId, testIdx) => {
+                    const testDef = testDefMap.get(testId);
+                    if (!testDef) return null;
 
-                if (series.length === 0) return null;
+                    const testResults = eqResults.filter(r => r.test_definition_id === testId);
+                    if (testResults.length === 0) return null;
 
-                // Fetch VMP from equipment_tests or test_definition
-                // Use test_definition min/max as default
-                return {
-                    testId: testDef.id,
-                    testName: testDef.name,
-                    unit: testDef.unit || '',
-                    minVmp: testDef.min_value !== null ? parseFloat(testDef.min_value) : null,
-                    maxVmp: testDef.max_value !== null ? parseFloat(testDef.max_value) : null,
-                    series
-                };
+                    const data = testResults
+                        .map(r => {
+                            const visit = visitMap.get(r.visit_id);
+                            if (!visit || r.measured_value === null || r.measured_value === undefined || r.measured_value === '') return null;
+                            const numValue = parseFloat(r.measured_value);
+                            if (isNaN(numValue)) return null;
+                            return { date: visit.visit_date, value: numValue };
+                        })
+                        .filter(Boolean)
+                        .sort((a, b) => a.date.localeCompare(b.date));
+
+                    if (data.length === 0) return null;
+
+                    return {
+                        testId,
+                        testName: testDef.name,
+                        unit: testDef.unit || '',
+                        minVmp: testDef.min_value !== null ? parseFloat(testDef.min_value) : null,
+                        maxVmp: testDef.max_value !== null ? parseFloat(testDef.max_value) : null,
+                        color: CHART_COLORS[testIdx % CHART_COLORS.length],
+                        data
+                    };
+                }).filter(Boolean);
+
+                if (tests.length === 0) return null;
+
+                return { equipmentId: eqId, equipmentName, locationName, tests };
             }).filter(Boolean);
 
             // Get client city for chart title

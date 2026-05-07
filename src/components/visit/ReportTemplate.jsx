@@ -3,7 +3,7 @@ import React from 'react';
 import { formatDateAsLocal } from '@/lib/utils';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import TrendChart from './TrendChart';
+import EquipmentTrendChart from './EquipmentTrendChart';
 
 // Helper para converter markdown básico em HTML
 function renderMarkdown(text) {
@@ -424,7 +424,7 @@ export function ReportTemplate({ data }) {
                         </h2>
                         <div className="space-y-4">
                             {historicalChartData.charts.map((chart, idx) => (
-                                <TrendChart
+                                <EquipmentTrendChart
                                     key={idx}
                                     chart={chart}
                                     clientName={historicalChartData.clientName}
