@@ -37,6 +37,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const [observations, setObservations] = useState(visit.observations || '');
     const [generalObservations, setGeneralObservations] = useState(visit.general_observations || '');
     const [discharges, setDischarges] = useState(visit.discharges_drainages || '');
+    const obsDebounceRef = useRef(null);
+    const genObsDebounceRef = useRef(null);
     const [arrivalTime, setArrivalTime] = useState(visit.arrival_time || '');
     const [departureTime, setDepartureTime] = useState(visit.departure_time || '');
     const [clientAbsent, setClientAbsent] = useState(visit.client_absent || false);
@@ -196,6 +198,36 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const handleBlur = (field, value) => {
         if (readOnly) return;
         updateMutation.mutate({ [field]: value });
+    };
+
+    const handleObsChange = (value) => {
+        setObservations(value);
+        if (readOnly) return;
+        clearTimeout(obsDebounceRef.current);
+        obsDebounceRef.current = setTimeout(() => {
+            updateMutation.mutate({ observations: value });
+        }, 2000);
+    };
+
+    const handleObsBlur = () => {
+        if (readOnly) return;
+        clearTimeout(obsDebounceRef.current);
+        updateMutation.mutate({ observations });
+    };
+
+    const handleGenObsChange = (value) => {
+        setGeneralObservations(value);
+        if (readOnly) return;
+        clearTimeout(genObsDebounceRef.current);
+        genObsDebounceRef.current = setTimeout(() => {
+            updateMutation.mutate({ general_observations: value });
+        }, 2000);
+    };
+
+    const handleGenObsBlur = () => {
+        if (readOnly) return;
+        clearTimeout(genObsDebounceRef.current);
+        updateMutation.mutate({ general_observations: generalObservations });
     };
 
     const handleGenerateAI = async () => {
@@ -963,8 +995,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     ) : (
                         <Textarea
                             value={observations}
-                            onChange={(e) => setObservations(e.target.value)}
-                            onBlur={() => handleBlur('observations', observations)}
+                            onChange={(e) => handleObsChange(e.target.value)}
+                            onBlur={handleObsBlur}
                             className="min-h-[150px]"
                             placeholder="Descreva a análise técnica..."
                             disabled={readOnly}
@@ -1009,8 +1041,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 <CardContent>
                     <Textarea
                         value={generalObservations}
-                        onChange={(e) => setGeneralObservations(e.target.value)}
-                        onBlur={() => handleBlur('general_observations', generalObservations)}
+                        onChange={(e) => handleGenObsChange(e.target.value)}
+                        onBlur={handleGenObsBlur}
                         className="min-h-[100px]"
                         placeholder="Observações gerais..."
                         disabled={readOnly}

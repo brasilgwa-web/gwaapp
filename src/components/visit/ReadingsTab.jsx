@@ -18,6 +18,7 @@ export default function ReadingsTab({ visit, readOnly }) {
     const [openItems, setOpenItems] = React.useState({});
     const [allExpanded, setAllExpanded] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
+    const [localValues, setLocalValues] = React.useState({});
 
     const toggleItem = (id) => {
         setOpenItems(prev => ({ ...prev, [id]: !prev[id] }));
@@ -51,8 +52,10 @@ export default function ReadingsTab({ visit, readOnly }) {
     const saveResultMutation = useMutation({
         mutationFn: async ({ testId, equipmentId, value, min, max, tolerance }) => {
             setIsSaving(true);
-            const numValue = parseFloat(value);
-            const status = calculateStatus(value, min, max, tolerance);
+            const isEmpty = value === '' || value === null || value === undefined;
+            const numValue = isEmpty ? null : parseFloat(value);
+            if (!isEmpty && isNaN(numValue)) return;
+            const status = isEmpty ? 'neutral' : calculateStatus(numValue, min, max, tolerance);
 
             // Check if record exists
             const { data: existingData } = await supabase
@@ -151,13 +154,20 @@ export default function ReadingsTab({ visit, readOnly }) {
     });
 
     // --- Helpers ---
+    const handleValueChange = (testId, equipmentId, value) => {
+        setLocalValues(prev => ({ ...prev, [`${testId}_${equipmentId}`]: value }));
+    };
+
     const handleBlur = (test, equipmentId, value) => {
-        if (value === '') return;
+        setLocalValues(prev => {
+            const next = { ...prev };
+            delete next[`${test.id}_${equipmentId}`];
+            return next;
+        });
         saveResultMutation.mutate({
             testId: test.id,
             equipmentId,
             value,
-            // Use effective limits (already calculated in data prep with overrides)
             min: test.min_value,
             max: test.max_value,
             tolerance: test.tolerance_percent
@@ -408,9 +418,10 @@ export default function ReadingsTab({ visit, readOnly }) {
                                                         <span className="text-xs text-slate-500">VMP: {test.min_value} - {test.max_value} {test.unit}</span>
                                                         <Input
                                                             type="number" step="0.01"
-                                                            defaultValue={result?.measured_value}
+                                                            value={localValues[`${test.id}_${equipment.id}`] ?? result?.measured_value?.toString() ?? ''}
                                                             placeholder="Resultado"
                                                             className={`h-9 flex-1 text-right font-mono ${getStatusColor(status)}`}
+                                                            onChange={(e) => handleValueChange(test.id, equipment.id, e.target.value)}
                                                             onBlur={(e) => handleBlur(test, equipment.id, e.target.value)}
                                                             disabled={readOnly}
                                                         />
@@ -448,8 +459,11 @@ export default function ReadingsTab({ visit, readOnly }) {
                                                             <td className="px-4 py-2 text-center text-slate-500 text-xs">{test.unit}</td>
                                                             <td className="px-4 py-1.5 text-right">
                                                                 <Input
-                                                                    type="number" step="0.01" defaultValue={result?.measured_value} placeholder="-"
+                                                                    type="number" step="0.01"
+                                                                    value={localValues[`${test.id}_${equipment.id}`] ?? result?.measured_value?.toString() ?? ''}
+                                                                    placeholder="-"
                                                                     className={`h-7 w-24 ml-auto text-right font-mono text-sm ${getStatusColor(status)}`}
+                                                                    onChange={(e) => handleValueChange(test.id, equipment.id, e.target.value)}
                                                                     onBlur={(e) => handleBlur(test, equipment.id, e.target.value)}
                                                                     disabled={readOnly}
                                                                 />

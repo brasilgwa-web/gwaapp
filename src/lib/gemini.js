@@ -303,28 +303,40 @@ ${contextData.dosagesText || 'N/A'}
         }
     }
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${aiSettings.apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents: contents,
-            systemInstruction: {
-                parts: [{ text: systemInstructionText }]
-            },
-            generationConfig: {
-                temperature: 0.5, // Reduced temperature for more deterministic/strict behavior
-                maxOutputTokens: 1000,
+    const makeChatRequest = async (attempt = 1, maxAttempts = 3, delayMs = 3000) => {
+        try {
+            const response = await fetch(`${GEMINI_API_URL}?key=${aiSettings.apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents,
+                    systemInstruction: { parts: [{ text: systemInstructionText }] },
+                    generationConfig: { temperature: 0.5, maxOutputTokens: 1000 }
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                const errMsg = err.error?.message || 'Erro no chat IA';
+                if ((errMsg.includes('overloaded') || response.status === 429) && attempt < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                    return makeChatRequest(attempt + 1, maxAttempts, delayMs);
+                }
+                throw new Error(errMsg);
             }
-        })
-    });
 
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || 'Erro no chat IA');
-    }
+            const data = await response.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
+        } catch (error) {
+            if (attempt < maxAttempts && (error.name === 'TypeError' || error.message.includes('overloaded'))) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                return makeChatRequest(attempt + 1, maxAttempts, delayMs);
+            }
+            throw error;
+        }
+    };
 
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
+    return makeChatRequest();
 }
 
 export default { generateTechnicalAnalysis, chatWithAI };

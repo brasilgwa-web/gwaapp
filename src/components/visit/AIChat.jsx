@@ -47,7 +47,13 @@ export default function AIChat({ visit, results, dosages, isOpen, onClose }) {
                 dosagesText
             };
 
-            const responseText = await chatWithAI(newMessages, contextData);
+            // Limita histórico a 20 mensagens (10 pares) para evitar estouro de tokens
+            const MAX_HISTORY = 20;
+            const trimmedMessages = newMessages.length > MAX_HISTORY
+                ? [newMessages[0], ...newMessages.slice(-MAX_HISTORY + 1)]
+                : newMessages;
+
+            const responseText = await chatWithAI(trimmedMessages, contextData);
 
             setMessages(prev => [...prev, { role: 'model', content: responseText }]);
         } catch (error) {
