@@ -2,7 +2,9 @@ import React from 'react';
 import {
     Dialog,
     DialogContent,
+    DialogTitle,
 } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { cn } from "@/lib/utils";
@@ -83,6 +85,7 @@ export function OperationModal({
                     if (status === 'loading') e.preventDefault();
                 }}
             >
+                <VisuallyHidden><DialogTitle>{config?.title || 'Operação'}</DialogTitle></VisuallyHidden>
                 <div className="flex flex-col items-center justify-center py-6 space-y-4">
                     {/* Ícone */}
                     <div className={cn(
