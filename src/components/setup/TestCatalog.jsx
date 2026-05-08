@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, ArrowUpDown, Search } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowUpDown, Search, BarChart2 } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
@@ -81,6 +82,13 @@ export default function TestCatalog() {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['testDefinitions'] }),
     });
 
+    const [showInChartForm, setShowInChartForm] = useState(false);
+
+    const toggleShowInChart = useMutation({
+        mutationFn: ({ id, value }) => TestDefinition.update(id, { show_in_chart: value }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['testDefinitions'] }),
+    });
+
     const handleSubmit = (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -90,13 +98,13 @@ export default function TestCatalog() {
             min_value: parseFloat(formData.get('min_value')),
             max_value: parseFloat(formData.get('max_value')),
             tolerance_percent: parseFloat(formData.get('tolerance_percent') || 10),
-            // V1.1 New Fields
             dilution_factor: parseFloat(formData.get('dilution_factor') || 1),
             ld: formData.get('ld'),
             lq: formData.get('lq'),
             method_uncertainty: formData.get('method_uncertainty'),
             methodology: formData.get('methodology'),
-            observation: formData.get('observation')
+            observation: formData.get('observation'),
+            show_in_chart: showInChartForm,
         };
 
         if (editingTest) {
@@ -108,11 +116,13 @@ export default function TestCatalog() {
 
     const openEdit = (test) => {
         setEditingTest(test);
+        setShowInChartForm(test?.show_in_chart || false);
         setIsDialogOpen(true);
     };
 
     const openNew = () => {
         setEditingTest(null);
+        setShowInChartForm(false);
         setIsDialogOpen(true);
     };
 
@@ -241,6 +251,18 @@ export default function TestCatalog() {
 
                                 <div className="grid gap-2"><Label>Observação Padrão</Label><Input name="observation" defaultValue={editingTest?.observation} /></div>
 
+                                <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                    <Checkbox
+                                        id="show_in_chart"
+                                        checked={showInChartForm}
+                                        onCheckedChange={setShowInChartForm}
+                                    />
+                                    <Label htmlFor="show_in_chart" className="text-sm font-medium text-blue-900 cursor-pointer flex items-center gap-2">
+                                        <BarChart2 className="w-4 h-4" />
+                                        Exibir nos gráficos de relatório (padrão global)
+                                    </Label>
+                                </div>
+
                                 <DialogFooter>
                                     <Button type="submit">{editingTest ? 'Salvar Alterações' : 'Criar Teste'}</Button>
                                 </DialogFooter>
@@ -264,6 +286,11 @@ export default function TestCatalog() {
                                     <TableHead>Unidade</TableHead>
                                     <TableHead>Faixa</TableHead>
                                     <TableHead>Metodologia</TableHead>
+                                    <TableHead className="w-24 text-center text-xs text-slate-500">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <BarChart2 className="w-3 h-3" /> Gráfico?
+                                        </div>
+                                    </TableHead>
                                     <TableHead className="w-24"></TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -279,6 +306,12 @@ export default function TestCatalog() {
                                             <TableCell>{test.unit}</TableCell>
                                             <TableCell><span className="font-mono bg-slate-100 px-2 py-1 rounded text-xs">{test.min_value} - {test.max_value}</span></TableCell>
                                             <TableCell className="text-xs text-slate-500">{test.methodology || '-'}</TableCell>
+                                            <TableCell className="text-center">
+                                                <Checkbox
+                                                    checked={!!test.show_in_chart}
+                                                    onCheckedChange={(val) => toggleShowInChart.mutate({ id: test.id, value: !!val })}
+                                                />
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-1">
                                                     <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600" onClick={() => openEdit(test)}>

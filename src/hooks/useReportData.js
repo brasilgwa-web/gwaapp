@@ -220,31 +220,30 @@ export function useReportData(id) {
 
                     const chartSettings = chartSettingsArr?.[0] || null;
 
-                    if (chartSettings?.enabled && chartSettings.selected_test_ids?.length > 0) {
+                    if (chartSettings?.enabled) {
                         const periodDays = chartSettings.period_days || 365;
+                        const clientSelectedIds = chartSettings.selected_test_ids || [];
                         const cutoffDate = new Date();
                         cutoffDate.setDate(cutoffDate.getDate() - periodDays);
                         const cutoffISO = cutoffDate.toISOString().split('T')[0];
 
-                        // Fetch historical visits
+                        // Fetch all test definitions (needed for show_in_chart fallback)
+                        const { data: allTestDefsForChart } = await supabase
+                            .from('test_definitions')
+                            .select('id, name, unit, min_value, max_value, show_in_chart');
+
                         const { data: histVisits } = await supabase
                             .from('visits')
                             .select('id, visit_date')
                             .eq('client_id', visit.client_id)
                             .gte('visit_date', cutoffISO)
-                            .not('status', 'eq', 'draft') // Include all non-draft visits (in_progress, completed, synced)
+                            .not('status', 'eq', 'draft')
                             .order('visit_date', { ascending: true });
-
-                        // Fetch test definitions for chart names (needed even if no historical visits)
-                        const { data: chartTestDefs } = await supabase
-                            .from('test_definitions')
-                            .select('*')
-                            .in('id', chartSettings.selected_test_ids);
 
                         if (histVisits?.length > 0) {
                             const histVisitIds = histVisits.map(v => v.id);
 
-                            // Fetch test results in chunks
+                            // Fetch ALL results (hierarchy decides per equipment which tests to show)
                             let histResults = [];
                             const chunkSize = 50;
                             for (let i = 0; i < histVisitIds.length; i += chunkSize) {
@@ -252,24 +251,17 @@ export function useReportData(id) {
                                 const { data: results } = await supabase
                                     .from('test_results')
                                     .select('*')
-                                    .in('visit_id', chunk)
-                                    .in('test_definition_id', chartSettings.selected_test_ids);
+                                    .in('visit_id', chunk);
                                 if (results) histResults = [...histResults, ...results];
                             }
 
-                            // chartTestDefs already fetched above
-
-                            // Build lookup maps (reuse existing data where possible)
+                            const CHART_COLORS = ['#2563eb', '#dc2626', '#0ea5e9', '#eab308', '#16a34a', '#8b5cf6', '#f97316', '#06b6d4', '#ec4899', '#14b8a6'];
                             const histVisitMap = new Map(histVisits.map(v => [v.id, v]));
                             const locationMap = new Map(allLocations.map(l => [l.id, l]));
                             const equipCatalogMap = new Map(allEquipments.map(e => [e.id, e]));
                             const locEquipLookup = new Map(allLocationEquipments.map(le => [le.id, le]));
+                            const testDefMap = new Map((allTestDefsForChart || []).map(t => [t.id, t]));
 
-                            const CHART_COLORS = ['#2563eb', '#dc2626', '#0ea5e9', '#eab308', '#16a34a', '#8b5cf6', '#f97316', '#06b6d4', '#ec4899', '#14b8a6'];
-                            const testDefMap = new Map((chartTestDefs || []).map(t => [t.id, t]));
-                            const selectedTestIds = chartSettings.selected_test_ids || [];
-
-                            // Group by equipment: one chart per equipment showing all configured tests
                             const allEquipmentIds = [...new Set(histResults.map(r => r.equipment_id))];
 
                             const charts = allEquipmentIds.map(eqId => {
@@ -279,12 +271,25 @@ export function useReportData(id) {
                                 const equipmentName = equip?.name || 'Equipamento';
                                 const locationName = loc?.name || '';
 
-                                const tests = selectedTestIds.map((testId, testIdx) => {
+                                // Hierarchy: Equipment > Client > Test global
+                                let testIds;
+                                if (locEquip?.chart_test_ids?.length > 0) {
+                                    testIds = locEquip.chart_test_ids;
+                                } else if (clientSelectedIds.length > 0) {
+                                    testIds = clientSelectedIds;
+                                } else {
+                                    testIds = (allTestDefsForChart || []).filter(t => t.show_in_chart).map(t => t.id);
+                                }
+                                if (testIds.length === 0) return null;
+
+                                const eqResults = histResults.filter(r => r.equipment_id === eqId);
+
+                                const tests = testIds.map((testId, testIdx) => {
                                     const testDef = testDefMap.get(testId);
                                     if (!testDef) return null;
 
-                                    const data = histResults
-                                        .filter(r => r.equipment_id === eqId && r.test_definition_id === testId)
+                                    const data = eqResults
+                                        .filter(r => r.test_definition_id === testId)
                                         .map(r => {
                                             const hv = histVisitMap.get(r.visit_id);
                                             if (!hv || r.measured_value === null || r.measured_value === undefined || r.measured_value === '') return null;

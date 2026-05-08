@@ -11,7 +11,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle, Search, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle, Search, AlertTriangle, BarChart2 } from "lucide-react";
 import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 
 export default function ClientEquipmentManager({ client }) {
@@ -158,10 +158,10 @@ export default function ClientEquipmentManager({ client }) {
 function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }) {
     const queryClient = useQueryClient();
     const { executeWithFeedback } = useOperationFeedback();
-    // Local state for selected group - needed because prop is snapshot when dialog opens
     const [selectedGroupId, setSelectedGroupId] = React.useState(locationEquipment?.default_analysis_group_id || null);
     const [selectedProductId, setSelectedProductId] = React.useState('');
-    const [selectedTestId, setSelectedTestId] = React.useState(''); // For adding custom test
+    const [selectedTestId, setSelectedTestId] = React.useState('');
+    const [chartTestIds, setChartTestIds] = React.useState(locationEquipment?.chart_test_ids || null);
 
     // --- Tests Logic ---
     const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list() });
@@ -281,6 +281,45 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locationEquipmentTests', locationEquipment.id] })
     });
 
+    const saveChartTests = useMutation({
+        mutationFn: async (testIds) => {
+            const result = await executeWithFeedback({
+                operation: async () => {
+                    const { error } = await supabase
+                        .from('location_equipments')
+                        .update({ chart_test_ids: testIds?.length > 0 ? testIds : null })
+                        .eq('id', locationEquipment.id);
+                    if (error) throw error;
+                },
+                loadingMessage: 'Salvando configuração de gráficos...',
+                successMessage: 'Configuração salva!',
+                errorMessage: 'Erro ao salvar.',
+                logCategory: 'crud',
+                logDetails: { action: 'update', entity: 'location_equipment', id: locationEquipment.id },
+            });
+            if (!result.success) throw result.error;
+        },
+        onSuccess: (_, testIds) => {
+            setChartTestIds(testIds?.length > 0 ? testIds : null);
+            queryClient.invalidateQueries({ queryKey: ['locationEquipments'] });
+        }
+    });
+
+    // All tests available for this equipment (standard + custom)
+    const allEquipmentTestIds = React.useMemo(() => {
+        const standardIds = (standardTests || []).map(st => st.test_definition_id);
+        const customIds = (customTests || []).map(ct => ct.test_definition_id);
+        return [...new Set([...standardIds, ...customIds])];
+    }, [standardTests, customTests]);
+
+    const toggleChartTest = (testId) => {
+        const current = chartTestIds || [];
+        const next = current.includes(testId)
+            ? current.filter(id => id !== testId)
+            : [...current, testId];
+        setChartTestIds(next);
+    };
+
     return (
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
@@ -329,6 +368,9 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                         <TabsTrigger value="chemical_tech" className="flex-shrink-0">Tecnologia Química</TabsTrigger>
                         <TabsTrigger value="products" className="flex-shrink-0">Produtos & Dosagens</TabsTrigger>
                         <TabsTrigger value="analysis_params" className="flex-shrink-0">Parâmetros de Análise</TabsTrigger>
+                        <TabsTrigger value="charts" className="flex-shrink-0 flex items-center gap-1">
+                            <BarChart2 className="w-3.5 h-3.5" /> Gráficos
+                        </TabsTrigger>
                     </TabsList>
 
                     {/* Tab 1: Tecnologia Química (Custom Tests) */}
@@ -523,6 +565,83 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                                         </div>
                                     )
                                 })}
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    {/* Tab 4: Gráficos */}
+                    <TabsContent value="charts" className="flex-1 overflow-y-auto pt-4 space-y-4">
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h4 className="text-sm font-bold flex items-center gap-2">
+                                        <BarChart2 className="w-4 h-4 text-blue-600" />
+                                        Testes no Gráfico deste Equipamento
+                                    </h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Selecione quais testes aparecem no gráfico para este equipamento específico.
+                                        Quando vazio, usa a configuração do cliente ou a definição global do teste.
+                                    </p>
+                                </div>
+                                {chartTestIds?.length > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-xs text-slate-400 hover:text-red-500"
+                                        onClick={() => { setChartTestIds(null); saveChartTests.mutate(null); }}
+                                    >
+                                        Limpar (usar padrão)
+                                    </Button>
+                                )}
+                            </div>
+
+                            {allEquipmentTestIds.length === 0 ? (
+                                <p className="text-xs text-slate-400 italic p-4 text-center border rounded">
+                                    Nenhum teste configurado para este equipamento ainda.
+                                </p>
+                            ) : (
+                                <div className="space-y-1 border rounded-lg overflow-hidden">
+                                    {allEquipmentTestIds.map(testId => {
+                                        const test = allTests?.find(t => t.id === testId);
+                                        if (!test) return null;
+                                        const isChecked = chartTestIds
+                                            ? chartTestIds.includes(testId)
+                                            : !!test.show_in_chart;
+                                        const isOverride = chartTestIds !== null;
+                                        return (
+                                            <div key={testId} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50 border-b last:border-0">
+                                                <div className="flex items-center gap-3">
+                                                    <Checkbox
+                                                        checked={isChecked}
+                                                        onCheckedChange={() => toggleChartTest(testId)}
+                                                    />
+                                                    <span className="text-sm text-slate-700">{test.name}</span>
+                                                    {!isOverride && test.show_in_chart && (
+                                                        <span className="text-[10px] text-blue-500 bg-blue-50 px-1 rounded">global</span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs text-slate-400 font-mono">
+                                                    {test.min_value} - {test.max_value} {test.unit}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            <Button
+                                className="w-full"
+                                onClick={() => saveChartTests.mutate(chartTestIds)}
+                                disabled={saveChartTests.isPending}
+                            >
+                                {saveChartTests.isPending
+                                    ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvando...</>
+                                    : <><CheckCircle className="w-4 h-4 mr-2" /> Salvar configuração de gráficos</>
+                                }
+                            </Button>
+
+                            <div className="text-xs text-slate-400 bg-slate-50 p-2 rounded border">
+                                <strong>Hierarquia:</strong> Equipamento (aqui) &gt; Cliente (Setup do Cliente) &gt; Teste (global)
                             </div>
                         </div>
                     </TabsContent>
