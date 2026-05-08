@@ -89,29 +89,37 @@ export default function TestCatalog() {
 
     const toggleShowInChart = useMutation({
         mutationFn: ({ id, value }) => TestDefinition.update(id, { show_in_chart: value }),
-        onSuccess: async (_, { id: testId, value: newValue }) => {
-            queryClient.invalidateQueries({ queryKey: ['testDefinitions'] });
-            // Check cascade: find clients with explicit override for this test
-            const { data: allSettings } = await supabase
-                .from('client_report_chart_settings')
-                .select('id, client_id, chart_test_overrides');
-            const affected = (allSettings || []).filter(s => s.chart_test_overrides?.[testId] !== undefined);
-            if (!affected.length) return;
-            const clientIds = affected.map(s => s.client_id);
-            const { data: clients } = await supabase
-                .from('clients').select('id, name').in('id', clientIds);
-            const clientMap = new Map((clients || []).map(c => [c.id, c]));
-            const testName = tests?.find(t => t.id === testId)?.name || 'teste';
-            const items = affected.map(s => ({
-                settingsId: s.id,
-                clientId: s.client_id,
-                clientName: clientMap.get(s.client_id)?.name || 'Cliente',
-                currentValue: s.chart_test_overrides[testId],
-                chartTestOverrides: s.chart_test_overrides,
-            }));
-            setGlobalCascadeDialog({ testId, testName, newValue, items });
-        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['testDefinitions'] }),
     });
+
+    const handleToggleShowInChart = async (testId, newValue) => {
+        await toggleShowInChart.mutateAsync({ id: testId, value: newValue });
+        // Cascade check: find clients with explicit override for this test
+        const { data: allSettings, error } = await supabase
+            .from('client_report_chart_settings')
+            .select('id, client_id, chart_test_overrides');
+        if (error) { console.error('Cascade check failed:', error); return; }
+
+        const affected = (allSettings || []).filter(s => {
+            const ov = s.chart_test_overrides;
+            return ov !== null && typeof ov === 'object' && Object.prototype.hasOwnProperty.call(ov, testId);
+        });
+        if (!affected.length) return;
+
+        const clientIds = affected.map(s => s.client_id);
+        const { data: clients } = await supabase
+            .from('clients').select('id, name').in('id', clientIds);
+        const clientMap = new Map((clients || []).map(c => [c.id, c]));
+        const testName = tests?.find(t => t.id === testId)?.name || 'teste';
+        const items = affected.map(s => ({
+            settingsId: s.id,
+            clientId: s.client_id,
+            clientName: clientMap.get(s.client_id)?.name || 'Cliente',
+            currentValue: s.chart_test_overrides[testId],
+            chartTestOverrides: s.chart_test_overrides,
+        }));
+        setGlobalCascadeDialog({ testId, testName, newValue, items });
+    };
 
     const handleGlobalCascadeConfirm = async () => {
         if (!globalCascadeDialog) return;
@@ -358,7 +366,7 @@ export default function TestCatalog() {
                                             <TableCell className="text-center">
                                                 <Switch
                                                     checked={!!test.show_in_chart}
-                                                    onCheckedChange={(val) => toggleShowInChart.mutate({ id: test.id, value: !!val })}
+                                                    onCheckedChange={(val) => handleToggleShowInChart(test.id, !!val)}
                                                 />
                                             </TableCell>
                                             <TableCell>
