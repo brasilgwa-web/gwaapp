@@ -222,7 +222,7 @@ export function useReportData(id) {
 
                     if (chartSettings?.enabled) {
                         const periodDays = chartSettings.period_days || 365;
-                        const clientSelectedIds = chartSettings.selected_test_ids || [];
+                        const clientOverrides = chartSettings.chart_test_overrides || {};
                         const cutoffDate = new Date();
                         cutoffDate.setDate(cutoffDate.getDate() - periodDays);
                         const cutoffISO = cutoffDate.toISOString().split('T')[0];
@@ -260,7 +260,6 @@ export function useReportData(id) {
                             const locationMap = new Map(allLocations.map(l => [l.id, l]));
                             const equipCatalogMap = new Map(allEquipments.map(e => [e.id, e]));
                             const locEquipLookup = new Map(allLocationEquipments.map(le => [le.id, le]));
-                            const testDefMap = new Map((allTestDefsForChart || []).map(t => [t.id, t]));
 
                             const allEquipmentIds = [...new Set(histResults.map(r => r.equipment_id))];
 
@@ -271,22 +270,20 @@ export function useReportData(id) {
                                 const equipmentName = equip?.name || 'Equipamento';
                                 const locationName = loc?.name || '';
 
-                                // Hierarchy: Equipment > Client > Test global
-                                let testIds;
-                                if (locEquip?.chart_test_ids?.length > 0) {
-                                    testIds = locEquip.chart_test_ids;
-                                } else if (clientSelectedIds.length > 0) {
-                                    testIds = clientSelectedIds;
-                                } else {
-                                    testIds = (allTestDefsForChart || []).filter(t => t.show_in_chart).map(t => t.id);
-                                }
-                                if (testIds.length === 0) return null;
+                                // Hierarchy per test: Equipment override > Client override > Test global (show_in_chart)
+                                const visibleTestDefs = (allTestDefsForChart || []).filter(t => {
+                                    if (locEquip?.chart_test_overrides?.[t.id] !== undefined)
+                                        return locEquip.chart_test_overrides[t.id];
+                                    if (clientOverrides[t.id] !== undefined)
+                                        return clientOverrides[t.id];
+                                    return !!t.show_in_chart;
+                                });
+                                if (visibleTestDefs.length === 0) return null;
 
                                 const eqResults = histResults.filter(r => r.equipment_id === eqId);
 
-                                const tests = testIds.map((testId, testIdx) => {
-                                    const testDef = testDefMap.get(testId);
-                                    if (!testDef) return null;
+                                const tests = visibleTestDefs.map((testDef, testIdx) => {
+                                    const testId = testDef.id;
 
                                     const data = eqResults
                                         .filter(r => r.test_definition_id === testId)

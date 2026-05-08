@@ -7,11 +7,13 @@ const CHART_COLORS = [
     '#ec4899', '#14b8a6',
 ];
 
-// Hierarchy: Equipment (chart_test_ids) > Client (selected_test_ids) > Test (show_in_chart)
-function resolveTestIds(locEquip, clientSelectedIds, allTestDefs) {
-    if (locEquip?.chart_test_ids?.length > 0) return locEquip.chart_test_ids;
-    if (clientSelectedIds?.length > 0) return clientSelectedIds;
-    return allTestDefs.filter(t => t.show_in_chart).map(t => t.id);
+// Hierarchy per test: Equipment override > Client override > Test global (show_in_chart)
+function isTestVisible(testId, locEquip, clientOverrides, testDef) {
+    if (locEquip?.chart_test_overrides?.[testId] !== undefined)
+        return locEquip.chart_test_overrides[testId];
+    if (clientOverrides?.[testId] !== undefined)
+        return clientOverrides[testId];
+    return !!testDef?.show_in_chart;
 }
 
 export function useHistoricalChartData(clientId, enabled = true) {
@@ -34,7 +36,7 @@ export function useHistoricalChartData(clientId, enabled = true) {
             }
 
             const periodDays = chartSettings.period_days || 365;
-            const clientSelectedIds = chartSettings.selected_test_ids || [];
+            const clientOverrides = chartSettings.chart_test_overrides || {};
 
             // 2. Fetch visits within period
             const cutoffDate = new Date();
@@ -103,7 +105,6 @@ export function useHistoricalChartData(clientId, enabled = true) {
             const locationMap = new Map(locations?.map(l => [l.id, l]) || []);
             const equipMap = new Map(allEquipments.map(e => [e.id, e]));
             const locEquipMap = new Map(allLocEquips.map(le => [le.id, le]));
-            const testDefMap = new Map((allTestDefs || []).map(t => [t.id, t]));
 
             // 6. Build charts grouped by equipment, applying hierarchy per equipment
             const allEquipmentIds = [...new Set(allResults.map(r => r.equipment_id))];
@@ -115,14 +116,16 @@ export function useHistoricalChartData(clientId, enabled = true) {
                 const equipmentName = equip?.name || 'Equipamento';
                 const locationName = loc?.name || '';
 
-                // Apply hierarchy to get test IDs for THIS equipment
-                const testIds = resolveTestIds(locEquip, clientSelectedIds, allTestDefs || []);
-                if (testIds.length === 0) return null;
+                // Filter tests using per-test hierarchy
+                const visibleTestDefs = (allTestDefs || []).filter(t =>
+                    isTestVisible(t.id, locEquip, clientOverrides, t)
+                );
+                if (visibleTestDefs.length === 0) return null;
 
                 const eqResults = allResults.filter(r => r.equipment_id === eqId);
 
-                const tests = testIds.map((testId, testIdx) => {
-                    const testDef = testDefMap.get(testId);
+                const tests = visibleTestDefs.map((testDef, testIdx) => {
+                    const testId = testDef.id;
                     if (!testDef) return null;
 
                     const data = eqResults

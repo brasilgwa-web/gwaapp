@@ -11,7 +11,8 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle, Search, AlertTriangle, BarChart2 } from "lucide-react";
+import { Plus, Trash2, Settings, Box, FlaskConical, Beaker, Loader2, CheckCircle, Search, AlertTriangle, BarChart2, RotateCcw } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 
 export default function ClientEquipmentManager({ client }) {
@@ -161,7 +162,7 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
     const [selectedGroupId, setSelectedGroupId] = React.useState(locationEquipment?.default_analysis_group_id || null);
     const [selectedProductId, setSelectedProductId] = React.useState('');
     const [selectedTestId, setSelectedTestId] = React.useState('');
-    const [chartTestIds, setChartTestIds] = React.useState(locationEquipment?.chart_test_ids || null);
+    const [chartOverrides, setChartOverrides] = React.useState(locationEquipment?.chart_test_overrides || {});
 
     // --- Tests Logic ---
     const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list() });
@@ -281,13 +282,13 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locationEquipmentTests', locationEquipment.id] })
     });
 
-    const saveChartTests = useMutation({
-        mutationFn: async (testIds) => {
+    const saveChartOverrides = useMutation({
+        mutationFn: async (overrides) => {
             const result = await executeWithFeedback({
                 operation: async () => {
                     const { error } = await supabase
                         .from('location_equipments')
-                        .update({ chart_test_ids: testIds?.length > 0 ? testIds : null })
+                        .update({ chart_test_overrides: Object.keys(overrides).length > 0 ? overrides : null })
                         .eq('id', locationEquipment.id);
                     if (error) throw error;
                 },
@@ -299,25 +300,30 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
             });
             if (!result.success) throw result.error;
         },
-        onSuccess: (_, testIds) => {
-            setChartTestIds(testIds?.length > 0 ? testIds : null);
-            queryClient.invalidateQueries({ queryKey: ['locationEquipments'] });
-        }
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['locationEquipments'] })
     });
 
-    // All tests available for this equipment (standard + custom)
     const allEquipmentTestIds = React.useMemo(() => {
         const standardIds = (standardTests || []).map(st => st.test_definition_id);
         const customIds = (customTests || []).map(ct => ct.test_definition_id);
         return [...new Set([...standardIds, ...customIds])];
     }, [standardTests, customTests]);
 
-    const toggleChartTest = (testId) => {
-        const current = chartTestIds || [];
-        const next = current.includes(testId)
-            ? current.filter(id => id !== testId)
-            : [...current, testId];
-        setChartTestIds(next);
+    const handleChartOverride = (testId, value) => {
+        setChartOverrides(prev => ({ ...prev, [testId]: value }));
+    };
+
+    const handleChartReset = (testId) => {
+        setChartOverrides(prev => {
+            const next = { ...prev };
+            delete next[testId];
+            return next;
+        });
+    };
+
+    const resetAllChartOverrides = () => {
+        setChartOverrides({});
+        saveChartOverrides.mutate({});
     };
 
     return (
@@ -571,58 +577,58 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
 
                     {/* Tab 4: Gráficos */}
                     <TabsContent value="charts" className="flex-1 overflow-y-auto pt-4 space-y-4">
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h4 className="text-sm font-bold flex items-center gap-2">
                                         <BarChart2 className="w-4 h-4 text-blue-600" />
-                                        Testes no Gráfico deste Equipamento
+                                        Gráficos — nível Equipamento
                                     </h4>
                                     <p className="text-xs text-slate-500 mt-0.5">
-                                        Selecione quais testes aparecem no gráfico para este equipamento específico.
-                                        Quando vazio, usa a configuração do cliente ou a definição global do teste.
+                                        Override por teste. Cinza = herda do cliente ou global.
                                     </p>
                                 </div>
-                                {chartTestIds?.length > 0 && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-xs text-slate-400 hover:text-red-500"
-                                        onClick={() => { setChartTestIds(null); saveChartTests.mutate(null); }}
-                                    >
-                                        Limpar (usar padrão)
+                                {Object.keys(chartOverrides).length > 0 && (
+                                    <Button variant="ghost" size="sm" className="text-xs text-slate-400 hover:text-blue-500" onClick={resetAllChartOverrides}>
+                                        <RotateCcw className="w-3 h-3 mr-1" /> Limpar overrides
                                     </Button>
                                 )}
                             </div>
 
                             {allEquipmentTestIds.length === 0 ? (
                                 <p className="text-xs text-slate-400 italic p-4 text-center border rounded">
-                                    Nenhum teste configurado para este equipamento ainda.
+                                    Nenhum teste configurado para este equipamento.
                                 </p>
                             ) : (
-                                <div className="space-y-1 border rounded-lg overflow-hidden">
+                                <div className="border rounded-lg overflow-hidden">
                                     {allEquipmentTestIds.map(testId => {
                                         const test = allTests?.find(t => t.id === testId);
                                         if (!test) return null;
-                                        const isChecked = chartTestIds
-                                            ? chartTestIds.includes(testId)
-                                            : !!test.show_in_chart;
-                                        const isOverride = chartTestIds !== null;
+                                        const hasOverride = chartOverrides[testId] !== undefined;
+                                        const effectiveValue = hasOverride ? chartOverrides[testId] : !!test.show_in_chart;
                                         return (
-                                            <div key={testId} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50 border-b last:border-0">
-                                                <div className="flex items-center gap-3">
-                                                    <Checkbox
-                                                        checked={isChecked}
-                                                        onCheckedChange={() => toggleChartTest(testId)}
-                                                    />
-                                                    <span className="text-sm text-slate-700">{test.name}</span>
-                                                    {!isOverride && test.show_in_chart && (
-                                                        <span className="text-[10px] text-blue-500 bg-blue-50 px-1 rounded">global</span>
+                                            <div key={testId} className={`flex items-center justify-between px-3 py-2 border-b last:border-0 ${hasOverride ? 'bg-white' : 'bg-slate-50/60'}`}>
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <span className={`text-sm truncate ${hasOverride ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                                                        {test.name}
+                                                    </span>
+                                                    {test.unit && <span className="text-xs text-slate-400">({test.unit})</span>}
+                                                    {!hasOverride && (
+                                                        <span className="text-[10px] text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">herdado</span>
                                                     )}
                                                 </div>
-                                                <span className="text-xs text-slate-400 font-mono">
-                                                    {test.min_value} - {test.max_value} {test.unit}
-                                                </span>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <Switch
+                                                        checked={!!effectiveValue}
+                                                        onCheckedChange={(val) => handleChartOverride(testId, val)}
+                                                        className={!hasOverride ? 'opacity-50' : ''}
+                                                    />
+                                                    {hasOverride ? (
+                                                        <button onClick={() => handleChartReset(testId)} title="Herdar do cliente/global" className="text-slate-400 hover:text-blue-500">
+                                                            <RotateCcw className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    ) : <div className="w-5" />}
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -631,18 +637,18 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
 
                             <Button
                                 className="w-full"
-                                onClick={() => saveChartTests.mutate(chartTestIds)}
-                                disabled={saveChartTests.isPending}
+                                onClick={() => saveChartOverrides.mutate(chartOverrides)}
+                                disabled={saveChartOverrides.isPending}
                             >
-                                {saveChartTests.isPending
+                                {saveChartOverrides.isPending
                                     ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvando...</>
-                                    : <><CheckCircle className="w-4 h-4 mr-2" /> Salvar configuração de gráficos</>
+                                    : <><CheckCircle className="w-4 h-4 mr-2" /> Salvar</>
                                 }
                             </Button>
 
-                            <div className="text-xs text-slate-400 bg-slate-50 p-2 rounded border">
-                                <strong>Hierarquia:</strong> Equipamento (aqui) &gt; Cliente (Setup do Cliente) &gt; Teste (global)
-                            </div>
+                            <p className="text-xs text-slate-400 bg-slate-50 p-2 rounded border">
+                                <strong>Hierarquia:</strong> Equipamento &gt; Cliente &gt; Global (definição do teste)
+                            </p>
                         </div>
                     </TabsContent>
                 </Tabs>
