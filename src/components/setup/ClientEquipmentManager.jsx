@@ -147,6 +147,7 @@ export default function ClientEquipmentManager({ client }) {
                     <EquipmentConfigDialog
                         locationEquipment={configEquipment}
                         catalogItem={catalogEquipments?.find(c => c.id === configEquipment.equipment_id)}
+                        client={client}
                         open={!!configEquipment}
                         onClose={() => setConfigEquipment(null)}
                     />
@@ -156,13 +157,28 @@ export default function ClientEquipmentManager({ client }) {
     );
 }
 
-function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }) {
+function EquipmentConfigDialog({ locationEquipment, catalogItem, client, open, onClose }) {
     const queryClient = useQueryClient();
     const { executeWithFeedback } = useOperationFeedback();
     const [selectedGroupId, setSelectedGroupId] = React.useState(locationEquipment?.default_analysis_group_id || null);
     const [selectedProductId, setSelectedProductId] = React.useState('');
     const [selectedTestId, setSelectedTestId] = React.useState('');
     const [chartOverrides, setChartOverrides] = React.useState(locationEquipment?.chart_test_overrides || {});
+
+    // Client-level chart overrides (for inherited value calculation)
+    const { data: clientChartSettings } = useQuery({
+        queryKey: ['chartSettings', client?.id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('client_report_chart_settings')
+                .select('chart_test_overrides')
+                .eq('client_id', client.id)
+                .limit(1);
+            return data?.[0] || null;
+        },
+        enabled: !!client?.id
+    });
+    const clientOverrides = clientChartSettings?.chart_test_overrides || {};
 
     // --- Tests Logic ---
     const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list() });
@@ -605,7 +621,10 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                                         const test = allTests?.find(t => t.id === testId);
                                         if (!test) return null;
                                         const hasOverride = chartOverrides[testId] !== undefined;
-                                        const effectiveValue = hasOverride ? chartOverrides[testId] : !!test.show_in_chart;
+                                        const inheritedValue = clientOverrides[testId] !== undefined
+                                            ? clientOverrides[testId]
+                                            : !!test.show_in_chart;
+                                        const effectiveValue = hasOverride ? chartOverrides[testId] : inheritedValue;
                                         return (
                                             <div key={testId} className={`flex items-center justify-between px-3 py-2 border-b last:border-0 ${hasOverride ? 'bg-white' : 'bg-slate-50/60'}`}>
                                                 <div className="flex items-center gap-2 min-w-0">
@@ -621,7 +640,6 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, open, onClose }
                                                     <Switch
                                                         checked={!!effectiveValue}
                                                         onCheckedChange={(val) => handleChartOverride(testId, val)}
-                                                        className={!hasOverride ? 'opacity-50' : ''}
                                                     />
                                                     {hasOverride ? (
                                                         <button onClick={() => handleChartReset(testId)} title="Herdar do cliente/global" className="text-slate-400 hover:text-blue-500">

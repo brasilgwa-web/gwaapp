@@ -30,7 +30,6 @@ function TestToggleRow({ test, override, inheritedValue, onOverride, onReset }) 
                 <Switch
                     checked={!!effectiveValue}
                     onCheckedChange={(val) => onOverride(val)}
-                    className={!hasOverride ? 'opacity-50' : ''}
                 />
                 {hasOverride && (
                     <button
