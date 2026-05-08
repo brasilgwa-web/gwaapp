@@ -408,7 +408,7 @@ export default function TestCatalog() {
                     </DialogTitle>
                     <DialogDescription>
                         {globalCascadeDialog?.items.length} cliente{globalCascadeDialog?.items.length !== 1 ? 's' : ''} {globalCascadeDialog?.items.length !== 1 ? 'têm' : 'tem'} um override explícito para <strong>{globalCascadeDialog?.testName}</strong>.
-                        Deseja remover esses overrides para que herdem o novo padrão global ({globalCascadeDialog?.newValue ? 'ON' : 'OFF'})?
+                        Deseja remover essas sobrescritas para que herdem o novo padrão global ({globalCascadeDialog?.newValue ? 'ON' : 'OFF'})?
                     </DialogDescription>
                 </DialogHeader>
 
@@ -435,12 +435,12 @@ export default function TestCatalog() {
 
                 <DialogFooter className="gap-2">
                     <Button variant="outline" onClick={() => { setGlobalCascadeDialog(null); setCascadeExpanded(false); }} disabled={isCascading}>
-                        Não, manter overrides
+                        Não, manter sobrescritas
                     </Button>
                     <Button onClick={handleGlobalCascadeConfirm} disabled={isCascading} className="bg-amber-500 hover:bg-amber-600 text-white">
                         {isCascading
                             ? <><Loader2Icon className="w-4 h-4 mr-2 animate-spin" /> Aplicando...</>
-                            : 'Sim, limpar overrides'
+                            : 'Sim, limpar sobrescritas'
                         }
                     </Button>
                 </DialogFooter>

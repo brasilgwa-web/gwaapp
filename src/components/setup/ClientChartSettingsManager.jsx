@@ -60,7 +60,7 @@ function CascadeDialog({ open, onClose, onConfirm, isCascading, items, changedTe
                     </DialogTitle>
                     <DialogDescription>
                         {items.length} equipamento{items.length !== 1 ? 's' : ''} {items.length !== 1 ? 'têm' : 'tem'} configurações manuais para {changedTests.length === 1 ? 'o teste alterado' : 'os testes alterados'}.
-                        Deseja limpar esses overrides para que herdem as novas configurações do cliente?
+                        Deseja limpar essas sobrescritas para que herdem as novas configurações do cliente?
                     </DialogDescription>
                 </DialogHeader>
 
@@ -98,12 +98,12 @@ function CascadeDialog({ open, onClose, onConfirm, isCascading, items, changedTe
 
                 <DialogFooter className="gap-2">
                     <Button variant="outline" onClick={onClose} disabled={isCascading}>
-                        Não, manter overrides
+                        Não, manter sobrescritas
                     </Button>
                     <Button onClick={onConfirm} disabled={isCascading} className="bg-amber-500 hover:bg-amber-600 text-white">
                         {isCascading
                             ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Aplicando...</>
-                            : 'Sim, limpar overrides'
+                            : 'Sim, limpar sobrescritas'
                         }
                     </Button>
                 </DialogFooter>
@@ -326,7 +326,7 @@ export default function ClientChartSettingsManager({ client }) {
                             </CardTitle>
                             <CardDescription>
                                 Configure quais testes aparecem nos gráficos para este cliente.
-                                Testes sem override seguem o padrão global (definição do teste).
+                                Testes sem sobrescrita seguem o padrão global (definição do teste).
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
@@ -367,12 +367,12 @@ export default function ClientChartSettingsManager({ client }) {
                                 <div>
                                     <Label className="text-sm font-medium">Testes — nível Cliente</Label>
                                     <p className="text-xs text-slate-400 mt-0.5">
-                                        {effectiveCount} ativos · {overrideCount} override{overrideCount !== 1 ? 's' : ''} explícito{overrideCount !== 1 ? 's' : ''}
+                                        {effectiveCount} ativos · {overrideCount} sobrescrita{overrideCount !== 1 ? 's' : ''} explícita{overrideCount !== 1 ? 's' : ''}
                                     </p>
                                 </div>
                                 {overrideCount > 0 && (
                                     <Button variant="ghost" size="sm" className="text-xs text-slate-400 hover:text-blue-500" onClick={resetAll}>
-                                        <RotateCcw className="w-3 h-3 mr-1" /> Limpar overrides
+                                        <RotateCcw className="w-3 h-3 mr-1" /> Limpar sobrescritas
                                     </Button>
                                 )}
                             </div>
@@ -397,7 +397,7 @@ export default function ClientChartSettingsManager({ client }) {
                             </div>
 
                             <p className="text-xs text-slate-400">
-                                <span className="font-medium text-slate-500">↩ ícone</span> = remover override e voltar ao padrão global do teste.
+                                <span className="font-medium text-slate-500">↩ ícone</span> = remover sobrescrita e voltar ao padrão global do teste.
                                 Cinza = herdado do global.
                             </p>
                         </div>

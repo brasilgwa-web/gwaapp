@@ -600,12 +600,12 @@ function EquipmentConfigDialog({ locationEquipment, catalogItem, clientOverrides
                                         Gráficos — nível Equipamento
                                     </h4>
                                     <p className="text-xs text-slate-500 mt-0.5">
-                                        Override por teste. Cinza = herda do cliente ou global.
+                                        Sobrescrita por teste. Cinza = herda do cliente ou global.
                                     </p>
                                 </div>
                                 {Object.keys(chartOverrides).length > 0 && (
                                     <Button variant="ghost" size="sm" className="text-xs text-slate-400 hover:text-blue-500" onClick={resetAllChartOverrides}>
-                                        <RotateCcw className="w-3 h-3 mr-1" /> Limpar overrides
+                                        <RotateCcw className="w-3 h-3 mr-1" /> Limpar sobrescritas
                                     </Button>
                                 )}
                             </div>
