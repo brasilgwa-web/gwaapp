@@ -149,6 +149,7 @@ export default function ClientChartSettingsManager({ client }) {
             setHasChanges(false);
             queryClient.invalidateQueries({ queryKey: ['chartSettings', client.id] });
             queryClient.invalidateQueries({ queryKey: ['historicalChartData'] });
+            queryClient.invalidateQueries({ queryKey: ['fullReport'] });
         } catch (error) {
             console.error('Error saving chart settings:', error);
         } finally {
