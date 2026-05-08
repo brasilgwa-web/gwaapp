@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, ArrowUpDown, Search, BarChart2 } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowUpDown, Search, BarChart2, AlertTriangle, ChevronDown, ChevronUp, CheckCircle2, Loader2 as Loader2Icon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
@@ -83,11 +84,59 @@ export default function TestCatalog() {
     });
 
     const [showInChartForm, setShowInChartForm] = useState(false);
+    const [globalCascadeDialog, setGlobalCascadeDialog] = useState(null);
+    const [isCascading, setIsCascading] = useState(false);
+    const [cascadeExpanded, setCascadeExpanded] = useState(false);
 
     const toggleShowInChart = useMutation({
         mutationFn: ({ id, value }) => TestDefinition.update(id, { show_in_chart: value }),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['testDefinitions'] }),
+        onSuccess: async (_, { id: testId, value: newValue }) => {
+            queryClient.invalidateQueries({ queryKey: ['testDefinitions'] });
+            // Check cascade: find clients with explicit override for this test
+            const { data: allSettings } = await supabase
+                .from('client_report_chart_settings')
+                .select('id, client_id, chart_test_overrides');
+            const affected = (allSettings || []).filter(s => s.chart_test_overrides?.[testId] !== undefined);
+            if (!affected.length) return;
+            const clientIds = affected.map(s => s.client_id);
+            const { data: clients } = await supabase
+                .from('clients').select('id, name').in('id', clientIds);
+            const clientMap = new Map((clients || []).map(c => [c.id, c]));
+            const testName = tests?.find(t => t.id === testId)?.name || 'teste';
+            const items = affected.map(s => ({
+                settingsId: s.id,
+                clientId: s.client_id,
+                clientName: clientMap.get(s.client_id)?.name || 'Cliente',
+                currentValue: s.chart_test_overrides[testId],
+                chartTestOverrides: s.chart_test_overrides,
+            }));
+            setGlobalCascadeDialog({ testId, testName, newValue, items });
+        },
     });
+
+    const handleGlobalCascadeConfirm = async () => {
+        if (!globalCascadeDialog) return;
+        setIsCascading(true);
+        try {
+            const { testId, items } = globalCascadeDialog;
+            await Promise.all(items.map(item => {
+                const newOverrides = { ...item.chartTestOverrides };
+                delete newOverrides[testId];
+                const val = Object.keys(newOverrides).length > 0 ? newOverrides : null;
+                return supabase
+                    .from('client_report_chart_settings')
+                    .update({ chart_test_overrides: val })
+                    .eq('id', item.settingsId);
+            }));
+            queryClient.invalidateQueries({ queryKey: ['chartSettings'] });
+            queryClient.invalidateQueries({ queryKey: ['historicalChartData'] });
+            queryClient.invalidateQueries({ queryKey: ['fullReport'] });
+        } finally {
+            setIsCascading(false);
+            setGlobalCascadeDialog(null);
+            setCascadeExpanded(false);
+        }
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -195,6 +244,7 @@ export default function TestCatalog() {
     };
 
     return (
+        <>
         <Card className="w-full">
             <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -339,5 +389,55 @@ export default function TestCatalog() {
                 )}
             </CardContent>
         </Card>
+
+        {/* Global → Client cascade dialog */}
+        <Dialog open={!!globalCascadeDialog} onOpenChange={() => { setGlobalCascadeDialog(null); setCascadeExpanded(false); }}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-amber-500" />
+                        Replicar alteração global?
+                    </DialogTitle>
+                    <DialogDescription>
+                        {globalCascadeDialog?.items.length} cliente{globalCascadeDialog?.items.length !== 1 ? 's' : ''} {globalCascadeDialog?.items.length !== 1 ? 'têm' : 'tem'} um override explícito para <strong>{globalCascadeDialog?.testName}</strong>.
+                        Deseja remover esses overrides para que herdem o novo padrão global ({globalCascadeDialog?.newValue ? 'ON' : 'OFF'})?
+                    </DialogDescription>
+                </DialogHeader>
+
+                <button
+                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700"
+                    onClick={() => setCascadeExpanded(e => !e)}
+                >
+                    {cascadeExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    {cascadeExpanded ? 'Ocultar' : 'Ver'} clientes afetados ({globalCascadeDialog?.items.length})
+                </button>
+
+                {cascadeExpanded && (
+                    <div className="border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                        {globalCascadeDialog?.items.map(item => (
+                            <div key={item.settingsId} className="px-3 py-2 border-b last:border-0 text-sm flex items-center justify-between">
+                                <span className="font-medium text-slate-700">{item.clientName}</span>
+                                <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${item.currentValue ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {item.currentValue ? 'ON' : 'OFF'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <DialogFooter className="gap-2">
+                    <Button variant="outline" onClick={() => { setGlobalCascadeDialog(null); setCascadeExpanded(false); }} disabled={isCascading}>
+                        Não, manter overrides
+                    </Button>
+                    <Button onClick={handleGlobalCascadeConfirm} disabled={isCascading} className="bg-amber-500 hover:bg-amber-600 text-white">
+                        {isCascading
+                            ? <><Loader2Icon className="w-4 h-4 mr-2 animate-spin" /> Aplicando...</>
+                            : 'Sim, limpar overrides'
+                        }
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
