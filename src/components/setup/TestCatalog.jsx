@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Pencil, ArrowUpDown, Search, BarChart2 } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -251,16 +251,16 @@ export default function TestCatalog() {
 
                                 <div className="grid gap-2"><Label>Observação Padrão</Label><Input name="observation" defaultValue={editingTest?.observation} /></div>
 
-                                <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                                    <Checkbox
-                                        id="show_in_chart"
-                                        checked={showInChartForm}
-                                        onCheckedChange={setShowInChartForm}
-                                    />
+                                <div className="flex items-center justify-between gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
                                     <Label htmlFor="show_in_chart" className="text-sm font-medium text-blue-900 cursor-pointer flex items-center gap-2">
                                         <BarChart2 className="w-4 h-4" />
                                         Exibir nos gráficos de relatório (padrão global)
                                     </Label>
+                                    <Switch
+                                        id="show_in_chart"
+                                        checked={showInChartForm}
+                                        onCheckedChange={setShowInChartForm}
+                                    />
                                 </div>
 
                                 <DialogFooter>
@@ -307,7 +307,7 @@ export default function TestCatalog() {
                                             <TableCell><span className="font-mono bg-slate-100 px-2 py-1 rounded text-xs">{test.min_value} - {test.max_value}</span></TableCell>
                                             <TableCell className="text-xs text-slate-500">{test.methodology || '-'}</TableCell>
                                             <TableCell className="text-center">
-                                                <Checkbox
+                                                <Switch
                                                     checked={!!test.show_in_chart}
                                                     onCheckedChange={(val) => toggleShowInChart.mutate({ id: test.id, value: !!val })}
                                                 />
