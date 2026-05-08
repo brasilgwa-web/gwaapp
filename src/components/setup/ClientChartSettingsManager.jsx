@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { BarChart3, Save, Loader2, RotateCcw, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { BarChart3, Save, Loader2, RotateCcw, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { useOperationFeedback } from "@/context/OperationFeedbackContext";
 
 function TestToggleRow({ test, override, inheritedValue, onOverride, onReset }) {
     const hasOverride = override !== undefined && override !== null;
@@ -113,9 +114,9 @@ function CascadeDialog({ open, onClose, onConfirm, isCascading, items, changedTe
 
 export default function ClientChartSettingsManager({ client }) {
     const queryClient = useQueryClient();
+    const { executeWithFeedback } = useOperationFeedback();
     const [isSaving, setIsSaving] = useState(false);
     const [isCascading, setIsCascading] = useState(false);
-    const [savedOk, setSavedOk] = useState(false);
     const [enabled, setEnabled] = useState(true);
     const [periodDays, setPeriodDays] = useState('365');
     const [overrides, setOverrides] = useState({});
@@ -189,11 +190,6 @@ export default function ClientChartSettingsManager({ client }) {
         setHasChanges(true);
     };
 
-    const showSuccess = () => {
-        setSavedOk(true);
-        setTimeout(() => setSavedOk(false), 3000);
-    };
-
     const handleSave = async () => {
         setIsSaving(true);
         try {
@@ -210,14 +206,21 @@ export default function ClientChartSettingsManager({ client }) {
                 updated_at: new Date().toISOString()
             };
 
-            const { error } = await supabase
-                .from('client_report_chart_settings')
-                .upsert(payload, { onConflict: 'client_id' });
-
-            if (error) throw error;
+            await executeWithFeedback({
+                operation: async () => {
+                    const { error } = await supabase
+                        .from('client_report_chart_settings')
+                        .upsert(payload, { onConflict: 'client_id' });
+                    if (error) throw error;
+                },
+                loadingMessage: 'Salvando configurações...',
+                successMessage: 'Configuração salva!',
+                errorMessage: 'Erro ao salvar configurações.',
+                logCategory: 'crud',
+                logDetails: { action: 'upsert', entity: 'client_report_chart_settings', client_id: client.id },
+            });
 
             setHasChanges(false);
-            showSuccess();
             queryClient.invalidateQueries({ queryKey: ['chartSettings', client.id] });
             queryClient.invalidateQueries({ queryKey: ['historicalChartData'] });
             queryClient.invalidateQueries({ queryKey: ['fullReport'] });
@@ -399,12 +402,7 @@ export default function ClientChartSettingsManager({ client }) {
                             </p>
                         </div>
 
-                        <div className="flex items-center justify-end gap-3">
-                            {savedOk && (
-                                <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium animate-in fade-in slide-in-from-right-2">
-                                    <CheckCircle2 className="w-4 h-4" /> Configurações salvas!
-                                </span>
-                            )}
+                        <div className="flex items-center justify-end">
                             {hasChanges && (
                                 <Button onClick={handleSave} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
                                     {isSaving
@@ -414,14 +412,6 @@ export default function ClientChartSettingsManager({ client }) {
                                 </Button>
                             )}
                         </div>
-                    </CardContent>
-                )}
-
-                {!enabled && savedOk && (
-                    <CardContent>
-                        <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
-                            <CheckCircle2 className="w-4 h-4" /> Configurações salvas!
-                        </span>
                     </CardContent>
                 )}
             </Card>
