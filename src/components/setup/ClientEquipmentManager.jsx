@@ -21,6 +21,20 @@ export default function ClientEquipmentManager({ client }) {
     const [equipmentFilter, setEquipmentFilter] = useState('');
     const [configEquipment, setConfigEquipment] = useState(null); // The LocationEquipment instance being configured
 
+    // Fetch client chart settings here so the data is ready before the dialog opens
+    const { data: clientChartSettings } = useQuery({
+        queryKey: ['chartSettings', client?.id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from('client_report_chart_settings')
+                .select('chart_test_overrides, enabled')
+                .eq('client_id', client.id)
+                .limit(1);
+            return data?.[0] || null;
+        },
+        enabled: !!client?.id
+    });
+
     // Queries
     // Fetch generic 'Location' for this client to attach equipments to.
     const { data: locations } = useQuery({
@@ -147,7 +161,7 @@ export default function ClientEquipmentManager({ client }) {
                     <EquipmentConfigDialog
                         locationEquipment={configEquipment}
                         catalogItem={catalogEquipments?.find(c => c.id === configEquipment.equipment_id)}
-                        client={client}
+                        clientOverrides={clientChartSettings?.chart_test_overrides || {}}
                         open={!!configEquipment}
                         onClose={() => setConfigEquipment(null)}
                     />
@@ -157,28 +171,13 @@ export default function ClientEquipmentManager({ client }) {
     );
 }
 
-function EquipmentConfigDialog({ locationEquipment, catalogItem, client, open, onClose }) {
+function EquipmentConfigDialog({ locationEquipment, catalogItem, clientOverrides = {}, open, onClose }) {
     const queryClient = useQueryClient();
     const { executeWithFeedback } = useOperationFeedback();
     const [selectedGroupId, setSelectedGroupId] = React.useState(locationEquipment?.default_analysis_group_id || null);
     const [selectedProductId, setSelectedProductId] = React.useState('');
     const [selectedTestId, setSelectedTestId] = React.useState('');
     const [chartOverrides, setChartOverrides] = React.useState(locationEquipment?.chart_test_overrides || {});
-
-    // Client-level chart overrides (for inherited value calculation)
-    const { data: clientChartSettings } = useQuery({
-        queryKey: ['chartSettings', client?.id],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from('client_report_chart_settings')
-                .select('chart_test_overrides')
-                .eq('client_id', client.id)
-                .limit(1);
-            return data?.[0] || null;
-        },
-        enabled: !!client?.id
-    });
-    const clientOverrides = clientChartSettings?.chart_test_overrides || {};
 
     // --- Tests Logic ---
     const { data: allTests } = useQuery({ queryKey: ['testDefinitions'], queryFn: () => TestDefinition.list() });
