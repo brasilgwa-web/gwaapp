@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { ClientReportChartSettings } from "@/api/entities";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -139,11 +138,11 @@ export default function ClientChartSettingsManager({ client }) {
                 updated_at: new Date().toISOString()
             };
 
-            if (existingSettings?.id) {
-                await ClientReportChartSettings.update(existingSettings.id, payload);
-            } else {
-                await ClientReportChartSettings.create(payload);
-            }
+            const { error } = await supabase
+                .from('client_report_chart_settings')
+                .upsert(payload, { onConflict: 'client_id' });
+
+            if (error) throw error;
 
             setHasChanges(false);
             queryClient.invalidateQueries({ queryKey: ['chartSettings', client.id] });
