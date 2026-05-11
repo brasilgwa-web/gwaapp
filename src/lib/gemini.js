@@ -10,6 +10,31 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const DEFAULT_MODEL = 'gemini-1.5-pro';
 const DEFAULT_MAX_TOKENS = 2048;
 
+// Fallback models to try when the primary model is overloaded/high demand
+// Order: best quality first, then progressively faster/lighter models
+const FALLBACK_MODELS = [
+    'gemini-2.5-pro',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+];
+
+// Check if an error message indicates the model is overloaded / high demand
+function isOverloadedError(errorMessage, statusCode) {
+    if (statusCode === 429 || statusCode === 503) return true;
+    const msg = (errorMessage || '').toLowerCase();
+    return msg.includes('overloaded')
+        || msg.includes('high demand')
+        || msg.includes('resource exhausted')
+        || msg.includes('rate limit');
+}
+
+// Build the API URL for a given model
+function buildApiUrl(model) {
+    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
+
 // Fetch AI settings from database
 async function getAISettings() {
     try {
@@ -53,6 +78,11 @@ async function getAISettings() {
     }
 }
 
+// Get fallback models list excluding the primary model
+function getFallbackModels(primaryModel) {
+    return FALLBACK_MODELS.filter(m => m !== primaryModel);
+}
+
 export async function generateTechnicalAnalysis(visitData) {
     // Load settings from DB (including API key)
     const aiSettings = await getAISettings();
@@ -62,7 +92,7 @@ export async function generateTechnicalAnalysis(visitData) {
         throw new Error('API key não configurada. Configure nas Configurações de IA ou no arquivo .env');
     }
 
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model}:generateContent`;
+
 
     const { client, results, dosages, observations, equipmentDataText } = visitData;
 
@@ -154,10 +184,11 @@ IMPORTANTE: Comece sua resposta EXATAMENTE com "**Resumo Geral:**" - sem texto a
 Responda em português brasileiro:`;
     }
 
-    // Função para fazer request com retry
-    const makeRequest = async (attempt = 1, maxAttempts = 3, delayMs = 3000) => {
+    // Função para fazer request com retry para um modelo específico
+    const makeRequest = async (modelName, attempt = 1, maxAttempts = 3, delayMs = 3000) => {
+        const apiUrl = buildApiUrl(modelName);
         try {
-            const response = await fetch(`${GEMINI_API_URL}?key=${aiSettings.apiKey}`, {
+            const response = await fetch(`${apiUrl}?key=${aiSettings.apiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -180,10 +211,18 @@ Responda em português brasileiro:`;
                 const errorMessage = errorData.error?.message || 'Erro na API Gemini';
 
                 // Se o modelo está sobrecarregado e ainda temos tentativas, retry
-                if (errorMessage.includes('overloaded') && attempt < maxAttempts) {
-                    console.warn(`Gemini API sobrecarregada. Tentativa ${attempt}/${maxAttempts}. Aguardando ${delayMs / 1000}s...`);
+                if (isOverloadedError(errorMessage, response.status) && attempt < maxAttempts) {
+                    console.warn(`Modelo ${modelName} sobrecarregado. Tentativa ${attempt}/${maxAttempts}. Aguardando ${delayMs / 1000}s...`);
                     await new Promise(resolve => setTimeout(resolve, delayMs));
-                    return makeRequest(attempt + 1, maxAttempts, delayMs);
+                    return makeRequest(modelName, attempt + 1, maxAttempts, delayMs);
+                }
+
+                // Marcar como erro de sobrecarga para o fallback handler
+                if (isOverloadedError(errorMessage, response.status)) {
+                    const err = new Error(errorMessage);
+                    err._isOverloaded = true;
+                    err._model = modelName;
+                    throw err;
                 }
 
                 console.error('Gemini API Error:', errorData);
@@ -200,7 +239,7 @@ Responda em português brasileiro:`;
                 const blockReason = data.promptFeedback?.blockReason;
                 
                 console.error('Gemini empty response debug:', {
-                    model: aiSettings.model,
+                    model: modelName,
                     finishReason,
                     blockReason,
                     safetyRatings,
@@ -209,32 +248,69 @@ Responda em português brasileiro:`;
                 });
 
                 if (blockReason) {
-                    throw new Error(`Prompt bloqueado pelo filtro de segurança: ${blockReason} (modelo: ${aiSettings.model})`);
+                    throw new Error(`Prompt bloqueado pelo filtro de segurança: ${blockReason} (modelo: ${modelName})`);
                 }
                 if (finishReason === 'SAFETY') {
-                    throw new Error(`Resposta bloqueada por filtro de segurança (modelo: ${aiSettings.model})`);
+                    throw new Error(`Resposta bloqueada por filtro de segurança (modelo: ${modelName})`);
                 }
-                throw new Error(`Resposta vazia da API Gemini (modelo: ${aiSettings.model}, finishReason: ${finishReason || 'N/A'})`);
+                throw new Error(`Resposta vazia da API Gemini (modelo: ${modelName}, finishReason: ${finishReason || 'N/A'})`);
+            }
+
+            if (modelName !== aiSettings.model) {
+                Logger.info('AI_GENERATION', `Resposta gerada com modelo fallback: ${modelName} (modelo principal: ${aiSettings.model})`);
             }
 
             return text.trim();
         } catch (error) {
             // Retry em caso de erro de rede ou timeout
-            if (attempt < maxAttempts && (error.name === 'TypeError' || error.message.includes('overloaded'))) {
-                console.warn(`Erro na requisição. Tentativa ${attempt}/${maxAttempts}. Aguardando ${delayMs / 1000}s...`);
+            if (attempt < maxAttempts && (error.name === 'TypeError' || isOverloadedError(error.message))) {
+                console.warn(`Erro na requisição (${modelName}). Tentativa ${attempt}/${maxAttempts}. Aguardando ${delayMs / 1000}s...`);
                 await new Promise(resolve => setTimeout(resolve, delayMs));
-                return makeRequest(attempt + 1, maxAttempts, delayMs);
+                return makeRequest(modelName, attempt + 1, maxAttempts, delayMs);
+            }
+            // Marcar erro de sobrecarga para fallback
+            if (isOverloadedError(error.message)) {
+                error._isOverloaded = true;
+                error._model = modelName;
             }
             throw error;
         }
     };
 
     try {
-        return await makeRequest();
-    } catch (error) {
-        console.error('Gemini Service Error:', error);
-        Logger.error('AI_GENERATION', 'Error generating technical analysis', error);
-        throw error;
+        // Tentar com o modelo principal
+        return await makeRequest(aiSettings.model);
+    } catch (primaryError) {
+        // Se o erro é de sobrecarga/alta demanda, tentar modelos alternativos
+        if (primaryError._isOverloaded) {
+            const fallbacks = getFallbackModels(aiSettings.model);
+            console.warn(`Modelo principal (${aiSettings.model}) sobrecarregado. Tentando ${fallbacks.length} modelos alternativos...`);
+            Logger.info('AI_GENERATION', `Modelo ${aiSettings.model} sobrecarregado, iniciando fallback`, {
+                fallbackModels: fallbacks
+            });
+
+            for (const fallbackModel of fallbacks) {
+                try {
+                    console.info(`Tentando modelo alternativo: ${fallbackModel}...`);
+                    // Menos tentativas por fallback para ser mais rápido
+                    const result = await makeRequest(fallbackModel, 1, 2, 2000);
+                    return result;
+                } catch (fallbackError) {
+                    console.warn(`Modelo ${fallbackModel} também falhou:`, fallbackError.message);
+                    // Continuar para o próximo fallback
+                }
+            }
+
+            // Todos os modelos falharam
+            const allModels = [aiSettings.model, ...fallbacks].join(', ');
+            Logger.error('AI_GENERATION', `Todos os modelos falharam (${allModels})`, primaryError);
+            throw new Error(`Todos os modelos estão sobrecarregados (${allModels}). Tente novamente em alguns minutos.`);
+        }
+
+        // Erro não é de sobrecarga, propagar normalmente
+        console.error('Gemini Service Error:', primaryError);
+        Logger.error('AI_GENERATION', 'Error generating technical analysis', primaryError);
+        throw primaryError;
     }
 }
 
@@ -244,7 +320,7 @@ export async function chatWithAI(messages, contextData) {
 
     if (!aiSettings.apiKey) throw new Error('API key não configurada');
 
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${aiSettings.model}:generateContent`;
+    const GEMINI_API_URL = buildApiUrl(aiSettings.model);
 
     // Default system prompt
     const DEFAULT_CHAT_PROMPT = `Você é um assistente técnico especialista em tratamento de águas da WGA Brasil.
@@ -303,9 +379,10 @@ ${contextData.dosagesText || 'N/A'}
         }
     }
 
-    const makeChatRequest = async (attempt = 1, maxAttempts = 3, delayMs = 3000) => {
+    const makeChatRequest = async (modelName, attempt = 1, maxAttempts = 3, delayMs = 3000) => {
+        const apiUrl = buildApiUrl(modelName);
         try {
-            const response = await fetch(`${GEMINI_API_URL}?key=${aiSettings.apiKey}`, {
+            const response = await fetch(`${apiUrl}?key=${aiSettings.apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -318,9 +395,16 @@ ${contextData.dosagesText || 'N/A'}
             if (!response.ok) {
                 const err = await response.json();
                 const errMsg = err.error?.message || 'Erro no chat IA';
-                if ((errMsg.includes('overloaded') || response.status === 429) && attempt < maxAttempts) {
+                if (isOverloadedError(errMsg, response.status) && attempt < maxAttempts) {
+                    console.warn(`Chat: Modelo ${modelName} sobrecarregado. Tentativa ${attempt}/${maxAttempts}...`);
                     await new Promise(resolve => setTimeout(resolve, delayMs));
-                    return makeChatRequest(attempt + 1, maxAttempts, delayMs);
+                    return makeChatRequest(modelName, attempt + 1, maxAttempts, delayMs);
+                }
+                if (isOverloadedError(errMsg, response.status)) {
+                    const error = new Error(errMsg);
+                    error._isOverloaded = true;
+                    error._model = modelName;
+                    throw error;
                 }
                 throw new Error(errMsg);
             }
@@ -328,15 +412,40 @@ ${contextData.dosagesText || 'N/A'}
             const data = await response.json();
             return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
         } catch (error) {
-            if (attempt < maxAttempts && (error.name === 'TypeError' || error.message.includes('overloaded'))) {
+            if (attempt < maxAttempts && (error.name === 'TypeError' || isOverloadedError(error.message))) {
                 await new Promise(resolve => setTimeout(resolve, delayMs));
-                return makeChatRequest(attempt + 1, maxAttempts, delayMs);
+                return makeChatRequest(modelName, attempt + 1, maxAttempts, delayMs);
+            }
+            if (isOverloadedError(error.message)) {
+                error._isOverloaded = true;
+                error._model = modelName;
             }
             throw error;
         }
     };
 
-    return makeChatRequest();
+    try {
+        return await makeChatRequest(aiSettings.model);
+    } catch (primaryError) {
+        if (primaryError._isOverloaded) {
+            const fallbacks = getFallbackModels(aiSettings.model);
+            console.warn(`Chat: Modelo principal (${aiSettings.model}) sobrecarregado. Tentando fallbacks...`);
+
+            for (const fallbackModel of fallbacks) {
+                try {
+                    console.info(`Chat: Tentando modelo alternativo: ${fallbackModel}...`);
+                    const result = await makeChatRequest(fallbackModel, 1, 2, 2000);
+                    return result;
+                } catch (fallbackError) {
+                    console.warn(`Chat: Modelo ${fallbackModel} também falhou:`, fallbackError.message);
+                }
+            }
+
+            const allModels = [aiSettings.model, ...fallbacks].join(', ');
+            throw new Error(`Todos os modelos estão sobrecarregados (${allModels}). Tente novamente em alguns minutos.`);
+        }
+        throw primaryError;
+    }
 }
 
 export default { generateTechnicalAnalysis, chatWithAI };
