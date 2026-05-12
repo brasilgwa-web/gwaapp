@@ -104,9 +104,44 @@ export function useHistoricalChartData(clientId, enabled = true) {
             // 4. Fetch ALL test definitions (needed for show_in_chart fallback)
             const { data: allTestDefs } = await supabase
                 .from('test_definitions')
-                .select('id, name, unit, min_value, max_value, show_in_chart, chart_color');
+                .select('*');
 
-            // 5. Fetch ALL results for these visits (no test filter — hierarchy decides per equipment)
+            // 5. Build a robust, name-based color map
+            // This ensures that variations like 'pH', 'pH.1', 'pH.2' share the same color identity
+            const normalize = (name) => (name || '').toLowerCase().trim().replace(/\.\d+$/, '').trim();
+            
+            const baseNameMap = {}; // baseName -> { manualColor, index }
+            const uniqueBaseNames = [];
+            
+            (allTestDefs || []).forEach(t => {
+                const baseName = normalize(t.name);
+                if (!baseNameMap[baseName]) {
+                    baseNameMap[baseName] = { manualColor: null };
+                    uniqueBaseNames.push(baseName);
+                }
+                if (t.chart_color && !baseNameMap[baseName].manualColor) {
+                    baseNameMap[baseName].manualColor = t.chart_color;
+                }
+            });
+
+            // Sort base names alphabetically to guarantee deterministic fallback colors
+            uniqueBaseNames.sort((a, b) => a.localeCompare(b));
+            
+            const testColorMap = {};
+            uniqueBaseNames.forEach((baseName, idx) => {
+                const fallbackColor = CHART_COLORS[idx % CHART_COLORS.length];
+                const finalColor = baseNameMap[baseName].manualColor || fallbackColor;
+                
+                // Map all test IDs that share this base name to this color
+                (allTestDefs || []).forEach(t => {
+                    if (normalize(t.name) === baseName) {
+                        // Priority: Individual test manual color > Base name shared manual color > Fallback
+                        testColorMap[t.id] = t.chart_color || finalColor;
+                    }
+                });
+            });
+
+            // 6. Fetch ALL results for these visits (no test filter — hierarchy decides per equipment)
             let allResults = [];
             const chunkSize = 50;
             for (let i = 0; i < visitIds.length; i += chunkSize) {
@@ -123,14 +158,6 @@ export function useHistoricalChartData(clientId, enabled = true) {
             const locationMap = new Map(locations?.map(l => [l.id, l]) || []);
             const equipMap = new Map(allEquipments.map(e => [e.id, e]));
             const locEquipMap = new Map(allLocEquips.map(le => [le.id, le]));
-
-            // 6. Build a global color map: each unique test ID always gets the same fallback color
-            // We sort all test definitions alphabetically to guarantee deterministic order
-            const sortedTestDefs = [...(allTestDefs || [])].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-            const testColorMap = {};
-            sortedTestDefs.forEach((t, idx) => {
-                testColorMap[t.id] = t.chart_color || CHART_COLORS[idx % CHART_COLORS.length];
-            });
 
             const allEquipmentIds = [...new Set(allResults.map(r => r.equipment_id))];
 
