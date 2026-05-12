@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, ArrowUpDown, Search, BarChart2, AlertTriangle, ChevronDown, ChevronUp, Loader2 as Loader2Icon } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowUpDown, Search, BarChart2, AlertTriangle, ChevronDown, ChevronUp, Loader2 as Loader2Icon, Palette } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
@@ -84,9 +84,18 @@ export default function TestCatalog() {
     });
 
     const [showInChartForm, setShowInChartForm] = useState(false);
+    const [chartColorForm, setChartColorForm] = useState('');
     const [globalCascadeDialog, setGlobalCascadeDialog] = useState(null);
     const [isCascading, setIsCascading] = useState(false);
     const [cascadeExpanded, setCascadeExpanded] = useState(false);
+
+    // Preset colors for quick selection
+    const PRESET_COLORS = [
+        '#2563eb', '#dc2626', '#0ea5e9', '#eab308', '#16a34a',
+        '#8b5cf6', '#f97316', '#06b6d4', '#ec4899', '#14b8a6',
+        '#7c3aed', '#ea580c', '#0284c7', '#ca8a04', '#059669',
+        '#be185d', '#4f46e5', '#0d9488', '#9333ea', '#65a30d',
+    ];
 
     const toggleShowInChart = useMutation({
         mutationFn: ({ id, value }) => TestDefinition.update(id, { show_in_chart: value }),
@@ -162,6 +171,7 @@ export default function TestCatalog() {
             methodology: formData.get('methodology'),
             observation: formData.get('observation'),
             show_in_chart: showInChartForm,
+            chart_color: chartColorForm || null,
         };
 
         if (editingTest) {
@@ -174,12 +184,14 @@ export default function TestCatalog() {
     const openEdit = (test) => {
         setEditingTest(test);
         setShowInChartForm(test?.show_in_chart || false);
+        setChartColorForm(test?.chart_color || '');
         setIsDialogOpen(true);
     };
 
     const openNew = () => {
         setEditingTest(null);
         setShowInChartForm(false);
+        setChartColorForm('');
         setIsDialogOpen(true);
     };
 
@@ -321,6 +333,60 @@ export default function TestCatalog() {
                                     />
                                 </div>
 
+                                {/* Chart Color Picker */}
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+                                    <Label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                        <Palette className="w-4 h-4" />
+                                        Cor fixa no gráfico
+                                    </Label>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {PRESET_COLORS.map(color => (
+                                            <button
+                                                key={color}
+                                                type="button"
+                                                className={`w-7 h-7 rounded-md border-2 transition-all hover:scale-110 ${
+                                                    chartColorForm === color ? 'border-slate-900 ring-2 ring-slate-400 scale-110' : 'border-slate-200'
+                                                }`}
+                                                style={{ backgroundColor: color }}
+                                                onClick={() => setChartColorForm(chartColorForm === color ? '' : color)}
+                                                title={color}
+                                            />
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="color"
+                                            value={chartColorForm || '#2563eb'}
+                                            onChange={(e) => setChartColorForm(e.target.value)}
+                                            className="w-8 h-8 rounded cursor-pointer border border-slate-200"
+                                            title="Escolher cor personalizada"
+                                        />
+                                        <Input
+                                            value={chartColorForm}
+                                            onChange={(e) => setChartColorForm(e.target.value)}
+                                            placeholder="Ex: #2563eb (vazio = automático)"
+                                            className="flex-1 text-sm font-mono"
+                                        />
+                                        {chartColorForm && (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setChartColorForm('')}
+                                                className="text-xs text-slate-400 hover:text-red-500"
+                                            >
+                                                Limpar
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-400">
+                                        {chartColorForm
+                                            ? `Cor fixa: ${chartColorForm} — será usada em todos os gráficos`
+                                            : 'Sem cor fixa — será atribuída automaticamente pela paleta'
+                                        }
+                                    </p>
+                                </div>
+
                                 <DialogFooter>
                                     <Button type="submit">{editingTest ? 'Salvar Alterações' : 'Criar Teste'}</Button>
                                 </DialogFooter>
@@ -349,6 +415,11 @@ export default function TestCatalog() {
                                             <BarChart2 className="w-3 h-3" /> Gráfico?
                                         </div>
                                     </TableHead>
+                                    <TableHead className="w-16 text-center text-xs text-slate-500">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <Palette className="w-3 h-3" /> Cor
+                                        </div>
+                                    </TableHead>
                                     <TableHead className="w-24"></TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -370,6 +441,18 @@ export default function TestCatalog() {
                                                     onCheckedChange={(val) => handleToggleShowInChart(test.id, !!val)}
                                                 />
                                             </TableCell>
+                                            <TableCell className="text-center">
+                                                {test.chart_color ? (
+                                                    <div className="flex items-center justify-center" title={test.chart_color}>
+                                                        <div
+                                                            className="w-5 h-5 rounded-full border border-slate-200 shadow-sm"
+                                                            style={{ backgroundColor: test.chart_color }}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[10px] text-slate-300">auto</span>
+                                                )}
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-1">
                                                     <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600" onClick={() => openEdit(test)}>
@@ -383,7 +466,7 @@ export default function TestCatalog() {
                                         </SortableTableRow>
                                     ))}
                                 </SortableContext>
-                                {visibleTests.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-4">Nenhum teste encontrado.</TableCell></TableRow>}
+                                {visibleTests.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-slate-500 py-4">Nenhum teste encontrado.</TableCell></TableRow>}
                             </TableBody>
                         </Table>
                     </DndContext>

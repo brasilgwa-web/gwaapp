@@ -1,10 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
+// Extended palette with 20 visually distinct colors — used as fallback when chart_color is not set
 const CHART_COLORS = [
-    '#2563eb', '#dc2626', '#0ea5e9', '#eab308',
-    '#16a34a', '#8b5cf6', '#f97316', '#06b6d4',
-    '#ec4899', '#14b8a6',
+    '#2563eb', // blue-600
+    '#dc2626', // red-600
+    '#0ea5e9', // sky-500
+    '#eab308', // yellow-500
+    '#16a34a', // green-600
+    '#8b5cf6', // violet-500
+    '#f97316', // orange-500
+    '#06b6d4', // cyan-500
+    '#ec4899', // pink-500
+    '#14b8a6', // teal-500
+    '#7c3aed', // violet-600
+    '#ea580c', // orange-600
+    '#0284c7', // sky-600
+    '#ca8a04', // yellow-600
+    '#059669', // emerald-600
+    '#be185d', // pink-700
+    '#4f46e5', // indigo-600
+    '#0d9488', // teal-600
+    '#9333ea', // purple-600
+    '#65a30d', // lime-600
 ];
 
 // Hierarchy per test: Equipment override > Client override > Test global (show_in_chart)
@@ -86,7 +104,7 @@ export function useHistoricalChartData(clientId, enabled = true) {
             // 4. Fetch ALL test definitions (needed for show_in_chart fallback)
             const { data: allTestDefs } = await supabase
                 .from('test_definitions')
-                .select('id, name, unit, min_value, max_value, show_in_chart');
+                .select('id, name, unit, min_value, max_value, show_in_chart, chart_color');
 
             // 5. Fetch ALL results for these visits (no test filter — hierarchy decides per equipment)
             let allResults = [];
@@ -106,8 +124,26 @@ export function useHistoricalChartData(clientId, enabled = true) {
             const equipMap = new Map(allEquipments.map(e => [e.id, e]));
             const locEquipMap = new Map(allLocEquips.map(le => [le.id, le]));
 
-            // 6. Build charts grouped by equipment, applying hierarchy per equipment
+            // 6. Build a global color map: each unique test ID always gets the same color
             const allEquipmentIds = [...new Set(allResults.map(r => r.equipment_id))];
+
+            // Collect all visible test IDs across ALL equipment to assign consistent colors
+            const globalVisibleTestIds = [];
+            const seenTestIds = new Set();
+            allEquipmentIds.forEach(eqId => {
+                const locEquip = locEquipMap.get(eqId);
+                (allTestDefs || []).forEach(t => {
+                    if (!seenTestIds.has(t.id) && isTestVisible(t.id, locEquip, clientOverrides, t)) {
+                        seenTestIds.add(t.id);
+                        globalVisibleTestIds.push(t.id);
+                    }
+                });
+            });
+            // Map: testId → deterministic color (same test = same color everywhere)
+            const testColorMap = {};
+            globalVisibleTestIds.forEach((testId, idx) => {
+                testColorMap[testId] = CHART_COLORS[idx % CHART_COLORS.length];
+            });
 
             const charts = allEquipmentIds.map(eqId => {
                 const locEquip = locEquipMap.get(eqId);
@@ -124,7 +160,7 @@ export function useHistoricalChartData(clientId, enabled = true) {
 
                 const eqResults = allResults.filter(r => r.equipment_id === eqId);
 
-                const tests = visibleTestDefs.map((testDef, testIdx) => {
+                const tests = visibleTestDefs.map((testDef) => {
                     const testId = testDef.id;
                     if (!testDef) return null;
 
@@ -148,7 +184,7 @@ export function useHistoricalChartData(clientId, enabled = true) {
                         unit: testDef.unit || '',
                         minVmp: testDef.min_value !== null ? parseFloat(testDef.min_value) : null,
                         maxVmp: testDef.max_value !== null ? parseFloat(testDef.max_value) : null,
-                        color: CHART_COLORS[testIdx % CHART_COLORS.length],
+                        color: testDef.chart_color || testColorMap[testId] || CHART_COLORS[0],
                         data
                     };
                 }).filter(Boolean);
