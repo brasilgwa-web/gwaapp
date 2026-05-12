@@ -124,26 +124,15 @@ export function useHistoricalChartData(clientId, enabled = true) {
             const equipMap = new Map(allEquipments.map(e => [e.id, e]));
             const locEquipMap = new Map(allLocEquips.map(le => [le.id, le]));
 
-            // 6. Build a global color map: each unique test ID always gets the same color
-            const allEquipmentIds = [...new Set(allResults.map(r => r.equipment_id))];
-
-            // Collect all visible test IDs across ALL equipment to assign consistent colors
-            const globalVisibleTestIds = [];
-            const seenTestIds = new Set();
-            allEquipmentIds.forEach(eqId => {
-                const locEquip = locEquipMap.get(eqId);
-                (allTestDefs || []).forEach(t => {
-                    if (!seenTestIds.has(t.id) && isTestVisible(t.id, locEquip, clientOverrides, t)) {
-                        seenTestIds.add(t.id);
-                        globalVisibleTestIds.push(t.id);
-                    }
-                });
-            });
-            // Map: testId → deterministic color (same test = same color everywhere)
+            // 6. Build a global color map: each unique test ID always gets the same fallback color
+            // We sort all test definitions alphabetically to guarantee deterministic order
+            const sortedTestDefs = [...(allTestDefs || [])].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             const testColorMap = {};
-            globalVisibleTestIds.forEach((testId, idx) => {
-                testColorMap[testId] = CHART_COLORS[idx % CHART_COLORS.length];
+            sortedTestDefs.forEach((t, idx) => {
+                testColorMap[t.id] = t.chart_color || CHART_COLORS[idx % CHART_COLORS.length];
             });
+
+            const allEquipmentIds = [...new Set(allResults.map(r => r.equipment_id))];
 
             const charts = allEquipmentIds.map(eqId => {
                 const locEquip = locEquipMap.get(eqId);
