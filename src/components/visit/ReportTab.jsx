@@ -673,24 +673,27 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 try {
                     const chartImages = [];
                     const { createRoot } = await import('react-dom/client');
-                    const { renderToStaticMarkup } = await import('react-dom/server');
+                    const { default: EquipmentTrendChart } = await import('./EquipmentTrendChart');
+
+                    const HEADER_H = 42;
+                    const PER_TEST_H = 130;
+                    const LAST_AXIS_H = 30;
+                    const LEGEND_H = 36;
 
                     for (const chart of data.historicalChartData.charts) {
                         try {
-                            // Create a temporary container for the chart
+                            const testCount = chart.tests?.length || 1;
+                            const totalH = HEADER_H + testCount * PER_TEST_H + LAST_AXIS_H + LEGEND_H;
+
                             const container = document.createElement('div');
                             container.style.width = '800px';
-                            container.style.height = '340px';
+                            container.style.height = `${totalH}px`;
                             container.style.position = 'fixed';
                             container.style.left = '-9999px';
                             container.style.top = '0';
                             container.style.backgroundColor = 'white';
                             document.body.appendChild(container);
 
-                            // Dynamically import EquipmentTrendChart
-                            const { default: EquipmentTrendChart } = await import('./EquipmentTrendChart');
-
-                            // Render into container
                             const root = createRoot(container);
                             await new Promise((resolve) => {
                                 root.render(
@@ -701,70 +704,59 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                                         forPdf={true}
                                     />
                                 );
-                                // Wait for Recharts to render (it uses requestAnimationFrame)
-                                setTimeout(resolve, 500);
+                                // Extra wait for stacked Recharts (multiple requestAnimationFrames)
+                                setTimeout(resolve, 800);
                             });
 
-                            // Get SVG from the rendered chart
-                            const svgElement = container.querySelector('.recharts-wrapper svg');
-                            if (svgElement) {
-                                // Clone the entire container content for full rendering
+                            // Capture ALL SVGs — one per test sub-chart
+                            const svgElements = container.querySelectorAll('.recharts-wrapper svg');
+                            if (svgElements.length > 0) {
+                                const scale = 2;
                                 const canvas = document.createElement('canvas');
-                                const scale = 2; // High DPI
                                 canvas.width = 800 * scale;
-                                canvas.height = 340 * scale;
+                                canvas.height = totalH * scale;
                                 const ctx = canvas.getContext('2d');
                                 ctx.scale(scale, scale);
                                 ctx.fillStyle = 'white';
-                                ctx.fillRect(0, 0, 800, 340);
+                                ctx.fillRect(0, 0, 800, totalH);
 
-                                // Serialize SVG
-                                const svgData = new XMLSerializer().serializeToString(svgElement);
-                                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                                const svgUrl = URL.createObjectURL(svgBlob);
+                                // Draw each sub-chart SVG stacked vertically
+                                let yOffset = HEADER_H;
+                                for (let i = 0; i < svgElements.length; i++) {
+                                    const svgData = new XMLSerializer().serializeToString(svgElements[i]);
+                                    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                                    const svgUrl = URL.createObjectURL(svgBlob);
+                                    const img = new Image();
+                                    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = svgUrl; });
+                                    const svgH = i === svgElements.length - 1 ? PER_TEST_H + LAST_AXIS_H : PER_TEST_H;
+                                    ctx.drawImage(img, 0, yOffset, 800, svgH);
+                                    yOffset += svgH;
+                                    URL.revokeObjectURL(svgUrl);
+                                }
 
-                                const img = new Image();
-                                await new Promise((resolve, reject) => {
-                                    img.onload = resolve;
-                                    img.onerror = reject;
-                                    img.src = svgUrl;
-                                });
-
-                                // Draw header text
-                                const chartTitle = `Trend - ${chart.testName} - ${data.historicalChartData.clientCity || 'BRA'} - Last ${data.historicalChartData.chartSettings?.period_days || 365} days`;
+                                // Draw header bar
+                                ctx.fillStyle = '#f8fafc';
+                                ctx.fillRect(0, 0, 800, HEADER_H);
                                 ctx.font = 'bold 11px sans-serif';
                                 ctx.fillStyle = '#2563eb';
-                                ctx.fillText(chartTitle, 16, 20);
+                                const title = `${chart.equipmentName}${chart.locationName ? ` | ${chart.locationName}` : ''} — ${data.historicalChartData.clientName || ''} — ${data.historicalChartData.chartSettings?.period_days || 365} dias`;
+                                ctx.fillText(title, 16, 26);
 
-                                // Draw chart SVG
-                                ctx.drawImage(img, 0, 30, 800, 260);
+                                // Draw border
+                                ctx.strokeStyle = '#e2e8f0';
+                                ctx.lineWidth = 1;
+                                ctx.strokeRect(0, 0, 800, totalH);
 
-                                // Draw legend
-                                let legendX = 16;
-                                const legendY = 305;
-                                ctx.font = '9px sans-serif';
-                                chart.series.forEach((s, idx) => {
-                                    ctx.fillStyle = s.color || '#2563eb';
-                                    ctx.fillRect(legendX, legendY - 6, 10, 10);
-                                    ctx.fillStyle = '#334155';
-                                    ctx.fillText(`${chart.testName} - ${s.name}`, legendX + 14, legendY + 3);
-                                    legendX += ctx.measureText(`${chart.testName} - ${s.name}`).width + 30;
-                                });
-
-                                URL.revokeObjectURL(svgUrl);
-
-                                const base64 = canvas.toDataURL('image/png', 0.9);
-                                chartImages.push(base64);
+                                chartImages.push(canvas.toDataURL('image/png', 0.9));
                             }
 
                             root.unmount();
                             document.body.removeChild(container);
                         } catch (chartErr) {
-                            console.warn('Failed to generate chart image for', chart.testName, chartErr);
+                            console.warn('Failed to generate chart image for', chart.equipmentName, chartErr);
                         }
                     }
 
-                    // Attach chart images to data for PDF
                     data.chartImages = chartImages;
                 } catch (chartGenErr) {
                     console.warn('Chart image generation failed:', chartGenErr);
