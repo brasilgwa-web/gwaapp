@@ -98,7 +98,7 @@ export default function TrendChart({ chart, clientName, periodDays, forPdf = fal
                     </div>
                 )}
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={mergedData} margin={{ top: 10, right: 40, left: 10, bottom: 10 }}>
+                    <LineChart data={mergedData} margin={{ top: 10, right: 40, left: 20, bottom: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
 
                         {/* VMP Band (Reference Area) */}
@@ -124,12 +124,13 @@ export default function TrendChart({ chart, clientName, periodDays, forPdf = fal
                             domain={yDomain}
                             tick={{ fontSize }}
                             stroke="#94a3b8"
+                            width={75}
                             label={{
                                 value: unit ? `${testName} (${unit})` : testName,
                                 angle: -90,
                                 position: 'insideLeft',
-                                style: { fontSize: fontSize - 1, fill: '#64748b' },
-                                offset: 0
+                                style: { fontSize: fontSize - 1, fill: '#64748b', textAnchor: 'middle' },
+                                offset: 15
                             }}
                         />
                         <Tooltip

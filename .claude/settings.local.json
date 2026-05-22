@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout *)",
+      "Bash(git reset *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git merge *)",
+      "Bash(xargs grep *)",
+      "Bash(git show *)",
+      "Read(//tmp/**)",
+      "Bash(git stash *)",
+      "Bash(git commit *)",
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(git pull *)"
+    ]
+  }
+}

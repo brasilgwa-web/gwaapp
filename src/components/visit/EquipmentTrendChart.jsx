@@ -50,7 +50,7 @@ function TestSubChart({ test, isLast, forPdf, allDates }) {
                 <LineChart
                     data={data}
                     syncId="equipment-sync"
-                    margin={{ top: 4, right: 50, left: 10, bottom: isLast ? 20 : 4 }}
+                    margin={{ top: 4, right: 50, left: 20, bottom: isLast ? 20 : 4 }}
                 >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
 
@@ -69,14 +69,13 @@ function TestSubChart({ test, isLast, forPdf, allDates }) {
                         domain={yDomain}
                         tick={{ fontSize }}
                         stroke={test.color}
-                        width={60}
+                        width={75}
                         label={{
                             value: yLabel,
                             angle: -90,
                             position: 'insideLeft',
-                            style: { fontSize: fontSize - 1, fill: test.color },
-                            offset: 10,
-                            dx: -5
+                            style: { fontSize: fontSize - 1, fill: test.color, textAnchor: 'middle' },
+                            offset: 15
                         }}
                     />
 
