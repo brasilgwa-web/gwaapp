@@ -771,18 +771,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             const blob = await pdf(<ReportPdf data={data} settings={reportSettings} />).toBlob();
             console.log(`Tamanho final do PDF: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
 
-            // Convert blob to base64 for existing Drive API
-            const pdfBase64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = () => {
-                    // Extract base64 part
-                    const base64data = reader.result?.toString().split(',')[1];
-                    resolve(base64data);
-                };
-                reader.onerror = reject;
-            });
-
             // Uses safeDate defined above
             const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
 
@@ -791,16 +779,35 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             let driveLink = null;
 
             if (driveFolderId) {
-                setUploadStatus('Enviando para o Google Drive (~100KB)...');
-                const uploadRes = await fetch('/api/upload-drive', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileBase64: pdfBase64,
-                        fileName: fileName,
-                        folderId: driveFolderId
-                    })
-                });
+                setUploadStatus('Enviando temporariamente para o Servidor (Supabase)...');
+                
+                const fileObj = new File([blob], fileName, { type: 'application/pdf' });
+                const timestamp = Date.now();
+                const tempPath = `temp-reports/${timestamp}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('public')
+                    .upload(tempPath, fileObj, { cacheControl: '3600', upsert: false });
+
+                if (uploadError) {
+                    throw new Error("Erro ao fazer upload para o Storage: " + uploadError.message);
+                }
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('public')
+                    .getPublicUrl(tempPath);
+
+                setUploadStatus('Transferindo do servidor para o Google Drive...');
+                try {
+                    const uploadRes = await fetch('/api/upload-drive', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fileUrl: publicUrl,
+                            fileName: fileName,
+                            folderId: driveFolderId
+                        })
+                    });
 
                 if (!uploadRes.ok) {
                     // Use .text() instead of .json() — Vercel/server errors may return plain text
@@ -816,7 +823,11 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     } catch {
                         console.warn("Drive upload response was not JSON:", resText);
                     }
+                    } finally {
+                    // Limpar arquivo temporário independentemente de falha ou sucesso
+                    await supabase.storage.from('public').remove([tempPath]).catch(e => console.error('Failed to cleanup temp PDF', e));
                 }
+            }
             }
 
             // Send Email
