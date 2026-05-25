@@ -26,10 +26,10 @@ export default async function handler(request, response) {
         return response.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { fileBase64, fileUrl, fileName, folderId } = request.body;
+    const { fileBase64, fileName, folderId } = request.body;
 
-    if ((!fileBase64 && !fileUrl) || !fileName || !folderId) {
-        return response.status(400).json({ error: 'Missing fileBase64/fileUrl, fileName, or folderId' });
+    if (!fileBase64 || !fileName || !folderId) {
+        return response.status(400).json({ error: 'Missing fileBase64, fileName, or folderId' });
     }
 
     try {
@@ -66,26 +66,15 @@ export default async function handler(request, response) {
 
         const drive = google.drive({ version: 'v3', auth });
 
-        const { Readable } = await import('stream');
-        let bufferStream = new Readable();
+        // Convert Base64 back to Buffer/Stream
+        // Remove header (data:application/pdf;base64,...) safely
+        const base64Data = fileBase64.includes(',') ? fileBase64.split(',')[1] : fileBase64;
+        const fileBuffer = Buffer.from(base64Data, 'base64');
 
-        if (fileUrl) {
-            console.log("Downloading file from temporary URL:", fileUrl);
-            const fileRes = await fetch(fileUrl);
-            if (!fileRes.ok) {
-                throw new Error(`Failed to download from Supabase URL: ${fileRes.statusText}`);
-            }
-            const arrayBuffer = await fileRes.arrayBuffer();
-            const fileBuffer = Buffer.from(arrayBuffer);
-            bufferStream.push(fileBuffer);
-        } else {
-            // Convert Base64 back to Buffer/Stream
-            // Remove header (data:application/pdf;base64,...) safely
-            const base64Data = fileBase64.includes(',') ? fileBase64.split(',')[1] : fileBase64;
-            const fileBuffer = Buffer.from(base64Data, 'base64');
-            bufferStream.push(fileBuffer);
-        }
-        
+        // Needed for Stream
+        const { Readable } = await import('stream');
+        const bufferStream = new Readable();
+        bufferStream.push(fileBuffer);
         bufferStream.push(null);
 
         const fileMetadata = {
