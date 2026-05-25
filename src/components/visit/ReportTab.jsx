@@ -823,12 +823,12 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     } catch {
                         console.warn("Drive upload response was not JSON:", resText);
                     }
-                } finally {
-                    // Limpar arquivo temporário independentemente de falha ou sucesso
-                    await supabase.storage.from('public').remove([tempPath]).catch(e => console.error('Failed to cleanup temp PDF', e));
                 }
+            } finally {
+                // Limpar arquivo temporário independentemente de falha ou sucesso
+                await supabase.storage.from('public').remove([tempPath]).catch(e => console.error('Failed to cleanup temp PDF', e));
             }
-            }
+        }
 
             // Send Email
             setUploadStatus('Enviando email...');
