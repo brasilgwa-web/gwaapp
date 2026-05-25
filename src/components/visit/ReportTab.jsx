@@ -769,6 +769,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             // --- REACT-PDF GENERATION ---
             // Generate Blob using the new ReportPdf component
             const blob = await pdf(<ReportPdf data={data} settings={reportSettings} />).toBlob();
+            console.log(`Tamanho final do PDF: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
 
             // Convert blob to base64 for existing Drive API
             const pdfBase64 = await new Promise((resolve, reject) => {
