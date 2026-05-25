@@ -769,7 +769,6 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             // --- REACT-PDF GENERATION ---
             // Generate Blob using the new ReportPdf component
             const blob = await pdf(<ReportPdf data={data} settings={reportSettings} />).toBlob();
-            console.log(`Tamanho final do PDF: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
 
             // Uses safeDate defined above
             const fileName = `${format(safeDate, 'yyyyMMdd')}_${visit.client?.name.replace(/[^a-z0-9]/gi, '_')}_${visit.id.slice(0, 6)}.pdf`;
@@ -779,7 +778,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             let driveLink = null;
 
             if (driveFolderId) {
-                setUploadStatus('Enviando temporariamente para o Servidor (Supabase)...');
+                setUploadStatus('Salvando relatório (aguarde)...');
                 
                 const fileObj = new File([blob], fileName, { type: 'application/pdf' });
                 const timestamp = Date.now();
