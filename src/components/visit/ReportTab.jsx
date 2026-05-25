@@ -711,7 +711,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                             // Capture ALL SVGs — one per test sub-chart
                             const svgElements = container.querySelectorAll('.recharts-wrapper svg');
                             if (svgElements.length > 0) {
-                                const scale = 2;
+                                const scale = 1.5;
                                 const canvas = document.createElement('canvas');
                                 canvas.width = 800 * scale;
                                 canvas.height = totalH * scale;
@@ -747,7 +747,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                                 ctx.lineWidth = 1;
                                 ctx.strokeRect(0, 0, 800, totalH);
 
-                                chartImages.push(canvas.toDataURL('image/png', 0.9));
+                                chartImages.push(canvas.toDataURL('image/jpeg', 0.8));
                             }
 
                             root.unmount();
