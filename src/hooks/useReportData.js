@@ -261,7 +261,10 @@ export function useReportData(id) {
                             const equipCatalogMap = new Map(allEquipments.map(e => [e.id, e]));
                             const locEquipLookup = new Map(allLocationEquipments.map(le => [le.id, le]));
 
-                            const allEquipmentIds = [...new Set(histResults.map(r => r.equipment_id))];
+                            // Only include equipment that has measurements in the CURRENT visit
+                            const currentVisitEquipmentIds = new Set(allResults.map(r => r.equipment_id));
+                            const allEquipmentIds = [...new Set(histResults.map(r => r.equipment_id))]
+                                .filter(eqId => currentVisitEquipmentIds.has(eqId));
 
                             const charts = allEquipmentIds.map(eqId => {
                                 const locEquip = locEquipLookup.get(eqId);
