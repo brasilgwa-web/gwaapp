@@ -312,6 +312,47 @@ function EditVisitForm({ visit, onSubmit, isLoading }) {
 // ... (Keep PhotosTab)
 
 
+// Helper for client-side image compression
+const compressImageFile = (file, maxWidth = 1920, quality = 0.85) => {
+    return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) return resolve(file);
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (!blob) return resolve(file);
+                    const compressedFile = new File([blob], file.name, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now(),
+                    });
+                    // Only use compressed if it's actually smaller
+                    resolve(compressedFile.size < file.size ? compressedFile : file);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = () => resolve(file);
+        };
+        reader.onerror = () => resolve(file);
+    });
+};
+
 // Minimal Photos Tab Implementation
 function PhotosTab({ visitId, readOnly }) {
     const queryClient = useQueryClient();
@@ -338,7 +379,9 @@ function PhotosTab({ visitId, readOnly }) {
 
         setIsUploading(true);
         try {
-            const { file_url } = await Core.UploadFile({ file });
+            // Compress the image before uploading (Full HD, 85% quality)
+            const compressedFile = await compressImageFile(file, 1920, 0.85);
+            const { file_url } = await Core.UploadFile({ file: compressedFile });
             await createPhoto.mutateAsync(file_url);
         } catch (err) {
             alert('Erro ao enviar foto');
