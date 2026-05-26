@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2, Beaker, Bot } from "lucide-react";
+import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2, Beaker, Bot, Download } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from '@/lib/utils';
@@ -392,6 +392,24 @@ function PhotosTab({ visitId, readOnly }) {
         }
     };
 
+    const handleDownload = async (url) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = `foto_${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error("Erro ao baixar a foto:", error);
+            window.open(url, '_blank'); // fallback
+        }
+    };
+
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -424,20 +442,34 @@ function PhotosTab({ visitId, readOnly }) {
                 {photos?.map(photo => (
                     <div key={photo.id} className="relative h-40 rounded-lg overflow-hidden border bg-slate-100 group">
                         <img src={photo.photo_url} alt="Visita" className="w-full h-full object-cover" />
-                        {!readOnly && (
+                        <div className="absolute top-2 right-2 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <Button
-                                variant="destructive"
+                                variant="secondary"
                                 size="icon"
-                                className="absolute top-2 right-2 h-8 w-8 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-sm"
+                                className="h-8 w-8 shadow-sm"
                                 onClick={(e) => {
                                     e.preventDefault();
-                                    if (confirm('Excluir esta foto?')) deletePhoto.mutate(photo.id);
+                                    handleDownload(photo.photo_url);
                                 }}
-                                title="Excluir foto"
+                                title="Baixar foto"
                             >
-                                <Trash2 className="w-4 h-4" />
+                                <Download className="w-4 h-4" />
                             </Button>
-                        )}
+                            {!readOnly && (
+                                <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="h-8 w-8 shadow-sm"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (confirm('Excluir esta foto?')) deletePhoto.mutate(photo.id);
+                                    }}
+                                    title="Excluir foto"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 ))}
             </div>
