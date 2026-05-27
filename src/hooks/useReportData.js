@@ -273,8 +273,16 @@ export function useReportData(id) {
                                 const equipmentName = equip?.name || 'Equipamento';
                                 const locationName = loc?.name || '';
 
+                                // Only include tests that were actually measured in the CURRENT visit for this equipment
+                                const currentVisitTestIds = new Set(
+                                    allResults.filter(r => r.equipment_id === eqId).map(r => r.test_definition_id)
+                                );
+
                                 // Hierarchy per test: Equipment override > Client override > Test global (show_in_chart)
                                 const visibleTestDefs = (allTestDefsForChart || []).filter(t => {
+                                    // Must have been measured in the current visit
+                                    if (!currentVisitTestIds.has(t.id)) return false;
+
                                     if (locEquip?.chart_test_overrides?.[t.id] !== undefined)
                                         return locEquip.chart_test_overrides[t.id];
                                     if (clientOverrides[t.id] !== undefined)
