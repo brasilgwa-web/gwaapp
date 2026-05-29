@@ -115,7 +115,7 @@ function TestSubChart({ test, isLast, forPdf, allDates }) {
                         strokeWidth={2}
                         dot={{ r: 3, fill: test.color }}
                         activeDot={{ r: 5 }}
-                        connectNulls={true}
+                        connectNulls={false}
                     />
                 </LineChart>
             </ResponsiveContainer>
