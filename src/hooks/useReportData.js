@@ -262,7 +262,11 @@ export function useReportData(id) {
                             const locEquipLookup = new Map(allLocationEquipments.map(le => [le.id, le]));
 
                             // Only include equipment that has measurements in the CURRENT visit
-                            const currentVisitEquipmentIds = new Set(allResults.map(r => r.equipment_id));
+                            const currentVisitEquipmentIds = new Set(
+                                allResults
+                                    .filter(r => r.measured_value !== null && r.measured_value !== undefined && r.measured_value !== '')
+                                    .map(r => r.equipment_id)
+                            );
                             const allEquipmentIds = [...new Set(histResults.map(r => r.equipment_id))]
                                 .filter(eqId => currentVisitEquipmentIds.has(eqId));
 
@@ -275,7 +279,9 @@ export function useReportData(id) {
 
                                 // Only include tests that were actually measured in the CURRENT visit for this equipment
                                 const currentVisitTestIds = new Set(
-                                    allResults.filter(r => r.equipment_id === eqId).map(r => r.test_definition_id)
+                                    allResults
+                                        .filter(r => r.equipment_id === eqId && r.measured_value !== null && r.measured_value !== undefined && r.measured_value !== '')
+                                        .map(r => r.test_definition_id)
                                 );
 
                                 // Hierarchy per test: Equipment override > Client override > Test global (show_in_chart)
