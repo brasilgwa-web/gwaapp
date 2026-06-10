@@ -22,10 +22,10 @@ export default async function handler(request, response) {
     const { to, subject, html, text } = request.body;
 
     // Credentials provided by user (Should be in process.env in production)
-    const SMTP_HOST = process.env.SMTP_HOST || 'smtp-relay.brevo.com';
+    const SMTP_HOST = process.env.SMTP_HOST || 'sender.skymail.net.br';
     const SMTP_PORT = process.env.SMTP_PORT || 587;
-    const SMTP_USER = process.env.SMTP_USER || '9e18bc001@smtp-brevo.com';
-    const SMTP_PASS = process.env.SMTP_PASS || '8LQ6B2N73MYRmwCO';
+    const SMTP_USER = process.env.SMTP_USER || 'wgabrasilapp@wgabrasil.com.br';
+    const SMTP_PASS = process.env.SMTP_PASS || '917382Wg@';
 
     try {
         const transporter = nodemailer.createTransport({
@@ -39,7 +39,7 @@ export default async function handler(request, response) {
         });
 
         const info = await transporter.sendMail({
-            from: '"WGA App" <wgabrasilapp@gmail.com>', // Verified sender
+            from: '"WGA App" <wgabrasilapp@wgabrasil.com.br>', // Verified sender
             to: to,
             subject: subject,
             text: text,
@@ -47,7 +47,7 @@ export default async function handler(request, response) {
         });
 
         console.log("Message sent: %s", info.messageId);
-        return response.status(200).json({ message: 'Email sent successfully via Brevo SMTP', id: info.messageId });
+        return response.status(200).json({ message: 'Email sent successfully via Skymail SMTP', id: info.messageId });
 
     } catch (error) {
         console.error("SMTP Error:", error);
