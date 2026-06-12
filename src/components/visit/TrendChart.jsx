@@ -159,7 +159,7 @@ export default function TrendChart({ chart, clientName, periodDays, forPdf = fal
                                 stroke={s.color || CHART_COLORS[idx % CHART_COLORS.length]}
                                 strokeWidth={2}
                                 dot={{ r: 3, fill: s.color || CHART_COLORS[idx % CHART_COLORS.length] }}
-                                connectNulls={false}
+                                connectNulls={true}
                                 activeDot={{ r: 5 }}
                             />
                         ))}
