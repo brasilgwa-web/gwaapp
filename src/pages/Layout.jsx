@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useQuery } from "@tanstack/react-query";
@@ -17,7 +16,8 @@ import {
   FileText,
   Bot,
   Shield,
-  Microscope
+  Microscope,
+  FlaskConical
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
@@ -134,6 +134,7 @@ export default function Layout() {
   const allNavigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permKey: 'dashboard' },
     { name: 'Minhas Visitas', href: '/visits', icon: ClipboardCheck, permKey: 'visits' },
+    { name: 'Laboratório', href: '/lab/samples', icon: FlaskConical, permKey: 'lab_samples' },
   ];
 
   const allSetupNavigation = [
