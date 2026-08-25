@@ -16,6 +16,7 @@ import { formatDateAsLocal } from '@/lib/utils';
 import ReadingsTab from "../components/visit/ReadingsTab";
 import ReportTab from "../components/visit/ReportTab";
 import DosageBoardTab from "../components/visit/DosageBoardTab";
+import SampleTab from "../components/visit/SampleTab";
 import { Card, CardContent } from "@/components/ui/card";
 import AIChat from "../components/visit/AIChat";
 
@@ -164,9 +165,10 @@ export default function VisitDetailPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 lg:w-[750px] mb-4">
+                <TabsList className="grid w-full grid-cols-6 lg:w-[850px] mb-4">
                     <TabsTrigger value="readings" title="Leituras"><ClipboardList className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Leituras</span></TabsTrigger>
                     <TabsTrigger value="dosages" title="Dosagens"><Beaker className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Dosagens</span></TabsTrigger>
+                    <TabsTrigger value="samples" title="Amostras (Lab)"><Droplets className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Amostras</span></TabsTrigger>
                     <TabsTrigger value="photos" title="Fotos"><ImageIcon className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Fotos</span></TabsTrigger>
                     <TabsTrigger value="details" title="Detalhes"><Info className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Detalhes</span></TabsTrigger>
                     <TabsTrigger value="report" title="Relatório"><FileText className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Relatório</span></TabsTrigger>
@@ -178,6 +180,10 @@ export default function VisitDetailPage() {
 
                 <TabsContent value="dosages" className="mt-2">
                     <DosageBoardTab visit={visit} readOnly={isReadOnly} />
+                </TabsContent>
+
+                <TabsContent value="samples" className="mt-2">
+                    <SampleTab visit={visit} readOnly={isReadOnly} />
                 </TabsContent>
 
                 <TabsContent value="photos" className="mt-2">
@@ -230,7 +236,7 @@ export default function VisitDetailPage() {
                     <Button
                         variant="outline"
                         onClick={() => {
-                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report'];
+                            const tabs = ['readings', 'dosages', 'samples', 'photos', 'details', 'report'];
                             const currentIdx = tabs.indexOf(activeTab);
                             if (currentIdx > 0) setActiveTab(tabs[currentIdx - 1]);
                         }}
@@ -242,6 +248,7 @@ export default function VisitDetailPage() {
                     <span className="text-sm text-slate-500">
                         {activeTab === 'readings' && 'Leituras'}
                         {activeTab === 'dosages' && 'Dosagens'}
+                        {activeTab === 'samples' && 'Amostras'}
                         {activeTab === 'photos' && 'Fotos'}
                         {activeTab === 'details' && 'Detalhes'}
                         {activeTab === 'report' && 'Relatório'}
@@ -249,7 +256,7 @@ export default function VisitDetailPage() {
                     <Button
                         variant="outline"
                         onClick={() => {
-                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report'];
+                            const tabs = ['readings', 'dosages', 'samples', 'photos', 'details', 'report'];
                             const currentIdx = tabs.indexOf(activeTab);
                             if (currentIdx < tabs.length - 1) setActiveTab(tabs[currentIdx + 1]);
                         }}

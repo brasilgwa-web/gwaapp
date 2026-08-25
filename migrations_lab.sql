@@ -41,11 +41,28 @@ CREATE TABLE IF NOT EXISTS public.samples (
     location_id UUID REFERENCES public.locations(id) ON DELETE SET NULL,
     visit_id UUID REFERENCES public.visits(id) ON DELETE SET NULL,
     sample_code VARCHAR(100),
+    batch VARCHAR(100), -- Lote analítico
+    equipment VARCHAR(200), -- Equipamento/Ponto
+    sample_type VARCHAR(100) DEFAULT 'Pontual',
+    matrix VARCHAR(100), -- Ex: Água Industrial
+    visual_characteristics VARCHAR(255),
+    rain_occurrence BOOLEAN DEFAULT false,
+    
+    -- Cadeia de Custódia: Coleta (Campo)
     collected_at TIMESTAMP WITH TIME ZONE,
-    status VARCHAR(50) DEFAULT 'coletado', -- coletado, recebido, em_analise, concluido
+    temperature NUMERIC(5,2),
+    collection_signature_name VARCHAR(255),
     collected_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    analyzed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     notes TEXT,
+
+    -- Cadeia de Custódia: Recebimento (Laboratório)
+    received_at TIMESTAMP WITH TIME ZONE,
+    received_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    receipt_integrity VARCHAR(50), -- Conforme / Nao Conforme
+    receipt_notes TEXT,
+
+    status VARCHAR(50) DEFAULT 'coletado', -- coletado, recebido, em_analise, concluido
+    analyzed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
