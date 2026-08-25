@@ -6,8 +6,11 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Beaker, CheckSquare, XCircle, Search, Droplets, Calculator } from "lucide-react";
+import { Loader2, Beaker, CheckSquare, XCircle, Search, Droplets, Calculator, FileText } from "lucide-react";
 import SampleAnalysisModal from '../components/visit/SampleAnalysisModal';
+import LabReportPdf from '../components/visit/LabReportPdf';
+import { pdf } from '@react-pdf/renderer';
+import { SampleResult, TestDefinition } from "@/api/entities";
 
 export default function LabSamples() {
     const { user } = useAuth();
@@ -53,6 +56,39 @@ export default function LabSamples() {
     const openReceiveModal = (sample) => {
         setReceivingSample(sample);
         setIsReceiveModalOpen(true);
+    };
+
+    const handleGeneratePdf = async (sample) => {
+        try {
+            // alert('Gerando laudo, aguarde...'); // Optional loading state could be added
+            const results = await SampleResult.filter({ sample_id: sample.id });
+            const testDefs = await TestDefinition.list();
+            
+            // If sample lacks auth_key, generate and save it
+            let currentSample = sample;
+            if (!sample.auth_key) {
+                const newKey = Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                currentSample = await Sample.update(sample.id, { auth_key: newKey });
+            }
+
+            const data = {
+                sample: currentSample,
+                client: currentSample.client,
+                results: results,
+                testDefinitions: testDefs
+            };
+
+            const blob = await pdf(<LabReportPdf data={data} />).toBlob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Laudo_${currentSample.sample_code}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao gerar PDF.");
+        }
     };
 
     if (isLoading) {
@@ -142,6 +178,11 @@ export default function LabSamples() {
                                         <Button size="sm" variant="outline" className="h-7 px-2 border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100" onClick={() => setAnalyzingSample(sample)}>
                                             <Calculator className="w-3 h-3 mr-1" /> Analisar
                                         </Button>
+                                        {sample.status === 'concluido' && (
+                                            <Button size="sm" className="h-7 px-2 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleGeneratePdf(sample)}>
+                                                <FileText className="w-3 h-3 mr-1" /> PDF
+                                            </Button>
+                                        )}
                                     </div>
                                 }
                             />

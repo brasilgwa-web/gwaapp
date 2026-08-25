@@ -65,6 +65,9 @@ CREATE TABLE IF NOT EXISTS public.samples (
     receipt_integrity VARCHAR(50), -- Conforme / Nao Conforme
     receipt_notes TEXT,
 
+    -- Laudo e Segurança
+    auth_key VARCHAR(16),
+
     status VARCHAR(50) DEFAULT 'coletado', -- coletado, recebido, em_analise, concluido
     analyzed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
