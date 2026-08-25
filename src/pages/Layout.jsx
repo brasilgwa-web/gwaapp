@@ -16,7 +16,8 @@ import {
   Beaker,
   FileText,
   Bot,
-  Shield
+  Shield,
+  Microscope
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
@@ -149,6 +150,10 @@ export default function Layout() {
     { name: 'Configurações de Relatório', href: '/setup/report', icon: FileText, permKey: 'admin_report' },
   ];
 
+  const allLabNavigation = [
+    { name: 'Amostras e Laudos', href: '/lab/samples', icon: Microscope, permKey: 'lab_samples' },
+  ];
+
   // Filter navigation based on user permissions
   const navigation = allNavigation.filter(item =>
     userPermissions?.includes(item.permKey)
@@ -159,6 +164,10 @@ export default function Layout() {
   );
 
   const adminNavigation = allAdminNavigation.filter(item =>
+    userPermissions?.includes(item.permKey)
+  );
+
+  const labNavigation = allLabNavigation.filter(item =>
     userPermissions?.includes(item.permKey)
   );
 
@@ -276,6 +285,31 @@ export default function Layout() {
                 <div className="pt-4">
                   <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Cadastros</p>
                   {setupNavigation.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                          }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Lab Menu - only show if user has lab permissions */}
+              {labNavigation.length > 0 && (
+                <div className="pt-4">
+                  <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Laboratório</p>
+                  {labNavigation.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
                     return (

@@ -42,11 +42,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Shield, ShieldAlert, Ban, CheckCircle, Info, Users, Key, Loader2, Trash2, RotateCcw } from "lucide-react";
+import { MoreHorizontal, Shield, ShieldAlert, Ban, CheckCircle, Info, Users, Key, Loader2, Trash2, RotateCcw, Building } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import RoleManager from "@/components/setup/RoleManager";
+import UserClientManager from "@/components/setup/UserClientManager";
 
 export default function UserManagement() {
     const queryClient = useQueryClient();
@@ -59,6 +60,9 @@ export default function UserManagement() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isResetting, setIsResetting] = useState(false);
+
+    // Client Manager state
+    const [clientManagerUser, setClientManagerUser] = useState(null);
 
     // Show deleted users toggle
     const [showDeleted, setShowDeleted] = useState(false);
@@ -370,6 +374,14 @@ export default function UserManagement() {
                                                             Redefinir Senha
                                                         </DropdownMenuItem>
 
+                                                        <DropdownMenuItem
+                                                            onClick={() => setClientManagerUser(user)}
+                                                            className="text-slate-700 focus:text-slate-900 focus:bg-slate-50"
+                                                        >
+                                                            <Building className="w-4 h-4 mr-2 text-slate-500" />
+                                                            Gerenciar Clientes
+                                                        </DropdownMenuItem>
+
                                                         {getStatus(user) === 'active' ? (
                                                             <DropdownMenuItem
                                                                 onClick={() => handleStatusChange(user, 'inactive')}
@@ -493,6 +505,13 @@ export default function UserManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* User Client Manager Modal */}
+            <UserClientManager
+                open={!!clientManagerUser}
+                onOpenChange={(open) => !open && setClientManagerUser(null)}
+                user={clientManagerUser}
+            />
         </div>
     );
 }

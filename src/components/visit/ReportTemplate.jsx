@@ -215,6 +215,16 @@ export function ReportTemplate({ data }) {
 
     const includeCover = reportSettings?.cover_enabled !== false;
 
+    // Lógica de Título Dinâmico (Fase 4)
+    // Verifica se a visita tem flag de laboratório ou se há amostras de laboratório preenchidas
+    const hasLabAnalysis = visit.has_lab_analysis || fullReportStructure?.some(loc => 
+        loc.equipments.some(eq => eq.sample?.complementary_info || eq.sample?.collection_time)
+    );
+    
+    const displayTitle = hasLabAnalysis 
+        ? 'Relatório de Ensaios de Laboratório' 
+        : (reportSettings?.report_title || 'Relatório de Atendimento Técnico em Campo');
+
     return (
         <>
             {includeCover && <CoverPage settings={reportSettings} />}
@@ -226,7 +236,7 @@ export function ReportTemplate({ data }) {
                     <div className="flex justify-between items-center h-20 gap-4"> {/* Added gap, kept items-center for middle alignment */}
                         <div className="w-2/3"> {/* Give Title more space (66%) */}
                             <h1 className="text-xl font-bold text-slate-800 leading-tight">
-                                {reportSettings?.report_title || 'Relatório de Atendimento Técnico em Campo'}
+                                {displayTitle}
                             </h1>
                         </div>
                         <div className="flex items-center justify-end gap-4 w-1/3"> {/* Limit Logos to 33% */}

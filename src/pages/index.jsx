@@ -11,9 +11,9 @@ import SetupAI from "./SetupAI";
 import SetupReport from "./SetupReport";
 import Dashboard from "./Dashboard";
 import Visits from "./Visits";
-import VisitDetail from "./VisitDetail";
 import UserManagement from "./UserManagement";
 import Profile from "./Profile";
+import LabSamples from "./LabSamples";
 import ReportView from "./ReportView";
 import { useAuth } from "@/context/AuthContext";
 
@@ -38,10 +38,10 @@ export default function Pages() {
                 <Route path="setup/tests" element={<SetupTests />} />
                 <Route path="setup/products" element={<SetupProducts />} />
                 <Route path="setup/templates" element={<SetupTemplates />} />
-                <Route path="setup/ai" element={<SetupAI />} />
                 <Route path="setup/report" element={<SetupReport />} />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="lab/samples" element={<LabSamples />} />
                 <Route path="*" element={<div>Página não encontrada</div>} />
             </Route>
             <Route path="/report/:id" element={<ReportView />} />

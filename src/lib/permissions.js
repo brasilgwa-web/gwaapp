@@ -13,6 +13,7 @@ export const ROUTE_PERMISSIONS = {
     '/setup/ai': 'admin_ai',
     '/setup/report': 'admin_report',
     '/setup/roles': 'admin_roles',
+    '/lab/samples': 'lab_samples',
 };
 
 // All available permissions with labels
@@ -28,6 +29,7 @@ export const ALL_PERMISSIONS = [
     { key: 'admin_ai', label: 'Configurações IA', group: 'Administração' },
     { key: 'admin_report', label: 'Configurações de Relatório', group: 'Administração' },
     { key: 'admin_roles', label: 'Gerenciar Perfis', group: 'Administração' },
+    { key: 'lab_samples', label: 'Amostras e Laudos', group: 'Laboratório' },
 ];
 
 // Check if user can access a specific route
