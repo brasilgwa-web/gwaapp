@@ -34,6 +34,10 @@ USING (
     )
 );
 
+CREATE POLICY "Enable insert for authenticated users" ON public.clients FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable update for authenticated users" ON public.clients FOR UPDATE USING (auth.role() = 'authenticated');
+CREATE POLICY "Enable delete for authenticated users" ON public.clients FOR DELETE USING (auth.role() = 'authenticated');
+
 -- Phase 2: Módulo Laboratório (Registro de Amostras)
 CREATE TABLE IF NOT EXISTS public.samples (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
