@@ -208,7 +208,7 @@ const LabReportPdf = ({ data }) => {
                         </View>
                         <View style={styles.gridItem}>
                             <Text style={styles.label}>Temperatura na Coleta</Text>
-                            <Text style={styles.value}>{sample?.temperature ? \`\${sample.temperature} ºC\` : '-'}</Text>
+                            <Text style={styles.value}>{sample?.temperature ? `${sample.temperature} ºC` : '-'}</Text>
                         </View>
                         <View style={styles.gridItem}>
                             <Text style={styles.label}>Integridade no Recebimento</Text>
@@ -269,7 +269,7 @@ const LabReportPdf = ({ data }) => {
                 <View style={styles.footer} fixed>
                     <Text>WGA Brasil - Laudo Analítico Válido</Text>
                     <Text>Chave de Autenticação: <Text style={styles.authKey}>{authKey}</Text></Text>
-                    <Text render={({ pageNumber, totalPages }) => \`Página \${pageNumber} de \${totalPages}\`} />
+                    <Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
                 </View>
             </Page>
         </Document>
