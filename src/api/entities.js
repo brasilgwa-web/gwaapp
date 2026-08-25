@@ -180,6 +180,7 @@ export const ClientContact = createAdapter('client_contacts', 'created_at');
 export const ClientReportChartSettings = createAdapter('client_report_chart_settings', 'created_at');
 export const UserClient = createAdapter('user_clients', 'created_at');
 export const Sample = createAdapter('samples', 'created_at');
+export const SampleResult = createAdapter('sample_results', 'created_at');
 
 // V1.3 RBAC Entities
 export const Role = createAdapter('roles', 'created_at');

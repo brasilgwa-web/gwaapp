@@ -6,7 +6,8 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Beaker, CheckSquare, XCircle, Search, Droplets } from "lucide-react";
+import { Loader2, Beaker, CheckSquare, XCircle, Search, Droplets, Calculator } from "lucide-react";
+import SampleAnalysisModal from '../components/visit/SampleAnalysisModal';
 
 export default function LabSamples() {
     const { user } = useAuth();
@@ -14,6 +15,7 @@ export default function LabSamples() {
     const [searchTerm, setSearchTerm] = useState('');
     const [receivingSample, setReceivingSample] = useState(null);
     const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
+    const [analyzingSample, setAnalyzingSample] = useState(null);
 
     const { data: samples, isLoading } = useQuery({
         queryKey: ['lab_samples'],
@@ -133,8 +135,13 @@ export default function LabSamples() {
                                 key={sample.id} 
                                 sample={sample} 
                                 action={
-                                    <div className="text-xs font-semibold px-2 py-1 bg-slate-100 rounded text-slate-600 border">
-                                        {sample.status === 'recebido' ? 'Recebido' : 'Analisado'}
+                                    <div className="flex items-center gap-2">
+                                        <div className={`text-[10px] font-semibold px-2 py-1 rounded border ${sample.status === 'concluido' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                                            {sample.status === 'recebido' ? 'Recebido' : sample.status === 'concluido' ? 'Concluído' : 'Analisado'}
+                                        </div>
+                                        <Button size="sm" variant="outline" className="h-7 px-2 border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100" onClick={() => setAnalyzingSample(sample)}>
+                                            <Calculator className="w-3 h-3 mr-1" /> Analisar
+                                        </Button>
                                     </div>
                                 }
                             />
@@ -163,6 +170,12 @@ export default function LabSamples() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            <SampleAnalysisModal 
+                sample={analyzingSample} 
+                isOpen={!!analyzingSample} 
+                onClose={() => setAnalyzingSample(null)} 
+            />
 
         </div>
     );

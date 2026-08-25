@@ -88,3 +88,28 @@ EXECUTE FUNCTION update_samples_updated_at();
 INSERT INTO public.roles (name, description, is_system)
 SELECT 'Laboratório', 'Acesso exclusivo para técnicos de laboratório.', false
 WHERE NOT EXISTS (SELECT 1 FROM public.roles WHERE name = 'Laboratório');
+
+-- Phase 3: Módulo Laboratório (Matriz de Cálculos Analíticos)
+CREATE TABLE IF NOT EXISTS public.sample_results (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    sample_id UUID REFERENCES public.samples(id) ON DELETE CASCADE,
+    test_definition_id UUID REFERENCES public.test_definitions(id) ON DELETE CASCADE,
+    reading NUMERIC(10,4), -- Leitura bruta do equipamento
+    dilution_factor NUMERIC(10,4) DEFAULT 1.0, -- Fator de Diluição
+    reagent_factor NUMERIC(10,4) DEFAULT 1.0, -- Fator de Reagente
+    correction_factor NUMERIC(10,4) DEFAULT 1.0, -- Fator de Correção
+    calculated_result NUMERIC(10,4), -- Resultado Final
+    status VARCHAR(50) DEFAULT 'em_analise',
+    comments TEXT, -- Banco de comentários
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(sample_id, test_definition_id)
+);
+
+ALTER TABLE public.sample_results ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all access for authenticated users" ON public.sample_results FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE TRIGGER trigger_update_sample_results_updated_at
+BEFORE UPDATE ON public.sample_results
+FOR EACH ROW
+EXECUTE FUNCTION update_samples_updated_at();
