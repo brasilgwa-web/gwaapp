@@ -11,6 +11,7 @@ import SetupAI from "./SetupAI";
 import SetupReport from "./SetupReport";
 import Dashboard from "./Dashboard";
 import Visits from "./Visits";
+import VisitDetail from "./VisitDetail";
 import UserManagement from "./UserManagement";
 import Profile from "./Profile";
 import LabSamples from "./LabSamples";
