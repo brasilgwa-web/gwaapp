@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { SampleResult, TestDefinition } from "@/api/entities";
+import { Sample, SampleResult, TestDefinition } from "@/api/entities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Loader2, Plus, Trash2, Save, Calculator } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function SampleAnalysisModal({ sample, isOpen, onClose }) {
     const { user } = useAuth();
@@ -79,8 +80,10 @@ export default function SampleAnalysisModal({ sample, isOpen, onClose }) {
         return (r * d * re * c).toFixed(4).replace(/\.0000$/, '');
     };
 
+    const { toast } = useToast();
+
     const saveMutation = useMutation({
-        mutationFn: async () => {
+        mutationFn: async (isFinal) => {
             // Very simple sync: Delete existing and recreate, or update existing.
             // For safety and speed in this prototype, we'll upsert or delete old ones not in list.
             const currentIds = results.map(r => r.id).filter(Boolean);
@@ -115,10 +118,19 @@ export default function SampleAnalysisModal({ sample, isOpen, onClose }) {
                     await SampleResult.create(payload);
                 }
             }
+            
+            // Update the sample status if finalizing
+            if (isFinal) {
+                await Sample.update(sample.id, { status: 'concluido' });
+            }
         },
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['sample_results', sample?.id] });
-            alert("Resultados salvos com sucesso!");
+            queryClient.invalidateQueries({ queryKey: ['lab_samples'] });
+            toast({
+                title: variables ? "Laudo finalizado!" : "Resultados salvos",
+                description: variables ? "O laudo agora está disponível para geração de PDF." : "O progresso foi salvo com sucesso.",
+            });
             onClose();
         }
     });
@@ -227,9 +239,13 @@ export default function SampleAnalysisModal({ sample, isOpen, onClose }) {
 
                         <div className="flex justify-end gap-2 pt-4 border-t mt-6">
                             <Button variant="outline" onClick={onClose} disabled={saveMutation.isPending}>Cancelar</Button>
-                            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="bg-purple-600 hover:bg-purple-700">
+                            <Button variant="outline" onClick={() => saveMutation.mutate(false)} disabled={saveMutation.isPending} className="border-purple-200 text-purple-700 hover:bg-purple-50">
                                 {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                                Salvar Resultados
+                                Salvar Parcial
+                            </Button>
+                            <Button onClick={() => saveMutation.mutate(true)} disabled={saveMutation.isPending} className="bg-purple-600 hover:bg-purple-700">
+                                {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Calculator className="w-4 h-4 mr-2" />}
+                                Finalizar Laudo
                             </Button>
                         </div>
                     </div>
