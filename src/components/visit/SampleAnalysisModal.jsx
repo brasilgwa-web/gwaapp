@@ -61,13 +61,13 @@ export default function SampleAnalysisModal({ sample, isOpen, onClose }) {
     };
 
     const updateRow = (index, field, value) => {
-        const newResults = [...results];
         let val = value;
         if (['reading', 'dilution_factor', 'reagent_factor', 'correction_factor'].includes(field)) {
             val = value === '' ? '' : Number(value);
         }
-        newResults[index][field] = val;
-        setResults(newResults);
+        setResults(prev => prev.map((row, i) => 
+            i === index ? { ...row, [field]: val } : row
+        ));
     };
 
     const calculateResult = (row) => {
