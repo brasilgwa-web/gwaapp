@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Sample, SampleResult, TestDefinition } from "@/api/entities";
+import { Sample, SampleResult, TestDefinition, LocationEquipment, Equipment, TestResult } from "@/api/entities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -25,6 +25,24 @@ export default function SampleAnalysisModal({ sample, isOpen, onClose }) {
         enabled: !!sample?.id
     });
 
+    // Load field results from the same visit and equipment
+    const { data: fieldResults } = useQuery({
+        queryKey: ['field_results', sample?.visit_id, sample?.equipment],
+        queryFn: async () => {
+            if (!sample?.visit_id || !sample?.equipment) return [];
+            const les = await LocationEquipment.filter({ location_id: sample.location_id });
+            const eqs = await Equipment.list();
+            const leMatches = les.filter(le => {
+                 const eq = eqs.find(e => e.id === le.equipment_id);
+                 return eq?.name === sample.equipment;
+            });
+            if (leMatches.length === 0) return [];
+            const leId = leMatches[0].id;
+            return await TestResult.filter({ visit_id: sample.visit_id, location_equipment_id: leId });
+        },
+        enabled: !!sample?.visit_id && !!sample?.equipment
+    });
+
     // State for the dynamic grid of results
     const [results, setResults] = useState([]);
 
@@ -40,9 +58,27 @@ export default function SampleAnalysisModal({ sample, isOpen, onClose }) {
                 correction_factor: r.correction_factor || 1,
                 comments: r.comments || ''
             }));
+            
+            // Import field results if they don't already exist in the lab results
+            if (fieldResults && fieldResults.length > 0) {
+                fieldResults.forEach(fr => {
+                    const exists = mapped.find(m => m.test_definition_id === fr.test_definition_id);
+                    if (!exists) {
+                        mapped.push({
+                            test_definition_id: fr.test_definition_id,
+                            reading: fr.value || '',
+                            dilution_factor: 1,
+                            reagent_factor: 1,
+                            correction_factor: 1,
+                            comments: 'Importado do campo'
+                        });
+                    }
+                });
+            }
+
             setResults(mapped);
         }
-    }, [existingResults, testDefinitions]);
+    }, [existingResults, testDefinitions, fieldResults]);
 
     const addRow = () => {
         setResults([...results, {
@@ -141,7 +177,7 @@ export default function SampleAnalysisModal({ sample, isOpen, onClose }) {
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Calculator className="w-5 h-5 text-purple-600" />
-                        Matriz de Cálculo Analítico
+                        Matriz de Cálculo: {sample?.client?.name || 'Cliente Desconhecido'}
                     </DialogTitle>
                     <DialogDescription>
                         Amostra: {sample?.sample_code} | Equipamento: {sample?.equipment}

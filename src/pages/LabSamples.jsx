@@ -75,7 +75,7 @@ export default function LabSamples() {
 
             const data = {
                 sample: currentSample,
-                client: currentSample.client,
+                client: sample.client, // Usa o client da variavel original que ja estava preenchido
                 results: results,
                 testDefinitions: testDefs
             };
@@ -110,17 +110,18 @@ export default function LabSamples() {
     ) || [];
 
     const pendingReceipt = filteredSamples.filter(s => s.status === 'coletado');
-    const inLab = filteredSamples.filter(s => s.status !== 'coletado');
+    const inLab = filteredSamples.filter(s => s.status === 'recebido' || s.status === 'em_analise');
+    const completed = filteredSamples.filter(s => s.status === 'concluido');
 
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                         <Beaker className="w-6 h-6 text-blue-600" />
                         Recepção de Amostras
                     </h1>
-                    <p className="text-slate-500">Módulo de Laboratório - Passo 2 da Cadeia de Custódia</p>
+                    <p className="text-slate-500">Módulo de Laboratório - Cadeia de Custódia</p>
                 </div>
                 <div className="relative w-full md:w-64">
                     <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
@@ -133,7 +134,7 @@ export default function LabSamples() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* Aguardando Recebimento */}
                 <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
@@ -183,11 +184,38 @@ export default function LabSamples() {
                                         <Button size="sm" variant="outline" className="h-7 px-2 border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100" onClick={() => setAnalyzingSample(sample)}>
                                             <Calculator className="w-3 h-3 mr-1" /> Analisar
                                         </Button>
-                                        {sample.status === 'concluido' && (
-                                            <Button size="sm" className="h-7 px-2 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleGeneratePdf(sample)}>
-                                                <FileText className="w-3 h-3 mr-1" /> PDF
-                                            </Button>
-                                        )}
+                                    </div>
+                                }
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Laudos Finalizados */}
+                <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
+                    <div className="bg-green-50 border-b border-green-200 p-4">
+                        <h2 className="font-bold text-green-900 flex items-center gap-2">
+                            Laudos Finalizados
+                            <span className="bg-green-200 text-green-900 text-xs py-0.5 px-2 rounded-full">
+                                {completed.length}
+                            </span>
+                        </h2>
+                    </div>
+                    <div className="p-4 flex-1 overflow-y-auto max-h-[600px] space-y-3">
+                        {completed.length === 0 ? (
+                            <p className="text-slate-500 text-sm text-center py-8">Nenhum laudo finalizado.</p>
+                        ) : completed.map(sample => (
+                            <SampleCard 
+                                key={sample.id} 
+                                sample={sample} 
+                                action={
+                                    <div className="flex items-center gap-2">
+                                        <Button size="sm" variant="outline" className="h-7 px-2 border-slate-200 text-slate-700 hover:bg-slate-50" onClick={() => setAnalyzingSample(sample)}>
+                                            <Search className="w-3 h-3 mr-1" /> Visualizar
+                                        </Button>
+                                        <Button size="sm" className="h-7 px-2 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleGeneratePdf(sample)}>
+                                            <FileText className="w-3 h-3 mr-1" /> PDF
+                                        </Button>
                                     </div>
                                 }
                             />
