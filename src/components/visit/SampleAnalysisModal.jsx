@@ -62,7 +62,10 @@ export default function SampleAnalysisModal({ sample, isOpen, onClose }) {
 
     const updateRow = (index, field, value) => {
         const newResults = [...results];
-        const val = value === '' ? '' : Number(value);
+        let val = value;
+        if (['reading', 'dilution_factor', 'reagent_factor', 'correction_factor'].includes(field)) {
+            val = value === '' ? '' : Number(value);
+        }
         newResults[index][field] = val;
         setResults(newResults);
     };
