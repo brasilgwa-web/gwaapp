@@ -11,9 +11,11 @@ import SampleAnalysisModal from '../components/visit/SampleAnalysisModal';
 import LabReportPdf from '../components/visit/LabReportPdf';
 import { pdf } from '@react-pdf/renderer';
 import { SampleResult, TestDefinition } from "@/api/entities";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function LabSamples() {
     const { user } = useAuth();
+    const { toast } = useToast();
     const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState('');
     const [receivingSample, setReceivingSample] = useState(null);
@@ -67,7 +69,7 @@ export default function LabSamples() {
             // If sample lacks auth_key, generate and save it
             let currentSample = sample;
             if (!sample.auth_key) {
-                const newKey = Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                const newKey = Math.random().toString(36).substring(2, 9).toUpperCase() + '-' + Math.random().toString(36).substring(2, 9).toUpperCase();
                 currentSample = await Sample.update(sample.id, { auth_key: newKey });
             }
 
@@ -84,10 +86,13 @@ export default function LabSamples() {
             a.href = url;
             a.download = `Laudo_${currentSample.sample_code}.pdf`;
             a.click();
-            URL.revokeObjectURL(url);
         } catch (error) {
             console.error(error);
-            alert("Erro ao gerar PDF.");
+            toast({
+                title: "Erro ao gerar PDF",
+                description: error.message || "Verifique sua conexão ou contate o suporte.",
+                variant: "destructive"
+            });
         }
     };
 

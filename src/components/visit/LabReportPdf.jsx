@@ -148,7 +148,7 @@ const LabReportPdf = ({ data }) => {
     const { sample, results, client, testDefinitions } = data;
     
     // Generate an Auth Key if it doesn't exist
-    const authKey = sample?.auth_key || Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    const authKey = sample?.auth_key || Math.random().toString(36).substring(2, 9).toUpperCase() + '-' + Math.random().toString(36).substring(2, 9).toUpperCase();
 
     const getParamName = (id) => {
         const td = testDefinitions?.find(t => t.id === id);
