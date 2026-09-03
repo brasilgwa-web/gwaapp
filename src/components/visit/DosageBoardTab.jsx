@@ -72,6 +72,7 @@ export default function DosageBoardTab({ visit, readOnly }) {
         },
         onSettled: async () => {
             queryClient.invalidateQueries({ queryKey: ['dosages', visit.id] });
+            queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
 
             // Fetch fresh visit data to check service_start_time
             const { data: freshVisit } = await supabase.from('visits').select('*').eq('id', visit.id).single();
