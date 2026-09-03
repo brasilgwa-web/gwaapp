@@ -105,22 +105,56 @@ export default function Dashboard() {
     // Fetch Dashboard Data
     const { data: stats, isLoading } = useQuery({
         queryKey: ['dashboardStats', filters],
+        refetchInterval: 1000 * 60 * 5, // 5 minutos de auto-refresh
         queryFn: async () => {
             try {
-                const allVisits = await Visit.list(undefined, 500);
                 const start = startOfDay(parseISO(filters.startDate));
                 const end = endOfDay(parseISO(filters.endDate));
 
+                const periodDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                const prevStart = subDays(start, periodDays);
+
+                const now = new Date();
+                const sixMonthsAgo = subMonths(now, 6);
+                
+                // Data mais antiga necessária (tendência ou gráfico de evolução)
+                const oldestDateNeeded = new Date(Math.min(prevStart.getTime(), sixMonthsAgo.getTime()));
+
+                // 1. Busca Visitas Otimizada
+                let visitsQuery = supabase.from('visits')
+                    .select('*')
+                    .gte('visit_date', format(oldestDateNeeded, "yyyy-MM-dd'T'00:00:00.000XXX"))
+                    .lte('visit_date', format(end, "yyyy-MM-dd'T'23:59:59.999XXX"));
+
+                if (filters.clientId !== 'all') {
+                    visitsQuery = visitsQuery.eq('client_id', filters.clientId);
+                }
+                if (filters.technicianEmail !== 'all') {
+                    visitsQuery = visitsQuery.eq('technician_email', filters.technicianEmail);
+                }
+
+                const { data: allVisits, error: visitsError } = await visitsQuery;
+                if (visitsError) throw visitsError;
+
                 const filteredVisits = allVisits.filter(v => {
                     const visitDate = parseISO(v.visit_date);
-                    const dateMatch = isWithinInterval(visitDate, { start, end });
-                    const clientMatch = filters.clientId === "all" || v.client_id === filters.clientId;
-                    // Visits use technician_email, so we filter by email
-                    const techMatch = filters.technicianEmail === "all" || v.technician_email === filters.technicianEmail;
-                    return dateMatch && clientMatch && techMatch;
+                    return isWithinInterval(visitDate, { start, end });
                 });
 
-                const allResults = await TestResult.list(undefined, 2000);
+                // 2. Busca Resultados de Testes Otimizada
+                const allVisitIds = allVisits.map(v => v.id);
+                const allResults = [];
+                
+                // Buscando em lotes para prevenir erros de URL muito longa (limites do PostgREST)
+                for (let i = 0; i < allVisitIds.length; i += 200) {
+                    const chunk = allVisitIds.slice(i, i + 200);
+                    const { data: chunkResults, error: resultsError } = await supabase.from('test_results')
+                        .select('*')
+                        .in('visit_id', chunk);
+                    if (resultsError) throw resultsError;
+                    if (chunkResults) allResults.push(...chunkResults);
+                }
+
                 const visitIds = new Set(filteredVisits.map(v => v.id));
                 const filteredResults = allResults.filter(r => visitIds.has(r.visit_id));
 
@@ -139,8 +173,6 @@ export default function Dashboard() {
                 const complianceRate = Math.round((greenResults.length / totalCount) * 100);
 
                 // Previous period comparison for trend
-                const periodDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-                const prevStart = subDays(start, periodDays);
                 const prevEnd = subDays(end, periodDays);
                 const prevVisits = allVisits.filter(v => {
                     const visitDate = parseISO(v.visit_date);
@@ -227,8 +259,6 @@ export default function Dashboard() {
                     : 0;
 
                 // Monthly evolution (last 6 months)
-                const now = new Date();
-                const sixMonthsAgo = subMonths(now, 6);
                 const months = eachMonthOfInterval({ start: sixMonthsAgo, end: now });
                 const evolutionData = months.map(month => {
                     const monthStart = startOfMonth(month);

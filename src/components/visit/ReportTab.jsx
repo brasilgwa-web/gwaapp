@@ -184,6 +184,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
             queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] });
+            queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
             if (onUpdateVisit) onUpdateVisit();
             if (variables.client_signature_url) {
                 // Only show success message when saving, not when clearing

@@ -106,6 +106,7 @@ export default function VisitsPage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['visits'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
         }
     });
 
@@ -329,6 +330,7 @@ function NewVisitDialog() {
         mutationFn: (data) => Visit.create(data),
         onSuccess: (newVisit) => {
             queryClient.invalidateQueries({ queryKey: ['visits'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
             setOpen(false);
             setClientId('');
             navigate(`/visits/${newVisit.id}`);
