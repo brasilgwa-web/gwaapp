@@ -158,7 +158,7 @@ export default function SetupReport() {
 
     // Fetch existing settings
     const { data: allSettings, isLoading } = useQuery({
-        queryKey: ['reportSettings'],
+        queryKey: ['allReportSettings'],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('report_settings')
@@ -172,7 +172,7 @@ export default function SetupReport() {
         }
     });
     
-    const settings = allSettings?.find(s => s.type === selectedType) || allSettings?.find(s => !s.type) || null;
+    const settings = Array.isArray(allSettings) ? (allSettings.find(s => s.type === selectedType) || allSettings.find(s => !s.type)) : null;
 
     // Fetch Technical Responsibles
     const { data: responsibles, isLoading: isLoadingResp } = useQuery({
@@ -260,7 +260,7 @@ export default function SetupReport() {
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['reportSettings'] });
+            queryClient.invalidateQueries({ queryKey: ['allReportSettings'] });
             alert({ title: 'Sucesso', message: 'Configurações salvas com sucesso!', type: 'success' });
         },
         onError: (error) => {
@@ -542,7 +542,7 @@ export default function SetupReport() {
                     className="gap-2"
                     onClick={() => {
                         const otherType = selectedType === 'technical' ? 'laboratory' : 'technical';
-                        const otherSettings = allSettings?.find(s => s.type === otherType);
+                        const otherSettings = Array.isArray(allSettings) ? allSettings.find(s => s.type === otherType) : null;
                         if (!otherSettings) {
                             alert({ title: 'Erro', message: 'Configurações do outro modelo não encontradas.', type: 'error' });
                             return;
