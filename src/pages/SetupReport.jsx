@@ -13,6 +13,7 @@ import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, T
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/context/ConfirmContext";
 import { format } from "date-fns";
 import SignaturePad from "@/components/visit/SignaturePad";
