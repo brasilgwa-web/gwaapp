@@ -1019,6 +1019,32 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 )
             }
 
+            {/* Tipo de Relatório */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2"><FileText className="w-4 h-4 text-blue-500" />Tipo de Relatório</CardTitle>
+                    <CardDescription>Selecione o formato do relatório para esta visita.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Select
+                        value={visit.report_type || 'technical'}
+                        onValueChange={(val) => {
+                            updateMutation.mutate({ report_type: val });
+                            if (onUpdateVisit) onUpdateVisit({ ...visit, report_type: val });
+                        }}
+                        disabled={readOnly}
+                    >
+                        <SelectTrigger className="w-full md:w-[400px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="technical">Relatório de Atendimento Técnico em Campo</SelectItem>
+                            <SelectItem value="laboratory">Resultados Analíticos de Laboratório</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </CardContent>
+            </Card>
+
             {/* 0. Horários */}
             <Card>
                 <CardHeader>

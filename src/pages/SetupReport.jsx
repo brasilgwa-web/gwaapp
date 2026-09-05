@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import RichTextEditor from "@/components/ui/RichTextEditor";
 import ColorPicker from "@/components/ui/ColorPicker";
 // ... imports
-import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate, MessageSquareText } from "lucide-react";
+import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate, MessageSquareText, Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -154,23 +154,25 @@ export default function SetupReport() {
     const [editingResp, setEditingResp] = useState(null);
     const [currentSignature, setCurrentSignature] = useState(null);
     const [isSavingResp, setIsSavingResp] = useState(false);
+    const [selectedType, setSelectedType] = useState('technical');
 
     // Fetch existing settings
-    const { data: settings, isLoading } = useQuery({
+    const { data: allSettings, isLoading } = useQuery({
         queryKey: ['reportSettings'],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('report_settings')
-                .select('*')
-                .limit(1)
-                .single();
+                .select('*');
 
-            if (error && error.code !== 'PGRST116') {
+            if (error) {
                 console.error('Error fetching settings:', error);
+                throw error;
             }
-            return data;
+            return data || [];
         }
     });
+    
+    const settings = allSettings?.find(s => s.type === selectedType) || allSettings?.find(s => !s.type) || null;
 
     // Fetch Technical Responsibles
     const { data: responsibles, isLoading: isLoadingResp } = useQuery({
@@ -408,7 +410,8 @@ export default function SetupReport() {
                 cover_background_color: coverBackgroundColor,
                 cover_image_url: coverImageUrl,
                 comments_orientations_enabled: commentsEnabled,
-                comments_orientations_text: commentsText
+                comments_orientations_text: commentsText,
+                type: selectedType
             });
 
         } catch (error) {
@@ -514,10 +517,68 @@ export default function SetupReport() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto pb-20">
+            
             <div>
                 <h1 className="text-2xl font-bold text-slate-900">Configurações de Relatório</h1>
                 <p className="text-slate-500">Configure o formato e aparência dos relatórios</p>
             </div>
+
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2">
+                    <Label className="text-slate-700 font-medium whitespace-nowrap">Configurando modelo:</Label>
+                    <Select value={selectedType} onValueChange={setSelectedType}>
+                        <SelectTrigger className="w-[280px] bg-white">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="technical">Relatório de Atendimento Técnico em Campo</SelectItem>
+                            <SelectItem value="laboratory">Resultados Analíticos de Laboratório</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                
+                <Button 
+                    variant="outline" 
+                    className="gap-2"
+                    onClick={() => {
+                        const otherType = selectedType === 'technical' ? 'laboratory' : 'technical';
+                        const otherSettings = allSettings?.find(s => s.type === otherType);
+                        if (!otherSettings) {
+                            alert({ title: 'Erro', message: 'Configurações do outro modelo não encontradas.', type: 'error' });
+                            return;
+                        }
+                        
+                        confirm({
+                            title: 'Copiar Configurações',
+                            message: 'Tem certeza que deseja sobrescrever as configurações ATUAIS copiando todos os dados (logos, textos, capa) do outro modelo? Você ainda precisará clicar em Salvar.',
+                            type: 'warning',
+                            onConfirm: () => {
+                                setFooterText(otherSettings.footer_text || '');
+                                setReportTitle(otherSettings.report_title || '');
+                                setEmailSubject(otherSettings.email_subject_default || '');
+                                setEmailBody(otherSettings.email_body_default || '');
+                                setCommentsEnabled(otherSettings.comments_orientations_enabled !== false);
+                                setCommentsText(otherSettings.comments_orientations_text || '');
+                                setCoverEnabled(otherSettings.cover_enabled !== false);
+                                setCoverContent(otherSettings.cover_content || '');
+                                setCoverBackgroundColor(otherSettings.cover_background_color || '#1e40af');
+                                
+                                setLogoPreview(otherSettings.logo_url || null);
+                                setLogoFile(null);
+                                setLogo2Preview(otherSettings.logo2_url || null);
+                                setLogo2File(null);
+                                setCoverImagePreview(otherSettings.cover_image_url || null);
+                                setCoverImageFile(null);
+                                
+                                alert({ title: 'Copiado', message: 'Dados copiados para a tela! Não esqueça de Salvar.', type: 'success' });
+                            }
+                        });
+                    }}
+                >
+                    <Copy className="w-4 h-4" /> Copiar configurações do outro modelo
+                </Button>
+            </div>
+
 
             <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
