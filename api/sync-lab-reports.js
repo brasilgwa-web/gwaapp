@@ -107,6 +107,7 @@ export default async function handler(request, response) {
                 const prompt = `Você é um assistente analisando um laudo de laboratório em PDF.
 Extraia APENAS as seguintes informações e retorne em formato JSON válido:
 - "cliente": O nome da empresa/cliente (tente remover sufixos genéricos, pegue o nome principal).
+- "codigo_cliente": O código ou CNPJ do cliente que aparecer no laudo (apenas números, sem pontos, barras ou hífens). Se não encontrar, retorne null.
 - "data_coleta": A data em que a amostra foi coletada (no formato YYYY-MM-DD). Se não achar a de coleta, use a data de emissão.
 - "comentario": Um parágrafo técnico resumindo as análises feitas e apontando anomalias se houver. (Este texto será salvo como comentário na visita).
 
@@ -136,40 +137,58 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                 
                 const extracted = JSON.parse(textResult);
                 
-                // 5. Match com Cliente e Visita
-                // Buscar clientes parecidos
+                // 5. Match com Cliente — prioridade: client_code, fallback: nome
                 const { data: clients } = await supabase
                     .from('clients')
-                    .select('id, name, google_drive_folder_id');
+                    .select('id, name, client_code, google_drive_folder_id');
                 
-                // Busca simples de substring
-                const matchedClient = clients.find(c => 
-                    c.name.toLowerCase().includes(extracted.cliente.toLowerCase()) || 
-                    extracted.cliente.toLowerCase().includes(c.name.toLowerCase())
-                );
+                let matchedClient = null;
+
+                // Tenta por código do cliente (remove pontos, barras e hífens para comparar)
+                if (extracted.codigo_cliente) {
+                    const normalizedExtracted = String(extracted.codigo_cliente).replace(/[.\-\/]/g, '');
+                    matchedClient = clients.find(c => {
+                        if (!c.client_code) return false;
+                        const normalizedDb = String(c.client_code).replace(/[.\-\/]/g, '');
+                        return normalizedDb === normalizedExtracted;
+                    });
+                }
+
+                // Fallback: busca por nome (substring)
+                if (!matchedClient && extracted.cliente) {
+                    matchedClient = clients.find(c => 
+                        c.name.toLowerCase().includes(extracted.cliente.toLowerCase()) || 
+                        extracted.cliente.toLowerCase().includes(c.name.toLowerCase())
+                    );
+                }
 
                 if (!matchedClient) {
-                    results.push({ file: file.name, status: 'error', error: `Cliente não encontrado para: ${extracted.cliente}` });
+                    results.push({ file: file.name, status: 'error', error: `Cliente não encontrado para: ${extracted.cliente} (código: ${extracted.codigo_cliente || 'não extraído'})` });
                     continue;
                 }
 
-                // Achar visita mais próxima da data
+                // 6. Achar visita CONCLUÍDA mais próxima da data de coleta
                 const { data: visits } = await supabase
                     .from('visits')
-                    .select('id, visit_date, lab_report_status')
+                    .select('id, visit_date, lab_report_status, status')
                     .eq('client_id', matchedClient.id)
+                    .not('status', 'eq', 'draft')
                     .order('visit_date', { ascending: false });
 
-                // Lógica simples: pegar a primeira visita ou uma que bata a data
-                // Para produção, você pode querer refinar isso comparando a extracted.data_coleta com a visit_date
-                const targetVisit = visits.find(v => {
-                    if (!v.visit_date) return false;
+                // Busca visita cuja data bata com a data de coleta (mesmo dia ou mesmo mês)
+                const targetVisit = visits?.find(v => {
+                    if (!v.visit_date || !extracted.data_coleta) return false;
                     const vDate = v.visit_date.split('T')[0];
-                    return vDate === extracted.data_coleta || vDate.startsWith(extracted.data_coleta.substring(0,7)); // Mesmo mês/dia
-                }) || visits[0]; // Fallback pra mais recente do cliente
+                    return vDate === extracted.data_coleta;
+                }) || visits?.find(v => {
+                    if (!v.visit_date || !extracted.data_coleta) return false;
+                    const vDate = v.visit_date.split('T')[0];
+                    // Mesmo mês e ano como fallback
+                    return vDate.substring(0, 7) === extracted.data_coleta.substring(0, 7);
+                }) || visits?.[0]; // Fallback pra mais recente do cliente
 
                 if (!targetVisit) {
-                    results.push({ file: file.name, status: 'error', error: 'Nenhuma visita encontrada para o cliente' });
+                    results.push({ file: file.name, status: 'error', error: `Nenhuma visita concluída encontrada para ${matchedClient.name}` });
                     continue;
                 }
 
