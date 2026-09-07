@@ -40,39 +40,33 @@ export default async function handler(request, response) {
 
         // Auth Google Drive
         let auth;
+        let authEmail;
         const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
         const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
         const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
 
-        if (clientId && clientSecret && refreshToken) {
-            const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
-            oauth2Client.setCredentials({ refresh_token: refreshToken });
-            auth = oauth2Client;
-        } else if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
             const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
             auth = new google.auth.GoogleAuth({
                 credentials,
                 scopes: ['https://www.googleapis.com/auth/drive'],
             });
+            authEmail = credentials.client_email || 'Service Account (Email desconhecido)';
+        } else if (clientId && clientSecret && refreshToken) {
+            const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+            oauth2Client.setCredentials({ refresh_token: refreshToken });
+            auth = oauth2Client;
+            authEmail = 'OAuth (Client ID / Refresh Token)';
         } else {
             const keyFilePath = path.join(process.cwd(), 'api', 'service-account.json');
             auth = new google.auth.GoogleAuth({
                 keyFile: keyFilePath,
                 scopes: ['https://www.googleapis.com/auth/drive'],
             });
+            authEmail = 'Local service-account.json';
         }
 
         const drive = google.drive({ version: 'v3', auth });
-
-        let authEmail = "OAuth ou Arquivo Local";
-        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-            try {
-                const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-                authEmail = creds.client_email || authEmail;
-            } catch (e) {
-                authEmail = "Erro ao ler JSON da Service Account";
-            }
-        }
 
         const resList = await drive.files.list({
             q: `'${inboxFolderId}' in parents and trashed = false`,
