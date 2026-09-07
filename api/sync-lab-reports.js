@@ -61,7 +61,16 @@ export default async function handler(request, response) {
 
         const drive = google.drive({ version: 'v3', auth });
 
-        // 2. Listar arquivos na Inbox
+        let authEmail = "OAuth ou Arquivo Local";
+        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+            try {
+                const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+                authEmail = creds.client_email || authEmail;
+            } catch (e) {
+                authEmail = "Erro ao ler JSON da Service Account";
+            }
+        }
+
         const resList = await drive.files.list({
             q: `'${inboxFolderId}' in parents and trashed = false and mimeType = 'application/pdf'`,
             fields: 'files(id, name, webViewLink, parents)',
@@ -71,7 +80,10 @@ export default async function handler(request, response) {
 
         const files = resList.data.files;
         if (!files || files.length === 0) {
-            return response.status(200).json({ message: 'Nenhum laudo pendente na Inbox.', processed: 0 });
+            return response.status(200).json({ 
+                message: `Nenhum laudo pendente na Inbox.\n\n--- DEBUG INFO ---\nID da Pasta: ${inboxFolderId}\nConta de Serviço: ${authEmail}\nCertifique-se de que a conta acima foi adicionada como 'Editor' na pasta Inbox do Drive.`, 
+                processed: 0 
+            });
         }
 
         let processedCount = 0;
