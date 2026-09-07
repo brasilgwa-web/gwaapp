@@ -184,28 +184,35 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                     continue;
                 }
 
-                // 6. Achar visita CONCLUÍDA mais próxima da data de coleta
-                const { data: visits } = await supabaseAdmin
-            .from('visits')
+                // 6. Achar visita mais próxima da data de coleta (ignora drafts, mas aceita status null)
+                const { data: allVisits } = await supabaseAdmin
+                    .from('visits')
                     .select('id, visit_date, lab_report_status, status')
                     .eq('client_id', matchedClient.id)
-                    .not('status', 'eq', 'draft')
                     .order('visit_date', { ascending: false });
+                
+                // Filtra drafts no JS para evitar problemas com status NULL no banco
+                const visits = (allVisits || []).filter(v => v.status !== 'draft');
 
                 // Busca visita cuja data bata com a data de coleta (mesmo dia ou mesmo mês)
-                const targetVisit = visits?.find(v => {
+                let targetVisit = visits.find(v => {
                     if (!v.visit_date || !extracted.data_coleta) return false;
                     const vDate = v.visit_date.split('T')[0];
                     return vDate === extracted.data_coleta;
-                }) || visits?.find(v => {
+                }) || visits.find(v => {
                     if (!v.visit_date || !extracted.data_coleta) return false;
                     const vDate = v.visit_date.split('T')[0];
                     // Mesmo mês e ano como fallback
                     return vDate.substring(0, 7) === extracted.data_coleta.substring(0, 7);
-                }) || visits?.[0]; // Fallback pra mais recente do cliente
+                }) || visits[0]; // Fallback pra mais recente não-draft do cliente
+
+                // Se não achou nenhuma não-draft, tenta pegar qualquer visita (mesmo draft)
+                if (!targetVisit && allVisits && allVisits.length > 0) {
+                    targetVisit = allVisits[0];
+                }
 
                 if (!targetVisit) {
-                    results.push({ file: file.name, status: 'error', error: `Nenhuma visita concluída encontrada para ${matchedClient.name}` });
+                    results.push({ file: file.name, status: 'error', error: `Nenhuma visita encontrada para ${matchedClient.name} no banco de dados.` });
                     continue;
                 }
 
