@@ -65,6 +65,8 @@ export default async function handler(request, response) {
         const resList = await drive.files.list({
             q: `'${inboxFolderId}' in parents and trashed = false and mimeType = 'application/pdf'`,
             fields: 'files(id, name, webViewLink, parents)',
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true,
         });
 
         const files = resList.data.files;
