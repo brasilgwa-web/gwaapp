@@ -408,6 +408,7 @@ function NewVisitDialog() {
                                     </div>
                                 ))}
                                 {clients?.length === 0 && <p className="text-center text-slate-500">Nenhum cliente cadastrado.</p>}
+                            </div>
                         </div>
                     </div>
                 </div>
