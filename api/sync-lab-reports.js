@@ -94,7 +94,7 @@ export default async function handler(request, response) {
                 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
                 if (!geminiApiKey) throw new Error("Gemini API Key não configurada (adicione GEMINI_API_KEY nas env vars do Vercel)");
 
-                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`;
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
                 
                 const prompt = `Você é um assistente analisando um laudo de laboratório em PDF.
 Extraia APENAS as seguintes informações e retorne em formato JSON válido:
