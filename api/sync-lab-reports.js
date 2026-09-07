@@ -223,7 +223,14 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
         return response.status(200).json({ message: 'Processamento concluído', processed: processedCount, results });
 
     } catch (error) {
+        let pkSnippet = "N/A";
+        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+            try {
+                const pk = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON).private_key || "";
+                pkSnippet = pk.substring(0, 40).replace(/\n/g, '\\n') + " ... " + pk.substring(pk.length - 40).replace(/\n/g, '\\n');
+            } catch(e) {}
+        }
         console.error("Sync Lab Reports Error:", error);
-        return response.status(500).json({ error: error.message });
+        return response.status(500).json({ error: `[API] ${error.message} | PK_SNIPPET: ${pkSnippet}` });
     }
 }
