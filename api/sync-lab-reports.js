@@ -47,6 +47,9 @@ export default async function handler(request, response) {
 
         if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
             const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+            if (credentials.private_key) {
+                credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+            }
             auth = new google.auth.GoogleAuth({
                 credentials,
                 scopes: ['https://www.googleapis.com/auth/drive'],
