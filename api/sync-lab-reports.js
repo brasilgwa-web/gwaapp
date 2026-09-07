@@ -192,7 +192,14 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
             }
         }
 
-        return response.status(200).json({ message: 'Processamento concluído', processed: processedCount, results });
+        const errorDetails = results.filter(r => r.status === 'error').map(r => `• ${r.file}: ${r.error}`).join('\n');
+        const successDetails = results.filter(r => r.status === 'success').map(r => `• ${r.file}`).join('\n');
+        const detailMsg = [
+            successDetails ? `Sucesso:\n${successDetails}` : '',
+            errorDetails ? `Erros:\n${errorDetails}` : ''
+        ].filter(Boolean).join('\n\n');
+
+        return response.status(200).json({ message: `Processamento concluído\n\n${detailMsg || 'Nenhum arquivo processado.'}`, processed: processedCount, results });
 
     } catch (error) {
         let pkSnippet = "N/A";
