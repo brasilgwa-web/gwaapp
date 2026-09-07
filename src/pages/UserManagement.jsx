@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MoreHorizontal, Shield, ShieldAlert, Ban, CheckCircle, Info, Users, Key, Loader2, Trash2, RotateCcw } from "lucide-react";
+import { MoreHorizontal, Shield, ShieldAlert, Ban, CheckCircle, Info, Users, Key, Loader2, Trash2, RotateCcw, FlaskConical } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -281,9 +281,12 @@ export default function UserManagement() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">Gestão de Usuários</h1>
-                <p className="text-slate-500">Gerencie usuários, perfis e permissões de acesso</p>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">Gestão de Usuários</h1>
+                    <p className="text-slate-500">Gerencie usuários, perfis e permissões de acesso</p>
+                </div>
+                <SyncLabReportsButton />
             </div>
 
             <Tabs defaultValue="users">
@@ -558,5 +561,55 @@ export default function UserManagement() {
                 }} 
             />
         </div>
+    );
+}
+
+function SyncLabReportsButton() {
+    const [isSyncing, setIsSyncing] = useState(false);
+    const queryClient = useQueryClient();
+    const { alert } = useConfirm();
+
+    const handleSync = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await fetch('/api/sync-lab-reports', {
+                method: 'POST',
+            });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error || 'Erro ao sincronizar');
+            
+            alert({
+                title: 'Sincronização concluída!',
+                message: `Processados: ${data.processed}\n\nMensagem: ${data.message}`,
+                type: 'success'
+            });
+            queryClient.invalidateQueries({ queryKey: ['visits'] });
+        } catch (error) {
+            console.error(error);
+            alert({
+                title: 'Erro na sincronização',
+                message: error.message,
+                type: 'error'
+            });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    return (
+        <Button 
+            variant="outline" 
+            className="w-full md:w-auto border-purple-200 text-purple-700 hover:bg-purple-50 bg-white"
+            onClick={handleSync}
+            disabled={isSyncing}
+        >
+            {isSyncing ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+                <FlaskConical className="w-4 h-4 mr-2" />
+            )}
+            Sincronizar Laudos (Google Drive)
+        </Button>
     );
 }
