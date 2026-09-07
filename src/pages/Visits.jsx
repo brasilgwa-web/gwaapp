@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Search, Plus, ChevronRight, Calendar, Clock, Trash2 } from "lucide-react";
+import { Search, Plus, ChevronRight, Calendar, Clock, Trash2, FlaskConical, Loader2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link, useNavigate } from 'react-router-dom';
@@ -150,7 +150,10 @@ export default function VisitsPage() {
                     <h1 className="text-2xl font-bold text-slate-900">Visitas Técnicas</h1>
                     <p className="text-slate-500">Gerencie suas visitas e relatórios</p>
                 </div>
-                <NewVisitDialog />
+                <div className="flex items-center gap-2">
+                    <SyncLabReportsButton />
+                    <NewVisitDialog />
+                </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-lg shadow-sm border">
@@ -405,11 +408,50 @@ function NewVisitDialog() {
                                     </div>
                                 ))}
                                 {clients?.length === 0 && <p className="text-center text-slate-500">Nenhum cliente cadastrado.</p>}
-                            </div>
                         </div>
                     </div>
                 </div>
             </DialogContent>
         </Dialog>
-    )
+    );
+}
+function SyncLabReportsButton() {
+    const [isSyncing, setIsSyncing] = React.useState(false);
+    const queryClient = useQueryClient();
+
+    const handleSync = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await fetch('/api/sync-lab-reports', {
+                method: 'POST',
+            });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error || 'Erro ao sincronizar');
+            
+            alert(`Sincronização concluída!\n\nProcessados: ${data.processed}\nMensagem: ${data.message}`);
+            queryClient.invalidateQueries({ queryKey: ['visits'] });
+        } catch (error) {
+            console.error(error);
+            alert(`Erro na sincronização: ${error.message}`);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    return (
+        <Button 
+            variant="outline" 
+            className="w-full md:w-auto border-purple-200 text-purple-700 hover:bg-purple-50"
+            onClick={handleSync}
+            disabled={isSyncing}
+        >
+            {isSyncing ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+                <FlaskConical className="w-4 h-4 mr-2" />
+            )}
+            Sincronizar Laudos
+        </Button>
+    );
 }
