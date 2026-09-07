@@ -91,8 +91,8 @@ export default async function handler(request, response) {
                 const base64PDF = Buffer.from(resFile.data).toString('base64');
 
                 // 4. Acionar Gemini 1.5 Pro (Nativo para PDF)
-                const geminiApiKey = process.env.VITE_GEMINI_API_KEY;
-                if (!geminiApiKey) throw new Error("Gemini API Key missing");
+                const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+                if (!geminiApiKey) throw new Error("Gemini API Key não configurada (adicione GEMINI_API_KEY nas env vars do Vercel)");
 
                 const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`;
                 
@@ -118,7 +118,10 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                     })
                 });
 
-                if (!geminiRes.ok) throw new Error('Falha ao processar PDF com Gemini');
+                if (!geminiRes.ok) {
+                    const errText = await geminiRes.text();
+                    throw new Error(`Falha ao processar PDF com Gemini (${geminiRes.status}): ${errText.substring(0, 200)}`);
+                }
                 const geminiData = await geminiRes.json();
                 let textResult = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
                 textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
