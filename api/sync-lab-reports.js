@@ -90,11 +90,19 @@ export default async function handler(request, response) {
 
                 const base64PDF = Buffer.from(resFile.data).toString('base64');
 
-                // 4. Acionar Gemini 1.5 Pro (Nativo para PDF)
-                const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-                if (!geminiApiKey) throw new Error("Gemini API Key não configurada (adicione GEMINI_API_KEY nas env vars do Vercel)");
+                // 4. Acionar Gemini (usa configurações do banco, igual ao resto do app)
+                const { data: aiConfig } = await supabase
+                    .from('ai_settings')
+                    .select('setting_key, setting_value')
+                    .in('setting_key', ['gemini_api_key', 'gemini_model']);
+                
+                const aiConfigMap = Object.fromEntries((aiConfig || []).map(s => [s.setting_key, s.setting_value]));
+                const geminiApiKey = aiConfigMap.gemini_api_key || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+                const geminiModel = aiConfigMap.gemini_model || 'gemini-2.5-flash';
 
-                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+                if (!geminiApiKey) throw new Error("Gemini API Key não configurada em /setup/ai");
+
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
                 
                 const prompt = `Você é um assistente analisando um laudo de laboratório em PDF.
 Extraia APENAS as seguintes informações e retorne em formato JSON válido:
