@@ -2,9 +2,16 @@ import { google } from 'googleapis';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 
+// Cliente público (com RLS)
 const supabase = createClient(
     process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
     process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+);
+
+// Cliente admin (bypassa RLS) — necessário para leitura de clients, visits, etc.
+const supabaseAdmin = createClient(
+    process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
 );
 
 // Vercel Serverless Function
@@ -24,7 +31,7 @@ export default async function handler(request, response) {
 
     try {
         // 1. Obter a configuração da pasta Inbox do DB
-        const { data: aiSettings, error: aiSettingsError } = await supabase
+        const { data: aiSettings, error: aiSettingsError } = await supabaseAdmin
             .from('ai_settings')
             .select('setting_key, setting_value')
             .eq('setting_key', 'google_drive_inbox_folder_id')
@@ -91,8 +98,8 @@ export default async function handler(request, response) {
                 const base64PDF = Buffer.from(resFile.data).toString('base64');
 
                 // 4. Acionar Gemini (usa configurações do banco, igual ao resto do app)
-                const { data: aiConfig } = await supabase
-                    .from('ai_settings')
+                const { data: aiConfig } = await supabaseAdmin
+            .from('ai_settings')
                     .select('setting_key, setting_value')
                     .in('setting_key', ['gemini_api_key', 'gemini_model']);
                 
@@ -138,8 +145,8 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                 const extracted = JSON.parse(textResult);
                 
                 // 5. Match com Cliente — prioridade: client_code, fallback: nome
-                const { data: clients } = await supabase
-                    .from('clients')
+                const { data: clients } = await supabaseAdmin
+            .from('clients')
                     .select('id, name, client_code, google_drive_folder_id');
                 
                 let matchedClient = null;
@@ -168,8 +175,8 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                 }
 
                 // 6. Achar visita CONCLUÍDA mais próxima da data de coleta
-                const { data: visits } = await supabase
-                    .from('visits')
+                const { data: visits } = await supabaseAdmin
+            .from('visits')
                     .select('id, visit_date, lab_report_status, status')
                     .eq('client_id', matchedClient.id)
                     .not('status', 'eq', 'draft')
@@ -204,8 +211,8 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                 }
 
                 // 7. Atualizar a Visita
-                await supabase
-                    .from('visits')
+                await supabaseAdmin
+            .from('visits')
                     .update({
                         lab_report_status: true,
                         lab_report_url: file.webViewLink,
@@ -243,3 +250,5 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
         return response.status(500).json({ error: `[API] ${error.message} | PK_SNIPPET: ${pkSnippet}` });
     }
 }
+
+
