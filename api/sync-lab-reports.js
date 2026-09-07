@@ -45,43 +45,15 @@ export default async function handler(request, response) {
         const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
         const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
 
-        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-            const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-            if (credentials.private_key) {
-                let pk = credentials.private_key.replace(/\\n/g, '\n');
-                
-                // Bulletproof PEM formatter: se as quebras de linha sumiram, reconstrói o formato PEM
-                const header = "-----BEGIN PRIVATE KEY-----";
-                const footer = "-----END PRIVATE KEY-----";
-                if (pk.includes(header) && pk.includes(footer)) {
-                    let body = pk.substring(pk.indexOf(header) + header.length, pk.indexOf(footer));
-                    body = body.replace(/\s+/g, ''); // limpa qualquer espaço/quebra de linha que sobrou
-                    const matched = body.match(/.{1,64}/g);
-                    if (matched) {
-                        credentials.private_key = header + '\n' + matched.join('\n') + '\n' + footer + '\n';
-                    }
-                } else {
-                    credentials.private_key = pk;
-                }
-            }
-            auth = new google.auth.GoogleAuth({
-                credentials,
-                scopes: ['https://www.googleapis.com/auth/drive'],
-            });
-            authEmail = credentials.client_email || 'Service Account (Email desconhecido)';
-        } else if (clientId && clientSecret && refreshToken) {
-            const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
-            oauth2Client.setCredentials({ refresh_token: refreshToken });
-            auth = oauth2Client;
-            authEmail = 'OAuth (Client ID / Refresh Token)';
-        } else {
-            const keyFilePath = path.join(process.cwd(), 'api', 'service-account.json');
-            auth = new google.auth.GoogleAuth({
-                keyFile: keyFilePath,
-                scopes: ['https://www.googleapis.com/auth/drive'],
-            });
-            authEmail = 'Local service-account.json';
-        }
+        const hardcodedBase64 = "ew0KICAgICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsDQogICAgInByb2plY3RfaWQiOiAiZG90dGVkLXNpZ25lci00ODA4MjMtajAiLA0KICAgICJwcml2YXRlX2tleV9pZCI6ICJkYzg4NGE1YjdmNTBjNjdiNGQxZDgwZDNlY2QyNWIzZGYxNDVkZDk2IiwNCiAgICAicHJpdmF0ZV9rZXkiOiAiLS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tXG5NSUlFdlFJQkFEQU5CZ2txaGtpRzl3MEJBUUVGQUFTQ0JLY3dnZ1NqQWdFQUFvSUJBUUM3SUpGNkl6K0hGUHFyXG55Ni9LODBhdDQxNVNlNldiWlhBR2JlZ3dCMnhoMDBuQjFDNHh0M0xBTTJGWENjcUF2bVdiRmpFUXlSYVRwRjc1XG54NFRzVGIrZ2VzbC84eDdWSG1zTVhJamE3WEVrdjNkMkVhZnJUSndHOFF4OXJwcnFWWU1uMjNGbUtrUEtIMmc4XG5qaVJpQ3NSZWcySHlWcGlzYm1RanFtMnhKZjh2Y3ExNmQvQUlCaGVKbmJ6MjFBMFF5MkJIUlZxTEVmY3Z4SFZRXG44WjNyWFBLYmxLV0ZxYnFBUy9wOTkrTUJSUDRnQVAvbWZycUxZVVBkWEFhVjc5NDFKYWF5bU5IM0ZvSDJFOFpIXG5xUEdmRkNadktGTnhHeUlLSy9IY0dtUlNLeDZ1cGp1aHZWaWxlZTgxT3NzbHlnQ3V1WG54WVNyWjREeVlpZlZ6XG5lRGRrOTQ0eEFnTUJBQUVDZ2dFQUhUVXRmOWhBbk4rMEZnYy9ubmlhYjU4dHBISTluSGtZemVnWnl4QUlPcnkxXG5VU3ZDaWhWaTNvZlJOR1N5MXZyZzluUUs5SWtaUjdKQVMzeDQrRDZxZFJkZjhZNEx6S0s5ZldYSmRyZlpFUzM4XG5MTkdxQkJyUkZSbWdKQ2lTR3V3b3JKcWVvMGtLNFF4RjdpM0JsV0ZZMnBKblFnd3MzYjB5cERQVjFmQzRXV1NvXG5tNWNzQ2tNVmRWL0V5YnhUeHlsTVJPdkNYYmRrcUhmbWNaMCthWlp2V1k5SCtTaXRsVjcwR0x2bys4b3V3MGJyXG5zaEZ4SVhhVTRSU0xXaU9GZHdWSEpxNTZJS3pvWDdJYTY2czhBQldiUGl1VkhndFAybHBjNlVFNm9TbGZwNmtuXG5GYXJXYjVQNytJY2I2dTNPWjRCZlo3bXI0OHhlMkUyMFFKUkQrTUR3Z1FLQmdRRGI4TVB1RDgrOVJXbEY1bW9GXG42VkRXbEpJMnlDRys2ejlWdWtlVDJUbHJVUzZvK0E2NTNVckF5WWxiNnYwY1NFZWJ4STZXekd4VWovOHFQbmgrXG5saVdGVTBjbkVlM2lIODZTaVVsY1YwOEN6bVowUi9JV0dnbVJ2VzRmTXVsc01hUkhjQWFvOER4Y1daRVl3YndDXG56UE50bWdnRDFabi80c0Z2R3B0T0pKa2lZd0tCZ1FEWnpwU1ZqZHRVMlc0QkdvZTRsY3pOOG02ZWxmc2E2RDVHXG4yN1hxN3k1aURVMWpwa2dVdE5maEJTNnZWaUtEUmpzRXZlZkl4MDVXQklTWFhwR0xSUW5KUDR1VEJsbklYVGN3XG5WRDRGNmlwdG5GQzlCSlFDdUZxbkNWMG9PM1BjeGU0WkQrV2g5M0x3eHNPYzJjMEdLR2srMjZpK3RHSjNsb0R2XG5zeVRmVU12bld3S0JnRStoYkU3VkNySE1YOEVmRzJQb2hZd3JYb1RYRU9DKzY3OXVJbHcxV2NTeEwrT2RiRGQvXG5GNEdWZGxZQlRvTGU2STVOTEJNTkVHdk5kdVVrbVJ1NzRQblVuUDVZVDNoL2E1dENlWDBsWDBYMDFNTmxDUkZYXG5lLzk0UmxhbGFEM3oremFpS01jaHM3ajc5THl4NkJCYmhBYzZyWXcxMmZ2N2JXMThoSjVXUWR0aEFvR0FJbmEvXG5xQkowUEM3VGF6VkplSG1ybUlMZDRoWVZUNktrQ0E1SDhNNjc1aVA0dE9YZ3pmWDNtdEY1RzZGamdLWWlQSlBZXG5FenNHT0RJcTBORFQ4dGVQdnRwaE9YaHR5SGlIZlF3M2JEUXJWb0MvZmNrMXFtQ0ZaNXpoc3JZRmxVOTBaMTdPXG5sUnhVZ2FqUjF3WFhuVHZUdTNDQ2VQcU9BaUk4Y0xGR0NsZjhpN1VDZ1lFQWh0cGtNYWprZVQvM2lvWDZrQWxMXG51NUh0OWZJNlFXbFRNRllpak5xSUh3Rmd4NEJhajlLUjNXRExJNG54V3FiVG8xSXpPa3EyaVhFNUFtd2NmeVdEXG5LaHhIU3FXU1MwRVh4bEI4RlhGcUVLR2Ywemk0ZDErZ2JacnErTWkyTCtwN0I4bFJ4OWZuRFE2OUE0TGRRYmtDXG56UE50bWdnRDFabi80c0Z2R3B0T0pKa2lZd0tCZ1FEWnpwU1ZqZHRVMlc0QkdvZTRsY3pOOG02ZWxmc2E2RDVHXG5EZjdCdVRYOTVtZWlWUlY3TVFJWStwWT1cbi0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS1cbiIsDQogICAgImNsaWVudF9lbWFpbCI6ICJ3Z2FhcHBAZG90dGVkLXNpZ25lci00ODA4MjMtajAuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLA0KICAgICJjbGllbnRfaWQiOiAiMTEyODQzMjQ5Mjc5MTQwNzg5Mjg3IiwNCiAgICAiYXV0aF91cmkiOiAiaHR0cHM6Ly9hY2NvdW50cy5nb29nbGUuY29tL28vb2F1dGgyL2F1dGgiLA0KICAgICJ0b2tlbl91cmkiOiAiaHR0cHM6Ly9vYXV0aDIuZ29vZ2xlYXBpcy5jb20vdG9rZW4iLA0KICAgICJhdXRoX3Byb3ZpZGVyX3g1MDlfY2VydF91cmwiOiAiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vb2F1dGgyL3YxL2NlcnRzIiwNCiAgICAiY2xpZW50X3g1MDlfY2VydF91cmwiOiAiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vcm9ib3QvdjEvbWV0YWRhdGEveDUwOS93Z2FhcHAlNDBkb3R0ZWQtc2lnbmVyLTQ4MDgyMy1qMC5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsDQogICAgInVuaXZlcnNlX2RvbWFpbiI6ICJnb29nbGVhcGlzLmNvbSINCn0=";
+        const decodedJson = Buffer.from(hardcodedBase64, 'base64').toString('utf8');
+        const credentials = JSON.parse(decodedJson);
+        authEmail = credentials.client_email;
+        
+        auth = new google.auth.GoogleAuth({
+            credentials,
+            scopes: ['https://www.googleapis.com/auth/drive'],
+        });
 
         const drive = google.drive({ version: 'v3', auth });
 
