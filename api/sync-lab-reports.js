@@ -72,16 +72,21 @@ export default async function handler(request, response) {
         }
 
         const resList = await drive.files.list({
-            q: `'${inboxFolderId}' in parents and trashed = false and mimeType = 'application/pdf'`,
-            fields: 'files(id, name, webViewLink, parents)',
+            q: `'${inboxFolderId}' in parents and trashed = false`,
+            fields: 'files(id, name, webViewLink, parents, mimeType)',
             supportsAllDrives: true,
             includeItemsFromAllDrives: true,
+            corpora: 'allDrives',
         });
 
-        const files = resList.data.files;
+        // Filtrar PDFs no código em vez da query para garantir que vemos o que está lá
+        const allFiles = resList.data.files || [];
+        const files = allFiles.filter(f => f.mimeType === 'application/pdf');
+
         if (!files || files.length === 0) {
+            const allFilesNames = allFiles.map(f => `${f.name} (${f.mimeType})`).join(', ');
             return response.status(200).json({ 
-                message: `Nenhum laudo pendente na Inbox.\n\n--- DEBUG INFO ---\nID da Pasta: ${inboxFolderId}\nConta de Serviço: ${authEmail}\nCertifique-se de que a conta acima foi adicionada como 'Editor' na pasta Inbox do Drive.`, 
+                message: `Nenhum laudo em PDF pendente na Inbox.\n\n--- DEBUG INFO ---\nTotal de arquivos achados (qualquer tipo): ${allFiles.length}\nArquivos: ${allFilesNames || 'Nenhum'}\n\nID da Pasta: ${inboxFolderId}\nConta de Serviço: ${authEmail}`, 
                 processed: 0 
             });
         }
