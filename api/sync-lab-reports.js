@@ -8,11 +8,19 @@ const supabase = createClient(
     process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
 );
 
-// Cliente admin (bypassa RLS) — necessário para leitura de clients, visits, etc.
+// Cliente admin (bypassa RLS) — tenta vários nomes possíveis da service role key
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY 
+    || process.env.SUPABASE_SERVICE_KEY 
+    || process.env.SERVICE_ROLE_KEY
+    || process.env.SUPABASE_JWT_SECRET;
+
 const supabaseAdmin = createClient(
     process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+    serviceRoleKey || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY,
+    { auth: { persistSession: false, autoRefreshToken: false } }
 );
+const usingServiceRole = !!serviceRoleKey;
+
 
 // Vercel Serverless Function
 export default async function handler(request, response) {
@@ -172,7 +180,7 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                 if (!matchedClient) {
                     const debugClients = (clients || []).slice(0, 5).map(c => `${c.name} (code: "${c.client_code}" → norm: "${String(c.client_code || '').replace(/[.\-\/]/g, '')}")`).join(' | ');
                     const normExtracted = String(extracted.codigo_cliente || '').replace(/[.\-\/]/g, '');
-                    results.push({ file: file.name, status: 'error', error: `Cliente não encontrado. Gemini extraiu: "${extracted.cliente}" (código bruto: "${extracted.codigo_cliente}", norm: "${normExtracted}"). Total clientes no DB: ${(clients||[]).length}. Primeiros 5: ${debugClients}` });
+                    results.push({ file: file.name, status: 'error', error: `Cliente não encontrado. Gemini extraiu: "${extracted.cliente}" (código bruto: "${extracted.codigo_cliente}", norm: "${normExtracted}"). Total clientes no DB: ${(clients||[]).length}. Usando Service Role: ${usingServiceRole}. Primeiros 5: ${debugClients}` });
                     continue;
                 }
 
