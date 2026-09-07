@@ -177,12 +177,25 @@ export function useReportData(id) {
                 };
             }).filter(loc => loc.equipments.length > 0);
 
-            // Fetch Report Settings (logo, sequential number)
-            const { data: reportSettings } = await supabase
+            // Fetch Report Settings (logo, sequential number) based on visit type
+            const visitReportType = visit.report_type || 'technical';
+            
+            let { data: reportSettings } = await supabase
                 .from('report_settings')
                 .select('*')
+                .eq('type', visitReportType)
                 .limit(1)
                 .single();
+
+            if (!reportSettings) {
+                // Fallback to the first available if exact type not found
+                const { data: fallbackSettings } = await supabase
+                    .from('report_settings')
+                    .select('*')
+                    .limit(1)
+                    .single();
+                reportSettings = fallbackSettings;
+            }
 
             // Fetch Active Technical Responsibles (for potential listing or context)
             const { data: technicalResponsibles } = await supabase

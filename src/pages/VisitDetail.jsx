@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2, Beaker, Bot, Download } from "lucide-react";
+import { ArrowLeft, ClipboardList, Image as ImageIcon, FileText, Info, Save, Camera, Loader2, Trash2, Beaker, Bot, Download, FlaskConical, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from '@/lib/utils';
@@ -170,6 +170,7 @@ export default function VisitDetailPage() {
                     <TabsTrigger value="photos" title="Fotos"><ImageIcon className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Fotos</span></TabsTrigger>
                     <TabsTrigger value="details" title="Detalhes"><Info className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Detalhes</span></TabsTrigger>
                     <TabsTrigger value="report" title="Relatório"><FileText className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Relatório</span></TabsTrigger>
+                    <TabsTrigger value="lab" title="Laudo Lab"><FlaskConical className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Laudo Lab</span></TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="readings" className="mt-2">
@@ -225,12 +226,62 @@ export default function VisitDetailPage() {
                     />
                 </TabsContent>
 
+                <TabsContent value="lab" className="mt-2">
+                    <Card>
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-medium">Laudo do Laboratório</h3>
+                                    <p className="text-sm text-slate-500">Resultados e análises anexadas via sincronização com Google Drive.</p>
+                                </div>
+                                <div>
+                                    {visit.lab_report_status ? (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            Laudo Realizado
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                            Pendente
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {visit.lab_report_url && (
+                                <div className="p-4 bg-slate-50 border rounded-md mt-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <FileText className="w-5 h-5 text-blue-600" />
+                                        <span className="font-medium text-slate-700">Arquivo PDF</span>
+                                    </div>
+                                    <a href={visit.lab_report_url} target="_blank" rel="noopener noreferrer">
+                                        <Button variant="outline" className="w-full justify-start text-blue-600 border-blue-200 hover:bg-blue-50">
+                                            <ExternalLink className="w-4 h-4 mr-2" />
+                                            Visualizar Laudo no Google Drive
+                                        </Button>
+                                    </a>
+                                </div>
+                            )}
+
+                            <div className="mt-4">
+                                <label className="text-sm font-medium text-slate-700">Comentários (Análise do Laboratório)</label>
+                                {visit.lab_report_comments ? (
+                                    <div className="mt-2 p-4 bg-blue-50 border border-blue-100 rounded-md text-sm text-slate-800 whitespace-pre-wrap">
+                                        {visit.lab_report_comments}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-slate-400 italic mt-2">Nenhum comentário gerado ainda.</p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
                 {/* Bottom Navigation Buttons */}
                 <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
                     <Button
                         variant="outline"
                         onClick={() => {
-                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report'];
+                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report', 'lab'];
                             const currentIdx = tabs.indexOf(activeTab);
                             if (currentIdx > 0) setActiveTab(tabs[currentIdx - 1]);
                         }}
@@ -245,15 +296,16 @@ export default function VisitDetailPage() {
                         {activeTab === 'photos' && 'Fotos'}
                         {activeTab === 'details' && 'Detalhes'}
                         {activeTab === 'report' && 'Relatório'}
+                        {activeTab === 'lab' && 'Laudo Lab'}
                     </span>
                     <Button
                         variant="outline"
                         onClick={() => {
-                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report'];
+                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report', 'lab'];
                             const currentIdx = tabs.indexOf(activeTab);
                             if (currentIdx < tabs.length - 1) setActiveTab(tabs[currentIdx + 1]);
                         }}
-                        disabled={activeTab === 'report'}
+                        disabled={activeTab === 'lab'}
                     >
                         Próximo
                         <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />

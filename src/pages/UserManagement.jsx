@@ -57,6 +57,8 @@ export default function UserManagement() {
 
     // Password reset state
     const [resetPasswordUser, setResetPasswordUser] = useState(null);
+    const [newRole, setNewRole] = useState('');
+    const [newDefaultReportType, setNewDefaultReportType] = useState('technical');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isResetting, setIsResetting] = useState(false);
@@ -142,7 +144,24 @@ export default function UserManagement() {
         if (confirmed) {
             updateUserMutation.mutate({
                 id: user.id,
-                data: { role_id: newRoleId }
+                data: { 
+                    role_id: newRoleId
+                }
+            });
+        }
+    };
+
+    const handleReportTypeChange = async (user, newType) => {
+        const typeName = newType === 'laboratory' ? 'Resultados Analíticos de Laboratório' : 'Relatório Técnico';
+        const confirmed = await confirm({
+            title: 'Alterar Tipo de Relatório',
+            message: `Alterar tipo padrão de ${user.email} para "${typeName}"?`,
+            type: 'confirm'
+        });
+        if (confirmed) {
+            updateUserMutation.mutate({
+                id: user.id,
+                data: { default_report_type: newType }
             });
         }
     };
@@ -309,6 +328,7 @@ export default function UserManagement() {
                                     <TableRow>
                                         <TableHead>Usuário</TableHead>
                                         <TableHead>Perfil</TableHead>
+                                        <TableHead>Relatório Padrão</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead>Data Cadastro</TableHead>
                                         <TableHead className="text-right">Ações</TableHead>
@@ -341,6 +361,21 @@ export default function UserManagement() {
                                                                 {role.name}
                                                             </SelectItem>
                                                         ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Select
+                                                    value={user.default_report_type || "technical"}
+                                                    onValueChange={(val) => handleReportTypeChange(user, val)}
+                                                    disabled={user.id === currentUser?.id}
+                                                >
+                                                    <SelectTrigger className="w-[180px] h-8">
+                                                        <SelectValue placeholder="Selecionar..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="technical">Técnico em Campo</SelectItem>
+                                                        <SelectItem value="laboratory">Analítico Lab</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </TableCell>
