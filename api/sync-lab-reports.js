@@ -170,7 +170,9 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                 }
 
                 if (!matchedClient) {
-                    results.push({ file: file.name, status: 'error', error: `Cliente não encontrado para: ${extracted.cliente} (código: ${extracted.codigo_cliente || 'não extraído'})` });
+                    const debugClients = (clients || []).slice(0, 5).map(c => `${c.name} (code: "${c.client_code}" → norm: "${String(c.client_code || '').replace(/[.\-\/]/g, '')}")`).join(' | ');
+                    const normExtracted = String(extracted.codigo_cliente || '').replace(/[.\-\/]/g, '');
+                    results.push({ file: file.name, status: 'error', error: `Cliente não encontrado. Gemini extraiu: "${extracted.cliente}" (código bruto: "${extracted.codigo_cliente}", norm: "${normExtracted}"). Total clientes no DB: ${(clients||[]).length}. Primeiros 5: ${debugClients}` });
                     continue;
                 }
 
