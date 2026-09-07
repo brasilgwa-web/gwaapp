@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Role } from "@/api/entities";
+import { Role, Client } from "@/api/entities";
 import { useAuth } from "@/context/AuthContext";
 import { useConfirm } from "@/context/ConfirmContext";
 import { useOperationFeedback } from "@/context/OperationFeedbackContext";
@@ -47,6 +47,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import RoleManager from "@/components/setup/RoleManager";
+import UserClientsDialog from "@/components/setup/UserClientsDialog";
 
 export default function UserManagement() {
     const queryClient = useQueryClient();
@@ -60,6 +61,9 @@ export default function UserManagement() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isResetting, setIsResetting] = useState(false);
 
+    // Manage clients state
+    const [manageClientsUser, setManageClientsUser] = useState(null);
+
     // Show deleted users toggle
     const [showDeleted, setShowDeleted] = useState(false);
 
@@ -67,6 +71,12 @@ export default function UserManagement() {
     const { data: roles } = useQuery({
         queryKey: ['roles'],
         queryFn: () => Role.list()
+    });
+
+    // Fetch clients
+    const { data: clients } = useQuery({
+        queryKey: ['clients'],
+        queryFn: () => Client.list()
     });
 
     // Fetch users with their role information
@@ -370,6 +380,14 @@ export default function UserManagement() {
                                                             Redefinir Senha
                                                         </DropdownMenuItem>
 
+                                                        <DropdownMenuItem
+                                                            onClick={() => setManageClientsUser(user)}
+                                                            className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
+                                                        >
+                                                            <Shield className="w-4 h-4 mr-2" />
+                                                            Gerenciar Clientes
+                                                        </DropdownMenuItem>
+
                                                         {getStatus(user) === 'active' ? (
                                                             <DropdownMenuItem
                                                                 onClick={() => handleStatusChange(user, 'inactive')}
@@ -493,6 +511,17 @@ export default function UserManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Manage User Clients Dialog */}
+            <UserClientsDialog 
+                user={manageClientsUser} 
+                clients={clients} 
+                isOpen={!!manageClientsUser} 
+                onClose={() => {
+                    setManageClientsUser(null);
+                    queryClient.invalidateQueries({ queryKey: ['users'] });
+                }} 
+            />
         </div>
     );
 }
