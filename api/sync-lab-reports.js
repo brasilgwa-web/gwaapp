@@ -34,6 +34,9 @@ export default async function handler(request, response) {
         if (!inboxFolderId) {
             return response.status(400).json({ error: 'ID da pasta Inbox não configurado no banco de dados (ai_settings).' });
         }
+        
+        // Forçar o ID correto (com 'N' maiúsculo) para contornar problemas no banco de dados
+        inboxFolderId = '1OU4vJGcwno0wNgpZPx4Gvq8g8DLt6jxb';
 
         // Auth Google Drive
         let auth;
