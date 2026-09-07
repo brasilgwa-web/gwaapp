@@ -48,7 +48,21 @@ export default async function handler(request, response) {
         if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
             const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
             if (credentials.private_key) {
-                credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+                let pk = credentials.private_key.replace(/\\n/g, '\n');
+                
+                // Bulletproof PEM formatter: se as quebras de linha sumiram, reconstrói o formato PEM
+                const header = "-----BEGIN PRIVATE KEY-----";
+                const footer = "-----END PRIVATE KEY-----";
+                if (pk.includes(header) && pk.includes(footer)) {
+                    let body = pk.substring(pk.indexOf(header) + header.length, pk.indexOf(footer));
+                    body = body.replace(/\s+/g, ''); // limpa qualquer espaço/quebra de linha que sobrou
+                    const matched = body.match(/.{1,64}/g);
+                    if (matched) {
+                        credentials.private_key = header + '\n' + matched.join('\n') + '\n' + footer + '\n';
+                    }
+                } else {
+                    credentials.private_key = pk;
+                }
             }
             auth = new google.auth.GoogleAuth({
                 credentials,
