@@ -251,7 +251,7 @@ export default function Layout() {
               )}
             </div>
 
-            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
               {navigation.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
@@ -260,7 +260,7 @@ export default function Layout() {
                     key={item.name}
                     to={item.href}
                     onClick={() => setIsSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
+                    className={`flex items-center gap-3 px-3 py-2 text-[13px] font-medium rounded-lg transition-colors ${active
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                       : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                       }`}
@@ -273,8 +273,8 @@ export default function Layout() {
 
               {/* Submenu Cadastros - only show if user has any setup permissions */}
               {setupNavigation.length > 0 && (
-                <div className="pt-4">
-                  <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Cadastros</p>
+                <div className="pt-2">
+                  <p className="px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Cadastros</p>
                   {setupNavigation.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
@@ -283,7 +283,7 @@ export default function Layout() {
                         key={item.name}
                         to={item.href}
                         onClick={() => setIsSidebarOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
+                        className={`flex items-center gap-3 px-3 py-2 text-[13px] font-medium rounded-lg transition-colors ${active
                           ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                           : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                           }`}
@@ -298,8 +298,8 @@ export default function Layout() {
 
               {/* Administration Menu - only show if user has any admin permissions */}
               {adminNavigation.length > 0 && (
-                <div className="pt-4">
-                  <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Administração</p>
+                <div className="pt-2">
+                  <p className="px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Administração</p>
                   {adminNavigation.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
@@ -308,7 +308,7 @@ export default function Layout() {
                         key={item.name}
                         to={item.href}
                         onClick={() => setIsSidebarOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${active
+                        className={`flex items-center gap-3 px-3 py-2 text-[13px] font-medium rounded-lg transition-colors ${active
                           ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                           : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                           }`}
@@ -323,19 +323,19 @@ export default function Layout() {
             </nav>
 
             {/* Bottom user section */}
-            <div className="p-4 border-t border-slate-800 space-y-2">
+            <div className="p-3 border-t border-slate-800 space-y-1">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-start gap-3 p-2 h-auto text-left text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl">
-                    <Avatar className="w-10 h-10 border-2 border-slate-700">
+                  <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto text-left text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg">
+                    <Avatar className="w-8 h-8 border border-slate-700">
                       <AvatarImage src={user?.avatar_url} />
-                      <AvatarFallback className="bg-slate-700 text-white">
+                      <AvatarFallback className="bg-slate-700 text-white text-xs">
                         {user?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col flex-1 overflow-hidden">
-                      <span className="font-medium text-white text-sm truncate">{user?.full_name || 'Usuário'}</span>
-                      <span className="text-xs text-slate-500 truncate">{user?.email}</span>
+                      <span className="font-medium text-white text-[13px] leading-tight truncate">{user?.full_name || 'Usuário'}</span>
+                      <span className="text-[11px] text-slate-500 truncate">{user?.email}</span>
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
