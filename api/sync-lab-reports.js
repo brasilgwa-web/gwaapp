@@ -85,9 +85,8 @@ export default async function handler(request, response) {
         const files = allFiles.filter(f => f.mimeType === 'application/pdf');
 
         if (!files || files.length === 0) {
-            const allFilesNames = allFiles.map(f => `${f.name} (${f.mimeType})`).join(', ');
             return response.status(200).json({ 
-                message: `Nenhum laudo em PDF pendente na Inbox.\n\n--- DEBUG INFO ---\nTotal de arquivos achados (qualquer tipo): ${allFiles.length}\nArquivos: ${allFilesNames || 'Nenhum'}\n\nID da Pasta: ${inboxFolderId}\nConta de Serviço: ${authEmail}`, 
+                message: 'Não encontramos nenhum laudo novo (em PDF) na pasta Inbox do Drive neste momento.', 
                 processed: 0 
             });
         }
@@ -281,7 +280,7 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
             errorDetails ? `Erros:\n${errorDetails}` : ''
         ].filter(Boolean).join('\n\n');
 
-        return response.status(200).json({ message: `Processamento concluído\n\n${detailMsg || 'Nenhum arquivo processado.'}`, processed: processedCount, results });
+        return response.status(200).json({ message: detailMsg || 'Nenhum arquivo novo precisou ser sincronizado.', processed: processedCount, results });
 
     } catch (error) {
         let pkSnippet = "N/A";
