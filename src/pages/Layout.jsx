@@ -323,19 +323,22 @@ export default function Layout() {
             </nav>
 
             {/* Bottom user section */}
-            <div className="p-3 border-t border-slate-800 space-y-1">
+            <div className="p-2 border-t border-slate-800">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto text-left text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg">
-                    <Avatar className="w-8 h-8 border border-slate-700">
+                  <Button variant="ghost" className="w-full justify-start gap-2 p-1.5 h-auto text-left text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg">
+                    <Avatar className="w-7 h-7 border border-slate-700">
                       <AvatarImage src={user?.avatar_url} />
-                      <AvatarFallback className="bg-slate-700 text-white text-xs">
+                      <AvatarFallback className="bg-slate-700 text-white text-[10px]">
                         {user?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col flex-1 overflow-hidden">
-                      <span className="font-medium text-white text-[13px] leading-tight truncate">{user?.full_name || 'Usuário'}</span>
-                      <span className="text-[11px] text-slate-500 truncate">{user?.email}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-white text-[12px] leading-tight truncate">{user?.full_name || 'Usuário'}</span>
+                        <span className="text-[9px] text-slate-600 font-mono ml-2">v{version}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 truncate">{user?.email}</span>
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
@@ -354,12 +357,6 @@ export default function Layout() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-
-              <div className="px-2 text-center">
-                <span className="text-[10px] text-slate-600 font-mono">
-                  v{version}
-                </span>
-              </div>
             </div>
           </div>
         </aside>
