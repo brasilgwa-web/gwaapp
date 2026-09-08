@@ -34,7 +34,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const { confirm, alert } = useConfirm();
 
     // Form States
-    const [observations, setObservations] = useState(visit.observations || visit.lab_report_comments || '');
+    const [observations, setObservations] = useState(visit.observations || '');
     const [generalObservations, setGeneralObservations] = useState(visit.general_observations || '');
     const [discharges, setDischarges] = useState(visit.discharges_drainages || '');
     const obsDebounceRef = useRef(null);
@@ -1096,31 +1096,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 </CardContent>
             </Card>
 
-            {/* Laudo do Laboratório (Sincronizado via Drive) */}
-            {visit.lab_report_url && (
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <FlaskConical className="w-4 h-4 text-blue-600" />
-                            Laudo do Laboratório
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-slate-50 border rounded-md gap-3">
-                            <div className="flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-blue-600" />
-                                <span className="font-medium text-slate-700">Arquivo PDF sincronizado</span>
-                            </div>
-                            <a href={visit.lab_report_url} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
-                                <Button variant="outline" size="sm" className="w-full md:w-auto text-blue-600 border-blue-200 hover:bg-blue-50">
-                                    <ExternalLink className="w-4 h-4 mr-2" />
-                                    Visualizar Laudo
-                                </Button>
-                            </a>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+
 
             {/* 2. Análise Técnica (Observações) */}
             <Card>

@@ -228,12 +228,13 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                 }
 
                 // 7. Atualizar a Visita
+                const aiComment = extracted.comentario || 'Nenhuma anomalia crítica relatada.';
                 await supabaseAdmin
-            .from('visits')
+                    .from('visits')
                     .update({
-                        lab_report_status: true,
+                        lab_report_status: 'completed',
                         lab_report_url: file.webViewLink,
-                        lab_report_comments: extracted.comentario
+                        lab_report_comments: `\n---AI_DRAFT---\n${aiComment}`
                     })
                     .eq('id', targetVisit.id);
 

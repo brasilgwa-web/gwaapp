@@ -15,6 +15,7 @@ import { ptBR } from "date-fns/locale";
 import { formatDateAsLocal } from '@/lib/utils';
 import ReadingsTab from "../components/visit/ReadingsTab";
 import ReportTab from "../components/visit/ReportTab";
+import LabReportTab from "../components/visit/LabReportTab";
 import DosageBoardTab from "../components/visit/DosageBoardTab";
 import { Card, CardContent } from "@/components/ui/card";
 import AIChat from "../components/visit/AIChat";
@@ -164,12 +165,13 @@ export default function VisitDetailPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 lg:w-[750px] mb-4">
-                    <TabsTrigger value="readings" title="Leituras"><ClipboardList className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Leituras</span></TabsTrigger>
-                    <TabsTrigger value="dosages" title="Dosagens"><Beaker className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Dosagens</span></TabsTrigger>
-                    <TabsTrigger value="photos" title="Fotos"><ImageIcon className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Fotos</span></TabsTrigger>
-                    <TabsTrigger value="details" title="Detalhes"><Info className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Detalhes</span></TabsTrigger>
-                    <TabsTrigger value="report" title="Relatório"><FileText className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Relatório</span></TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 lg:max-w-4xl mb-4 h-auto p-1">
+                    <TabsTrigger value="readings" title="Leituras" className="py-2"><ClipboardList className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Leituras</span></TabsTrigger>
+                    <TabsTrigger value="dosages" title="Dosagens" className="py-2"><Beaker className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Dosagens</span></TabsTrigger>
+                    <TabsTrigger value="photos" title="Fotos" className="py-2"><ImageIcon className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Fotos</span></TabsTrigger>
+                    <TabsTrigger value="details" title="Detalhes" className="py-2"><Info className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Detalhes</span></TabsTrigger>
+                    <TabsTrigger value="report" title="Relatório Campo" className="py-2"><FileText className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Relatório Campo</span></TabsTrigger>
+                    <TabsTrigger value="lab" title="Laudo Laboratório" className="py-2"><FlaskConical className="w-4 h-4 md:mr-2" /><span className="hidden md:inline">Laudo Lab</span></TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="readings" className="mt-2">
@@ -225,13 +227,17 @@ export default function VisitDetailPage() {
                     />
                 </TabsContent>
 
+                <TabsContent value="lab" className="mt-2">
+                    <LabReportTab visit={visit} readOnly={isReadOnly} />
+                </TabsContent>
+
 
                 {/* Bottom Navigation Buttons */}
                 <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
                     <Button
                         variant="outline"
                         onClick={() => {
-                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report'];
+                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report', 'lab'];
                             const currentIdx = tabs.indexOf(activeTab);
                             if (currentIdx > 0) setActiveTab(tabs[currentIdx - 1]);
                         }}
@@ -245,16 +251,17 @@ export default function VisitDetailPage() {
                         {activeTab === 'dosages' && 'Dosagens'}
                         {activeTab === 'photos' && 'Fotos'}
                         {activeTab === 'details' && 'Detalhes'}
-                        {activeTab === 'report' && 'Relatório'}
+                        {activeTab === 'report' && 'Relatório Campo'}
+                        {activeTab === 'lab' && 'Laudo Laboratório'}
                     </span>
                     <Button
                         variant="outline"
                         onClick={() => {
-                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report'];
+                            const tabs = ['readings', 'dosages', 'photos', 'details', 'report', 'lab'];
                             const currentIdx = tabs.indexOf(activeTab);
                             if (currentIdx < tabs.length - 1) setActiveTab(tabs[currentIdx + 1]);
                         }}
-                        disabled={activeTab === 'report'}
+                        disabled={activeTab === 'lab'}
                     >
                         Próximo
                         <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
