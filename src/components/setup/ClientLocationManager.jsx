@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Client, ClientContact } from "@/api/entities";
+import { Client, ClientContact, Visit } from "@/api/entities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical, User, Users, Search, Settings } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Building, Pencil, ArrowUpDown, GripVertical, User, Users, Search, Settings, FileText, Link as LinkIcon } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -190,6 +190,15 @@ export default function ClientLocationManager() {
     if (view === 'details' && selectedClient) {
         return (
             <div className="space-y-6">
+                {/* Pending Lab Reports */}
+                <PendingLabReportsSection 
+                    client={selectedClient} 
+                    onUpdate={(updated) => {
+                        setSelectedClient(updated);
+                        queryClient.invalidateQueries({ queryKey: ['clients'] });
+                    }} 
+                />
+
                 {/* Discharges/Drainages Section */}
                 <ClientDischargesSection
                     client={selectedClient}
@@ -566,6 +575,136 @@ function ClientDischargesSection({ client, onBack, onUpdate }) {
                         {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                     </Button>
                 )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function PendingLabReportsSection({ client, onUpdate }) {
+    const queryClient = useQueryClient();
+    const { executeWithFeedback } = useOperationFeedback();
+    const [isLinkDialogOpen, setIsLinkDialogOpen] = React.useState(false);
+    const [selectedReport, setSelectedReport] = React.useState(null);
+    const [selectedVisitId, setSelectedVisitId] = React.useState('');
+
+    const pendingReports = client.pending_lab_reports || [];
+
+    // Fetch visits for dropdown
+    const { data: visits } = useQuery({
+        queryKey: ['visits', client.id],
+        queryFn: () => Visit.filter({ client_id: client.id })
+    });
+
+    const handleLinkClick = (report) => {
+        setSelectedReport(report);
+        setSelectedVisitId('');
+        setIsLinkDialogOpen(true);
+    };
+
+    const handleConfirmLink = async () => {
+        if (!selectedVisitId || !selectedReport) return;
+        
+        try {
+            // 1. Update the Visit
+            const res = await executeWithFeedback({
+                operation: () => Visit.update(selectedVisitId, {
+                    lab_report_status: true,
+                    lab_report_url: selectedReport.url,
+                    lab_report_comments: `\n---AI_DRAFT---\n${selectedReport.ai_draft}`
+                }),
+                loadingMessage: 'Vinculando laudo à visita...',
+                successMessage: 'Laudo vinculado com sucesso!',
+                errorMessage: 'Erro ao vincular laudo.'
+            });
+
+            if (!res.success) return;
+
+            // 2. Remove from pending
+            const newPending = pendingReports.filter(r => r.id !== selectedReport.id);
+            await Client.update(client.id, { pending_lab_reports: newPending });
+            
+            onUpdate({ ...client, pending_lab_reports: newPending });
+            setIsLinkDialogOpen(false);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleDelete = async (reportId) => {
+        if (!window.confirm("Deseja realmente remover este laudo pendente da fila?")) return;
+        try {
+            const newPending = pendingReports.filter(r => r.id !== reportId);
+            await Client.update(client.id, { pending_lab_reports: newPending });
+            onUpdate({ ...client, pending_lab_reports: newPending });
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    if (pendingReports.length === 0) return null;
+
+    return (
+        <Card className="w-full border-orange-200 shadow-sm">
+            <CardHeader className="bg-orange-50/50 pb-4">
+                <CardTitle className="text-orange-700 flex items-center gap-2">
+                    <FileText className="w-5 h-5" /> 
+                    Laudos Laboratoriais Pendentes ({pendingReports.length})
+                </CardTitle>
+                <CardDescription>
+                    Estes laudos foram processados, mas o sistema não encontrou a visita correspondente de forma automática (provavelmente a data difere). Vincule-os manualmente abaixo.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+                {pendingReports.map(report => (
+                    <div key={report.id} className="flex flex-col md:flex-row items-center justify-between p-3 bg-white border rounded-lg gap-4">
+                        <div className="flex-1">
+                            <div className="font-medium text-sm flex items-center gap-2">
+                                <a href={report.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                                    <FileText className="w-4 h-4" /> Ver PDF
+                                </a>
+                                <span className="text-slate-400">|</span>
+                                <span className="text-slate-600">Data lida no Laudo: {report.date}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" onClick={() => handleLinkClick(report)} className="bg-orange-600 hover:bg-orange-700 text-white">
+                                <LinkIcon className="w-4 h-4 mr-2" /> Vincular à Visita
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleDelete(report.id)} className="text-red-500 hover:bg-red-50">
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </div>
+                ))}
+
+                <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Vincular Laudo</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Selecione a Visita de Destino</Label>
+                                <Select value={selectedVisitId} onValueChange={setSelectedVisitId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Escolha uma visita..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {(visits || []).map(v => (
+                                            <SelectItem key={v.id} value={v.id}>
+                                                {new Date(v.visit_date).toLocaleDateString('pt-BR')} {v.status === 'draft' ? '(Rascunho)' : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsLinkDialogOpen(false)}>Cancelar</Button>
+                            <Button onClick={handleConfirmLink} disabled={!selectedVisitId}>Confirmar Vinculação</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </CardContent>
         </Card>
     );

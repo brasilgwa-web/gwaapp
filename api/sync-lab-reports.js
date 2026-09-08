@@ -204,17 +204,7 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                     const vDate = v.visit_date.split('T')[0];
                     // Mesmo mês e ano como fallback
                     return vDate.substring(0, 7) === extracted.data_coleta.substring(0, 7);
-                }) || visits[0]; // Fallback pra mais recente não-draft do cliente
-
-                // Se não achou nenhuma não-draft, tenta pegar qualquer visita (mesmo draft)
-                if (!targetVisit && allVisits && allVisits.length > 0) {
-                    targetVisit = allVisits[0];
-                }
-
-                if (!targetVisit) {
-                    results.push({ file: file.name, status: 'error', error: `Nenhuma visita encontrada para ${matchedClient.name} no banco de dados.` });
-                    continue;
-                }
+                });
 
                 // 6. Mover arquivo para a pasta do cliente no Drive
                 if (matchedClient.google_drive_folder_id) {
@@ -227,23 +217,56 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                     });
                 }
 
-                // 7. Atualizar a Visita
+                // 7. Atualizar a Visita ou Salvar Pendente
                 const aiComment = extracted.comentario || 'Nenhuma anomalia crítica relatada.';
-                const { error: updateError } = await supabaseAdmin
-                    .from('visits')
-                    .update({
-                        lab_report_status: true,
-                        lab_report_url: file.webViewLink,
-                        lab_report_comments: `\n---AI_DRAFT---\n${aiComment}`
-                    })
-                    .eq('id', targetVisit.id);
+                
+                if (targetVisit) {
+                    const { error: updateError } = await supabaseAdmin
+                        .from('visits')
+                        .update({
+                            lab_report_status: true,
+                            lab_report_url: file.webViewLink,
+                            lab_report_comments: `\n---AI_DRAFT---\n${aiComment}`
+                        })
+                        .eq('id', targetVisit.id);
 
-                if (updateError) {
-                    throw new Error(`Falha ao atualizar visita no banco: ${updateError.message}`);
+                    if (updateError) {
+                        throw new Error(`Falha ao atualizar visita no banco: ${updateError.message}`);
+                    }
+
+                    processedCount++;
+                    results.push({ file: file.name, status: 'success', visitId: targetVisit.id });
+                } else {
+                    // Salvar como laudo pendente no cliente
+                    const { data: clientData, error: fetchErr } = await supabaseAdmin
+                        .from('clients')
+                        .select('pending_lab_reports')
+                        .eq('id', matchedClient.id)
+                        .single();
+                        
+                    if (fetchErr) throw new Error(`Falha ao buscar cliente para pendente: ${fetchErr.message}`);
+                    
+                    const pending = clientData.pending_lab_reports || [];
+                    const pendingId = Date.now().toString() + Math.floor(Math.random() * 1000);
+                    
+                    pending.push({
+                        id: pendingId,
+                        url: file.webViewLink,
+                        ai_draft: aiComment,
+                        date: extracted.data_coleta || new Date().toISOString().split('T')[0],
+                        created_at: new Date().toISOString()
+                    });
+                    
+                    const { error: updateClientErr } = await supabaseAdmin
+                        .from('clients')
+                        .update({ pending_lab_reports: pending })
+                        .eq('id', matchedClient.id);
+                        
+                    if (updateClientErr) throw new Error(`Falha ao salvar pendente: ${updateClientErr.message}`);
+                    
+                    processedCount++;
+                    results.push({ file: file.name, status: 'pending', clientId: matchedClient.id, message: 'Laudo salvo na fila de pendentes' });
                 }
-
-                processedCount++;
-                results.push({ file: file.name, status: 'success', visitId: targetVisit.id });
 
             } catch (err) {
                 console.error(`Erro processando arquivo ${file.name}:`, err);
