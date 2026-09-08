@@ -2,31 +2,51 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, ExternalLink, Bot, FlaskConical, Loader2, Save } from "lucide-react";
+import { FileText, ExternalLink, Bot, FlaskConical, Loader2, Save, PenLine } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Visit } from "@/api/entities";
 import { useConfirm } from "@/context/ConfirmContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LabReportTab({ visit, readOnly }) {
     if (!visit) return null;
     const queryClient = useQueryClient();
     const { alert } = useConfirm();
+    const { user } = useAuth();
 
     const [comments, setComments] = useState('');
     const [aiDraft, setAiDraft] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
+    const [editLog, setEditLog] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
+    
     const debounceRef = useRef(null);
+
+    // Derived state
+    const isFieldDisabled = readOnly && !isEditing;
 
     useEffect(() => {
         if (visit.lab_report_comments) {
-            if (visit.lab_report_comments.includes('---AI_DRAFT---')) {
-                const parts = visit.lab_report_comments.split('---AI_DRAFT---');
-                setComments(parts[0].trim());
-                setAiDraft(parts[1]?.trim() || '');
-            } else {
-                setComments(visit.lab_report_comments);
-                setAiDraft('');
+            let text = visit.lab_report_comments;
+            let currentDraft = '';
+            let currentLog = '';
+
+            // Extract AI Draft
+            if (text.includes('---AI_DRAFT---')) {
+                const parts = text.split('---AI_DRAFT---');
+                currentDraft = parts[1]?.trim() || '';
+                text = parts[0];
             }
+
+            // Extract Log
+            if (text.includes('---LOG---')) {
+                const parts = text.split('---LOG---');
+                currentLog = parts[1]?.trim() || '';
+                text = parts[0];
+            }
+
+            setComments(text.trim());
+            setAiDraft(currentDraft);
+            setEditLog(currentLog);
         }
     }, [visit.lab_report_comments]);
 
@@ -40,22 +60,35 @@ export default function LabReportTab({ visit, readOnly }) {
         }
     });
 
+    const saveToServer = (textToSave, draftToSave) => {
+        const logText = `Editado por ${user?.name || user?.email || 'Técnico'} em ${new Date().toLocaleString('pt-BR')}`;
+        setEditLog(logText);
+        
+        let fullText = textToSave;
+        if (textToSave) {
+            fullText += `\n\n---LOG---\n${logText}`;
+        }
+        if (draftToSave) {
+            fullText += `\n\n---AI_DRAFT---\n${draftToSave}`;
+        }
+        
+        updateMutation.mutate({ lab_report_comments: fullText });
+    };
+
     const handleCommentsChange = (value) => {
+        if (isFieldDisabled) return;
         setComments(value);
-        if (readOnly) return;
         
         clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-            const fullText = aiDraft ? `${value}\n\n---AI_DRAFT---\n${aiDraft}` : value;
-            updateMutation.mutate({ lab_report_comments: fullText });
+            saveToServer(value, aiDraft);
         }, 1500);
     };
 
     const handleCommentsBlur = () => {
-        if (readOnly) return;
+        if (isFieldDisabled) return;
         clearTimeout(debounceRef.current);
-        const fullText = aiDraft ? `${comments}\n\n---AI_DRAFT---\n${aiDraft}` : comments;
-        updateMutation.mutate({ lab_report_comments: fullText });
+        saveToServer(comments, aiDraft);
     };
 
     const handleGenerateAI = () => {
@@ -65,8 +98,7 @@ export default function LabReportTab({ visit, readOnly }) {
         }
         const newComments = comments ? comments + "\n\n" + aiDraft : aiDraft;
         setComments(newComments);
-        const fullText = aiDraft ? `${newComments}\n\n---AI_DRAFT---\n${aiDraft}` : newComments;
-        updateMutation.mutate({ lab_report_comments: fullText });
+        saveToServer(newComments, aiDraft);
     };
 
     return (
@@ -102,27 +134,44 @@ export default function LabReportTab({ visit, readOnly }) {
             </Card>
 
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <CardTitle className="text-base">Comentários Complementares</CardTitle>
                         <CardDescription>Adicione observações sobre os resultados do laboratório.</CardDescription>
                     </div>
-                    {!readOnly && aiDraft && (
-                        <Button variant="outline" size="sm" onClick={handleGenerateAI} className="bg-purple-50 text-purple-600 border-purple-200">
-                            <Bot className="w-4 h-4 mr-2" />
-                            Preencher com IA
-                        </Button>
-                    )}
+                    
+                    <div className="flex items-center gap-2">
+                        {readOnly && !isEditing && (
+                            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                                <PenLine className="w-4 h-4 mr-2" />
+                                Editar Comentários
+                            </Button>
+                        )}
+                        {(!isFieldDisabled && aiDraft) && (
+                            <Button variant="outline" size="sm" onClick={handleGenerateAI} className="bg-purple-50 text-purple-600 border-purple-200">
+                                <Bot className="w-4 h-4 mr-2" />
+                                Preencher com IA
+                            </Button>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Textarea
                         value={comments}
                         onChange={(e) => handleCommentsChange(e.target.value)}
                         onBlur={handleCommentsBlur}
-                        className="min-h-[150px]"
+                        className={`min-h-[150px] ${isFieldDisabled ? 'bg-slate-50 opacity-75' : 'bg-white'}`}
                         placeholder="Escreva seus comentários aqui..."
-                        disabled={readOnly}
+                        disabled={isFieldDisabled}
                     />
+                    
+                    {editLog && comments && (
+                        <div className="mt-2 text-xs text-slate-500 italic flex items-center justify-end">
+                            <span className="bg-slate-100 px-2 py-1 rounded">
+                                {editLog}
+                            </span>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
