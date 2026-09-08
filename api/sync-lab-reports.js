@@ -229,14 +229,18 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
 
                 // 7. Atualizar a Visita
                 const aiComment = extracted.comentario || 'Nenhuma anomalia crítica relatada.';
-                await supabaseAdmin
+                const { error: updateError } = await supabaseAdmin
                     .from('visits')
                     .update({
-                        lab_report_status: 'completed',
+                        lab_report_status: true,
                         lab_report_url: file.webViewLink,
                         lab_report_comments: `\n---AI_DRAFT---\n${aiComment}`
                     })
                     .eq('id', targetVisit.id);
+
+                if (updateError) {
+                    throw new Error(`Falha ao atualizar visita no banco: ${updateError.message}`);
+                }
 
                 processedCount++;
                 results.push({ file: file.name, status: 'success', visitId: targetVisit.id });
