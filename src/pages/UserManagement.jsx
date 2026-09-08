@@ -580,9 +580,11 @@ function SyncLabReportsButton() {
             if (!res.ok) throw new Error(data.error || 'Erro ao sincronizar');
             
             alert({
-                title: 'Sincronização concluída!',
-                message: `Processados: ${data.processed}\n\nMensagem: ${data.message}`,
-                type: 'success'
+                title: data.processed > 0 ? 'Sincronização concluída!' : 'Sincronização finalizada',
+                message: data.processed > 0 
+                    ? `Processamos ${data.processed} laudo(s) com sucesso!\n\n${data.message}`
+                    : data.message,
+                type: data.processed > 0 ? 'success' : 'info'
             });
             queryClient.invalidateQueries({ queryKey: ['visits'] });
         } catch (error) {
