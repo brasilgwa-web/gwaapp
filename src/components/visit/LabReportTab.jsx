@@ -147,7 +147,7 @@ export default function LabReportTab({ visit, readOnly }) {
                                 Editar Comentários
                             </Button>
                         )}
-                        {(!isFieldDisabled && aiDraft) && (
+                        {(!isFieldDisabled) && (
                             <Button variant="outline" size="sm" onClick={handleGenerateAI} className="bg-purple-50 text-purple-600 border-purple-200">
                                 <Bot className="w-4 h-4 mr-2" />
                                 Preencher com IA
