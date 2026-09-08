@@ -698,7 +698,7 @@ function PendingLabReportsSection({ client, onUpdate }) {
                                     <SelectContent>
                                         {(visits || []).map(v => (
                                             <SelectItem key={v.id} value={v.id}>
-                                                Visita #{v.id.substring(0,5).toUpperCase()} - {formatDateAsLocal(v.visit_date)} {v.status === 'draft' ? '(Rascunho)' : ''}
+                                                {v.report_number ? `Visita ${v.report_number}` : `Visita #${v.id.substring(0,5).toUpperCase()}`} - {formatDateAsLocal(v.visit_date)} {v.status === 'draft' ? '(Rascunho)' : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
