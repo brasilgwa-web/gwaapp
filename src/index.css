@@ -220,3 +220,21 @@ button:focus-visible {
 .report-comments-html h1 { font-size: 13px; }
 .report-comments-html h2 { font-size: 12px; }
 .report-comments-html h3 { font-size: 11px; }
+
+/* Custom Scrollbar for Sidebar (Web only) */
+@media (pointer: fine) {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+  }
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
