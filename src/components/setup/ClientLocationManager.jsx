@@ -641,6 +641,12 @@ function PendingLabReportsSection({ client, onUpdate }) {
         }
     };
 
+    const formatDateAsLocal = (dateString) => {
+        if (!dateString) return '';
+        const [year, month, day] = dateString.split('T')[0].split('-');
+        return `${day}/${month}/${year}`;
+    };
+
     if (pendingReports.length === 0) return null;
 
     return (
@@ -663,7 +669,7 @@ function PendingLabReportsSection({ client, onUpdate }) {
                                     <FileText className="w-4 h-4" /> Ver PDF
                                 </a>
                                 <span className="text-slate-400">|</span>
-                                <span className="text-slate-600">Data lida no Laudo: {report.date}</span>
+                                <span className="text-slate-600">Data lida no Laudo: {formatDateAsLocal(report.date)}</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -692,7 +698,7 @@ function PendingLabReportsSection({ client, onUpdate }) {
                                     <SelectContent>
                                         {(visits || []).map(v => (
                                             <SelectItem key={v.id} value={v.id}>
-                                                {new Date(v.visit_date).toLocaleDateString('pt-BR')} {v.status === 'draft' ? '(Rascunho)' : ''}
+                                                Visita #{v.id.substring(0,5).toUpperCase()} - {formatDateAsLocal(v.visit_date)} {v.status === 'draft' ? '(Rascunho)' : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
