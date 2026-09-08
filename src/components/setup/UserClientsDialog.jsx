@@ -3,14 +3,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase';
 import { useOperationFeedback } from '@/context/OperationFeedbackContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 
 export default function UserClientsDialog({ user, clients, isOpen, onClose }) {
     const [viewAll, setViewAll] = useState(false);
     const [selectedClients, setSelectedClients] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     const { executeWithFeedback } = useOperationFeedback();
 
     useEffect(() => {
@@ -103,22 +105,42 @@ export default function UserClientsDialog({ user, clients, isOpen, onClose }) {
                     {!viewAll && (
                         <div className="space-y-3 mt-4 border-t pt-4">
                             <Label className="text-slate-500">Selecione os clientes vinculados a este usuário:</Label>
+                            
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input
+                                    type="text"
+                                    placeholder="Buscar cliente..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9"
+                                />
+                            </div>
+
                             {isLoading ? (
                                 <div className="flex justify-center p-4"><Loader2 className="w-6 h-6 animate-spin" /></div>
                             ) : (
-                                <div className="space-y-2">
-                                    {clients?.map(client => (
+                                <div className="space-y-2 mt-2 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                                    {(clients || [])
+                                        .filter(client => 
+                                            client.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                            (client.client_code && client.client_code.toLowerCase().includes(searchQuery.toLowerCase()))
+                                        )
+                                        .map(client => (
                                         <div key={client.id} className="flex items-center space-x-2">
                                             <Checkbox 
                                                 id={`client-${client.id}`} 
                                                 checked={selectedClients.includes(client.id)} 
                                                 onCheckedChange={() => toggleClient(client.id)}
                                             />
-                                            <Label htmlFor={`client-${client.id}`} className="font-normal">
-                                                {client.name}
+                                            <Label htmlFor={`client-${client.id}`} className="font-normal cursor-pointer leading-tight">
+                                                {client.name} {client.client_code ? <span className="text-slate-400 text-xs ml-1">({client.client_code})</span> : null}
                                             </Label>
                                         </div>
                                     ))}
+                                    {clients?.length > 0 && clients.filter(client => client.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                                        <p className="text-sm text-slate-500 text-center py-4">Nenhum cliente encontrado com "{searchQuery}".</p>
+                                    )}
                                 </div>
                             )}
                         </div>
