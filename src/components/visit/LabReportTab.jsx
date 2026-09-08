@@ -86,7 +86,7 @@ export default function LabReportTab({ visit, readOnly }) {
                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-3 bg-slate-50 border rounded-md gap-3">
                             <div className="flex items-center gap-2">
                                 <FileText className="w-5 h-5 text-blue-600" />
-                                <span className="font-medium text-slate-700">Arquivo PDF disponível</span>
+                                <span className="font-medium text-slate-700">Laudo Disponível</span>
                             </div>
                             <a href={visit.lab_report_url} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto">
                                 <Button variant="outline" size="sm" className="w-full md:w-auto text-blue-600 border-blue-200 hover:bg-blue-50">
