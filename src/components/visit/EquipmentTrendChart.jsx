@@ -28,10 +28,18 @@ function TestSubChart({ test, isLast, forPdf, allDates }) {
         });
     }, [test.data, allDates]);
 
+    const average = useMemo(() => {
+        const validValues = test.data.filter(d => d.value !== null).map(d => d.value);
+        if (validValues.length === 0) return null;
+        const sum = validValues.reduce((a, b) => a + b, 0);
+        return sum / validValues.length;
+    }, [test.data]);
+
     const yDomain = useMemo(() => {
         const values = test.data.map(d => d.value);
         if (test.minVmp !== null) values.push(test.minVmp);
         if (test.maxVmp !== null) values.push(test.maxVmp);
+        if (average !== null) values.push(average);
         if (values.length === 0) return [0, 10];
         const min = Math.min(...values);
         const max = Math.max(...values);
@@ -40,7 +48,7 @@ function TestSubChart({ test, isLast, forPdf, allDates }) {
             Math.floor((min - pad) * 100) / 100,
             Math.ceil((max + pad) * 100) / 100
         ];
-    }, [test]);
+    }, [test, average]);
 
     const yLabel = test.unit ? `${test.testName} (${test.unit})` : test.testName;
 
@@ -50,17 +58,17 @@ function TestSubChart({ test, isLast, forPdf, allDates }) {
                 <LineChart
                     data={data}
                     syncId="equipment-sync"
-                    margin={{ top: 4, right: 50, left: 20, bottom: isLast ? 20 : 4 }}
+                    margin={{ top: 4, right: 50, left: 20, bottom: 20 }}
                 >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
 
                     <XAxis
                         dataKey="date"
                         tickFormatter={formatDate}
-                        tick={isLast ? { fontSize } : false}
-                        axisLine={isLast}
-                        tickLine={isLast}
-                        height={isLast ? 30 : 4}
+                        tick={{ fontSize }}
+                        axisLine={true}
+                        tickLine={true}
+                        height={30}
                         stroke="#94a3b8"
                         interval="preserveStartEnd"
                     />
@@ -91,20 +99,30 @@ function TestSubChart({ test, isLast, forPdf, allDates }) {
                     {test.maxVmp !== null && (
                         <ReferenceLine
                             y={test.maxVmp}
-                            stroke={test.color}
+                            stroke="#16a34a"
                             strokeDasharray="6 3"
                             strokeOpacity={0.8}
-                            label={{ value: `USL-${test.maxVmp}`, fill: test.color, fontSize: fontSize - 1, position: 'right' }}
+                            label={{ value: `USL-${test.maxVmp}`, fill: "#16a34a", fontSize: fontSize - 1, position: 'right' }}
+                        />
+                    )}
+
+                    {average !== null && (
+                        <ReferenceLine
+                            y={average}
+                            stroke="#eab308"
+                            strokeDasharray="6 3"
+                            strokeOpacity={0.8}
+                            label={{ value: `Média-${average.toFixed(2)}`, fill: "#eab308", fontSize: fontSize - 1, position: 'right' }}
                         />
                     )}
 
                     {test.minVmp !== null && (
                         <ReferenceLine
                             y={test.minVmp}
-                            stroke={test.color}
+                            stroke="#dc2626"
                             strokeDasharray="6 3"
                             strokeOpacity={0.8}
-                            label={{ value: `LSL-${test.minVmp}`, fill: test.color, fontSize: fontSize - 1, position: 'right' }}
+                            label={{ value: `LSL-${test.minVmp}`, fill: "#dc2626", fontSize: fontSize - 1, position: 'right' }}
                         />
                     )}
 
@@ -115,7 +133,7 @@ function TestSubChart({ test, isLast, forPdf, allDates }) {
                         strokeWidth={2}
                         dot={{ r: 3, fill: test.color }}
                         activeDot={{ r: 5 }}
-                        connectNulls={false}
+                        connectNulls={true}
                     />
                 </LineChart>
             </ResponsiveContainer>
