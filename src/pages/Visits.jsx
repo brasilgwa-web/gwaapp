@@ -21,9 +21,9 @@ export default function VisitsPage() {
     const { executeWithFeedback } = useOperationFeedback();
     const [search, setSearch] = React.useState('');
 
-    // Date Range Filters (Default: Current Month)
+    // Date Range Filters (Default: Ultimos 30 dias até o fim do mês atual)
     const [dateRange, setDateRange] = React.useState({
-        start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+        start: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
         end: format(endOfMonth(new Date()), 'yyyy-MM-dd')
     });
 
@@ -38,12 +38,6 @@ export default function VisitsPage() {
         queryFn: () => User.list()
     });
 
-    // Set default filter to current user
-    React.useEffect(() => {
-        if (currentUser?.email) {
-            setTechFilter(currentUser.email);
-        }
-    }, [currentUser]);
 
     // Fetch Visits
     const { data: visits, isLoading, isError } = useQuery({
