@@ -47,7 +47,7 @@ export default function VisitsPage() {
 
     // Fetch Visits
     const { data: visits, isLoading, isError } = useQuery({
-        queryKey: ['visits'], // We fetch latest and filter client-side for now
+        queryKey: ['visits', currentUser?.id], // We fetch latest and filter client-side for now
         queryFn: async () => {
             try {
                 const allVisits = await Visit.list('-visit_date', 500);
@@ -55,11 +55,26 @@ export default function VisitsPage() {
                 const clients = await Client.list();
                 const locations = await Location.list();
 
-                const clientMap = new Map(clients.map(c => [c.id, c]));
+                let allowedClientIds = null;
+                if (currentUser && currentUser.role !== 'admin' && !currentUser.view_all_clients) {
+                    const { data: userClients } = await supabase
+                        .from('user_clients')
+                        .select('client_id')
+                        .eq('user_id', currentUser.id);
+                    allowedClientIds = new Set((userClients || []).map(uc => uc.client_id));
+                }
+
+                const clientMap = new Map();
+                clients.forEach(c => {
+                    if (!allowedClientIds || allowedClientIds.has(c.id)) {
+                        clientMap.set(c.id, c);
+                    }
+                });
+                
                 const locationMap = new Map(locations.map(l => [l.id, l]));
 
                 return allVisits
-                    .filter(v => clientMap.has(v.client_id)) // Hide visits from deleted clients
+                    .filter(v => clientMap.has(v.client_id)) // Hide visits from deleted/unauthorized clients
                     .map(v => ({
                         ...v,
                         client: clientMap.get(v.client_id),

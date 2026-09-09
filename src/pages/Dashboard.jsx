@@ -12,6 +12,7 @@ import {
     Calendar as CalendarIcon, ArrowRight, Clock, Settings, TrendingUp, TrendingDown, Loader2
 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay, startOfMonth, subMonths, eachMonthOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -25,6 +26,7 @@ import { KpiCard, AttentionBox, CriticalVisitsTable } from "@/components/dashboa
 
 export default function Dashboard() {
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     // Dashboard Configuration
     const [dashConfig, setDashConfig] = useState(() => loadDashboardConfig());
@@ -78,10 +80,24 @@ export default function Dashboard() {
 
     // Fetch Clients for Filter
     const { data: clients } = useQuery({
-        queryKey: ['clients'],
+        queryKey: ['clients', user?.id],
         queryFn: async () => {
-            try { return await Client.list(); } catch (e) { return []; }
-        }
+            try { 
+                const allClients = await Client.list(); 
+                if (!user || user.role === 'admin' || user.view_all_clients) return allClients;
+                
+                // Get allowed clients
+                const { data: userClients } = await supabase
+                    .from('user_clients')
+                    .select('client_id')
+                    .eq('user_id', user.id);
+                
+                if (!userClients) return [];
+                const allowedIds = new Set(userClients.map(uc => uc.client_id));
+                return allClients.filter(c => allowedIds.has(c.id));
+            } catch (e) { return []; }
+        },
+        enabled: !!user
     });
 
     // Fetch Technicians for Filter
@@ -104,7 +120,7 @@ export default function Dashboard() {
 
     // Fetch Dashboard Data
     const { data: stats, isLoading } = useQuery({
-        queryKey: ['dashboardStats', filters],
+        queryKey: ['dashboardStats', filters, user?.id],
         refetchInterval: 1000 * 60 * 5, // 5 minutos de auto-refresh
         queryFn: async () => {
             try {
@@ -133,16 +149,34 @@ export default function Dashboard() {
                     visitsQuery = visitsQuery.eq('technician_email', filters.technicianEmail);
                 }
 
-                const { data: allVisits, error: visitsError } = await visitsQuery;
+                const { data: rawVisits, error: visitsError } = await visitsQuery;
                 if (visitsError) throw visitsError;
 
-                // Fetch clients first to filter out visits from deleted clients
+                // Fetch clients first to filter out visits from deleted clients, and restrict by user access
                 const clientList = await Client.list();
-                const clientMap = new Map(clientList.map(c => [c.id, c.name]));
+                let allowedClientIds = null;
+                
+                if (user && user.role !== 'admin' && !user.view_all_clients) {
+                    const { data: userClients } = await supabase
+                        .from('user_clients')
+                        .select('client_id')
+                        .eq('user_id', user.id);
+                    allowedClientIds = new Set((userClients || []).map(uc => uc.client_id));
+                }
+
+                const clientMap = new Map();
+                clientList.forEach(c => {
+                    if (!allowedClientIds || allowedClientIds.has(c.id)) {
+                        clientMap.set(c.id, c.name);
+                    }
+                });
+
+                // Drop any visits that don't belong to the allowed/active clients
+                const allVisits = rawVisits.filter(v => clientMap.has(v.client_id));
 
                 const filteredVisits = allVisits.filter(v => {
                     const visitDate = parseISO(v.visit_date);
-                    return isWithinInterval(visitDate, { start, end }) && clientMap.has(v.client_id);
+                    return isWithinInterval(visitDate, { start, end });
                 });
 
                 // 2. Busca Resultados de Testes Otimizada
