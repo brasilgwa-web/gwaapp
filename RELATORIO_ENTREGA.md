@@ -1,6 +1,6 @@
 # 🚀 Relatório de Entrega de Melhorias
 **Projeto:** WGA Brasil App
-**Versão:** 1.0.25
+**Versão:** 1.2.0
 **Data:** 23/01/2026
 
 ---
