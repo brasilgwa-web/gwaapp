@@ -274,9 +274,9 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
         }
 
         const errorDetails = results.filter(r => r.status === 'error').map(r => `• ${r.file}: ${r.error}`).join('\n');
-        const successDetails = results.filter(r => r.status === 'success').map(r => `• ${r.file}`).join('\n');
+        const successDetails = results.filter(r => r.status === 'success' || r.status === 'pending').map(r => `• ${r.file}`).join('\n');
         const detailMsg = [
-            successDetails ? `Sucesso:\n${successDetails}` : '',
+            successDetails ? `Arquivos processados:\n${successDetails}` : '',
             errorDetails ? `Erros:\n${errorDetails}` : ''
         ].filter(Boolean).join('\n\n');
 
