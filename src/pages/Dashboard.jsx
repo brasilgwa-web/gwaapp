@@ -136,9 +136,13 @@ export default function Dashboard() {
                 const { data: allVisits, error: visitsError } = await visitsQuery;
                 if (visitsError) throw visitsError;
 
+                // Fetch clients first to filter out visits from deleted clients
+                const clientList = await Client.list();
+                const clientMap = new Map(clientList.map(c => [c.id, c.name]));
+
                 const filteredVisits = allVisits.filter(v => {
                     const visitDate = parseISO(v.visit_date);
-                    return isWithinInterval(visitDate, { start, end });
+                    return isWithinInterval(visitDate, { start, end }) && clientMap.has(v.client_id);
                 });
 
                 // 2. Busca Resultados de Testes Otimizada
@@ -191,9 +195,7 @@ export default function Dashboard() {
                     { name: 'Crítico', value: redCount, color: '#ef4444' },
                 ];
 
-                // Client map
-                const clientList = await Client.list();
-                const clientMap = new Map(clientList.map(c => [c.id, c.name]));
+                // Client map already created above
 
                 // Critical visits
                 const criticalVisitIds = new Set(redResults.map(r => r.visit_id));

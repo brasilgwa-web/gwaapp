@@ -58,11 +58,13 @@ export default function VisitsPage() {
                 const clientMap = new Map(clients.map(c => [c.id, c]));
                 const locationMap = new Map(locations.map(l => [l.id, l]));
 
-                return allVisits.map(v => ({
-                    ...v,
-                    client: clientMap.get(v.client_id),
-                    location: locationMap.get(v.location_id)
-                }));
+                return allVisits
+                    .filter(v => clientMap.has(v.client_id)) // Hide visits from deleted clients
+                    .map(v => ({
+                        ...v,
+                        client: clientMap.get(v.client_id),
+                        location: locationMap.get(v.location_id)
+                    }));
             } catch (error) {
                 console.error("Failed to fetch visits:", error);
                 return []; // Return empty array on error (e.g. 403)
