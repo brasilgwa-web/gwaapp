@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Visit, Client, Location, User } from "@/api/entities";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { useConfirm } from "@/context/ConfirmContext";
 import { useOperationFeedback } from "@/context/OperationFeedbackContext";
