@@ -33,8 +33,15 @@ export default async function handler(request, response) {
         return response.status(200).json({})
     }
 
-    if (request.method !== 'POST') {
+    if (request.method !== 'POST' && request.method !== 'GET') {
         return response.status(405).json({ error: 'Method not allowed' });
+    }
+
+    if (request.method === 'GET') {
+        const authHeader = request.headers['authorization'];
+        if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+            return response.status(401).json({ error: 'Unauthorized' });
+        }
     }
 
     try {

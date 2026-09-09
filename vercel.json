@@ -4,6 +4,9 @@
     "functions": {
         "api/upload-drive.js": {
             "maxDuration": 30
+        },
+        "api/sync-lab-reports.js": {
+            "maxDuration": 60
         }
     },
     "rewrites": [
