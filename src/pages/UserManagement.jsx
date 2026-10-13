@@ -531,29 +531,115 @@ export default function UserManagement() {
 
 function SyncLabReportsButton() {
     const [isSyncing, setIsSyncing] = useState(false);
+    const [syncProgress, setSyncProgress] = useState(null);
     const queryClient = useQueryClient();
     const { alert } = useConfirm();
 
     const handleSync = async () => {
         setIsSyncing(true);
+        setSyncProgress({ current: 0, total: 0, fileName: 'Iniciando verificação...' });
+
+        const skipIds = [];
+        let totalCount = 0;
+        let successCount = 0;
+        let pendingCount = 0;
+        let errorCount = 0;
+        const allResults = [];
+        let iteration = 0;
+        const maxIterations = 100; // Limite de segurança
+
         try {
-            const res = await fetch('/api/sync-lab-reports', {
-                method: 'POST',
-            });
-            const data = await res.json();
-            
-            if (!res.ok) throw new Error(data.error || 'Erro ao sincronizar');
-            
+            while (iteration < maxIterations) {
+                iteration++;
+
+                let res;
+                let resText = '';
+                try {
+                    res = await fetch('/api/sync-lab-reports', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ batchSize: 1, skipIds }),
+                    });
+                    resText = await res.text();
+                } catch (netErr) {
+                    throw new Error(`Falha de conexão com o servidor: ${netErr.message}`);
+                }
+
+                // Tratamento seguro de resposta não-JSON (ex: 504 Gateway Timeout, 502 Bad Gateway)
+                let data;
+                try {
+                    data = JSON.parse(resText);
+                } catch (jsonErr) {
+                    if (res.status === 504) {
+                        throw new Error(
+                            "Tempo limite esgotado no servidor (504 Gateway Timeout). " +
+                            "O processamento do laudo demorou mais do que o limite da hospedagem. " +
+                            "Tente clicar novamente para continuar dos próximos arquivos."
+                        );
+                    } else if (res.status === 502 || res.status === 503) {
+                        throw new Error(`Serviço temporariamente indisponível no servidor (HTTP ${res.status}). Detalhes: ${resText.slice(0, 150)}`);
+                    } else {
+                        throw new Error(`Resposta inesperada do servidor (HTTP ${res.status}): ${resText.slice(0, 200) || 'Sem dados'}`);
+                    }
+                }
+
+                if (!res.ok) {
+                    throw new Error(data.error || `Erro retornado pelo servidor (HTTP ${res.status})`);
+                }
+
+                totalCount = data.total ?? totalCount;
+                const batchIds = data.processedFileIds || [];
+                batchIds.forEach(id => {
+                    if (!skipIds.includes(id)) skipIds.push(id);
+                });
+
+                (data.results || []).forEach(r => {
+                    allResults.push(r);
+                    if (r.status === 'success') successCount++;
+                    else if (r.status === 'pending') pendingCount++;
+                    else if (r.status === 'error') errorCount++;
+                });
+
+                const currentCount = Math.min(skipIds.length, totalCount);
+                const currentName = data.results?.[0]?.file || '';
+                setSyncProgress({
+                    current: currentCount,
+                    total: totalCount,
+                    fileName: currentName
+                });
+
+                // Se não há mais arquivos na fila ou o lote retornou zero arquivos processados
+                if (data.remaining === 0 || batchIds.length === 0 || skipIds.length >= totalCount) {
+                    break;
+                }
+            }
+
+            // Resumo do feedback
+            let summaryParts = [];
+            if (successCount > 0) {
+                summaryParts.push(`✅ ${successCount} laudo(s) vinculado(s) diretamente a visitas.`);
+            }
+            if (pendingCount > 0) {
+                summaryParts.push(`📋 ${pendingCount} laudo(s) salvo(s) na fila de pendentes do cliente (sem visita na data correspondente).`);
+            }
+            if (errorCount > 0) {
+                summaryParts.push(`⚠️ ${errorCount} arquivo(s) não puderam ser vinculados (cliente não identificado no sistema).`);
+            }
+
+            const hasProcessedAny = successCount > 0 || pendingCount > 0;
+            const message = summaryParts.length > 0 
+                ? summaryParts.join('\n\n')
+                : 'Nenhum laudo novo em PDF encontrado na pasta Inbox do Google Drive.';
+
             alert({
-                title: data.processed > 0 ? 'Sincronização concluída!' : 'Sincronização finalizada',
-                message: data.processed > 0 
-                    ? `Processamos ${data.processed} laudo(s) com sucesso!\n\n${data.message}`
-                    : data.message,
-                type: data.processed > 0 ? 'success' : 'info'
+                title: hasProcessedAny ? 'Sincronização concluída!' : 'Sincronização finalizada',
+                message,
+                type: hasProcessedAny ? 'success' : (errorCount > 0 ? 'warning' : 'info')
             });
+
             queryClient.invalidateQueries({ queryKey: ['visits'] });
         } catch (error) {
-            console.error(error);
+            console.error('[SyncLabReports]', error);
             alert({
                 title: 'Erro na sincronização',
                 message: error.message,
@@ -561,22 +647,36 @@ function SyncLabReportsButton() {
             });
         } finally {
             setIsSyncing(false);
+            setSyncProgress(null);
         }
     };
 
     return (
-        <Button 
-            variant="outline" 
-            className="w-full md:w-auto border-purple-200 text-purple-700 hover:bg-purple-50 bg-white"
-            onClick={handleSync}
-            disabled={isSyncing}
-        >
-            {isSyncing ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-                <FlaskConical className="w-4 h-4 mr-2" />
+        <div className="flex flex-col items-end gap-1">
+            <Button 
+                variant="outline" 
+                className="w-full md:w-auto border-purple-200 text-purple-700 hover:bg-purple-50 bg-white"
+                onClick={handleSync}
+                disabled={isSyncing}
+            >
+                {isSyncing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                    <FlaskConical className="w-4 h-4 mr-2" />
+                )}
+                {isSyncing ? (
+                    syncProgress?.total 
+                        ? `Sincronizando (${syncProgress.current}/${syncProgress.total})...`
+                        : 'Sincronizando laudos...'
+                ) : (
+                    'Sincronizar Laudos (Google Drive)'
+                )}
+            </Button>
+            {isSyncing && syncProgress?.fileName && (
+                <span className="text-xs text-purple-600 truncate max-w-xs animate-pulse">
+                    {syncProgress.fileName}
+                </span>
             )}
-            Sincronizar Laudos (Google Drive)
-        </Button>
+        </div>
     );
 }

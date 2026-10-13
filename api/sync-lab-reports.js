@@ -22,6 +22,84 @@ const supabaseAdmin = createClient(
 const usingServiceRole = !!serviceRoleKey;
 
 
+// Função auxiliar de extração direta do buffer do PDF (sem dependência estrita de IA)
+function extractFromPdfBuffer(buffer, clients = []) {
+    try {
+        const str = Buffer.isBuffer(buffer) ? buffer.toString('utf-8') : String(buffer);
+        const lines = str.split(/\r?\n/).filter(l => l.endsWith(') Tj') || l.endsWith(') TJ'));
+        const parts = lines.map(l => {
+            const m = l.match(/\((.*?)\)\s*T[jJ]/);
+            return m ? m[1] : '';
+        }).filter(Boolean);
+
+        let matchedClient = null;
+        let dataColeta = null;
+        let numeroRelatorio = null;
+        let amostra = null;
+        let ponto = null;
+
+        const normalize = (t) => (t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const normalizedPdf = normalize(str);
+
+        // 1. Match de cliente pelo código ou nome no texto completo
+        for (const c of clients) {
+            if (c.client_code && normalizedPdf.includes(normalize(String(c.client_code)))) {
+                matchedClient = c;
+                break;
+            }
+            const normName = normalize(c.name);
+            if (normName.length >= 3 && normalizedPdf.includes(normName)) {
+                matchedClient = c;
+                break;
+            }
+        }
+
+        // 2. Extração de campos estruturados do layout do relatório
+        for (let i = 0; i < parts.length; i++) {
+            const p = parts[i].trim();
+            if (p === 'Data da Coleta') {
+                for (let j = 1; j <= 5 && i + j < parts.length; j++) {
+                    const dMatch = parts[i + j].match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                    if (dMatch) {
+                        dataColeta = `${dMatch[3]}-${dMatch[2]}-${dMatch[1]}`;
+                        break;
+                    }
+                }
+            }
+            if (p.includes('Relat') && parts[i + 1]) {
+                numeroRelatorio = parts[i + 1].trim();
+            }
+            if (p === 'Ponto de Amostragem' && parts[i + 1]) {
+                ponto = parts[i + 1].trim();
+            }
+            if (p.includes('Amostra') && parts[i + 1]) {
+                amostra = parts[i + 1].trim();
+            }
+        }
+
+        if (!dataColeta) {
+            const dateMatch = str.match(/(\d{2})\/(\d{2})\/(202\d)/);
+            if (dateMatch) {
+                dataColeta = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+            }
+        }
+
+        const comentario = numeroRelatorio || ponto || amostra
+            ? `Laudo de Ensaio ${numeroRelatorio || ''}${ponto ? ` (Ponto: ${ponto})` : ''}${amostra ? ` - Amostra ${amostra}` : ''} anexado automaticamente.`
+            : 'Laudo de laboratório anexado automaticamente.';
+
+        return {
+            matchedClient,
+            data_coleta: dataColeta,
+            numero_relatorio: numeroRelatorio,
+            comentario
+        };
+    } catch (e) {
+        console.warn('[Sync] Falha na extração direta do buffer do PDF:', e.message);
+        return null;
+    }
+}
+
 // Vercel Serverless Function
 export default async function handler(request, response) {
     // CORS
@@ -60,6 +138,17 @@ export default async function handler(request, response) {
         // Forçar o ID correto (com 'N' maiúsculo) para contornar problemas no banco de dados
         inboxFolderId = '1OU4vJGcwno0wNgpZPx4Gvq8g8DLt6jxb';
 
+        // Tamanho do lote (padrão 1, máximo 2 para evitar timeouts na Vercel)
+        let body = {};
+        if (typeof request.body === 'string') {
+            try { body = JSON.parse(request.body); } catch { body = {}; }
+        } else if (typeof request.body === 'object' && request.body !== null) {
+            body = request.body;
+        }
+
+        const batchSize = Math.max(1, Math.min(2, parseInt(body.batchSize || request.query?.batchSize || '1', 10)));
+        const skipIds = Array.isArray(body.skipIds) ? body.skipIds : [];
+
         // Auth Google Drive
         let auth;
         let authEmail;
@@ -87,45 +176,65 @@ export default async function handler(request, response) {
             corpora: 'allDrives',
         });
 
-        // Filtrar PDFs no código em vez da query para garantir que vemos o que está lá
+        // Filtrar PDFs
         const allFiles = resList.data.files || [];
         const files = allFiles.filter(f => f.mimeType === 'application/pdf');
 
-        if (!files || files.length === 0) {
+        // Filtrar arquivos elegíveis (não pulados)
+        const pendingFiles = files.filter(f => !skipIds.includes(f.id));
+
+        if (!files || files.length === 0 || pendingFiles.length === 0) {
             return response.status(200).json({ 
-                message: 'Não encontramos nenhum laudo novo (em PDF) na pasta Inbox do Drive neste momento.', 
-                processed: 0 
+                message: files.length === 0 
+                    ? 'Não encontramos nenhum laudo novo (em PDF) na pasta Inbox do Drive neste momento.' 
+                    : 'Todos os laudos disponíveis na Inbox já foram verificados.', 
+                processed: 0,
+                total: files.length,
+                remaining: 0,
+                batchProcessed: 0,
+                processedFileIds: [],
+                results: []
             });
         }
 
+        // Selecionar o lote para esta execução
+        const batch = pendingFiles.slice(0, batchSize);
         let processedCount = 0;
         let results = [];
 
-        for (const file of files) {
+        // 3. Obter lista de clientes para matching (uma vez por lote)
+        const { data: clients } = await supabaseAdmin
+            .from('clients')
+            .select('id, name, client_code, google_drive_folder_id');
+
+        // 4. Configuração da IA (Gemini)
+        const { data: aiConfig } = await supabaseAdmin
+            .from('ai_settings')
+            .select('setting_key, setting_value')
+            .in('setting_key', ['gemini_api_key', 'gemini_model']);
+        
+        const aiConfigMap = Object.fromEntries((aiConfig || []).map(s => [s.setting_key, s.setting_value]));
+        const geminiApiKey = aiConfigMap.gemini_api_key || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+        const geminiModel = aiConfigMap.gemini_model || 'gemini-2.5-flash';
+
+        for (const file of batch) {
             try {
-                // 3. Baixar conteúdo do arquivo para mandar pro Gemini
+                // Baixar conteúdo do arquivo
                 const resFile = await drive.files.get(
                     { fileId: file.id, alt: 'media' },
                     { responseType: 'arraybuffer' }
                 );
 
-                const base64PDF = Buffer.from(resFile.data).toString('base64');
+                const fileBuffer = Buffer.from(resFile.data);
+                const base64PDF = fileBuffer.toString('base64');
 
-                // 4. Acionar Gemini (usa configurações do banco, igual ao resto do app)
-                const { data: aiConfig } = await supabaseAdmin
-            .from('ai_settings')
-                    .select('setting_key, setting_value')
-                    .in('setting_key', ['gemini_api_key', 'gemini_model']);
-                
-                const aiConfigMap = Object.fromEntries((aiConfig || []).map(s => [s.setting_key, s.setting_value]));
-                const geminiApiKey = aiConfigMap.gemini_api_key || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-                const geminiModel = aiConfigMap.gemini_model || 'gemini-2.5-flash';
+                let extracted = null;
 
-                if (!geminiApiKey) throw new Error("Gemini API Key não configurada em /setup/ai");
-
-                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
-                
-                const prompt = `Você é um assistente analisando um laudo de laboratório em PDF.
+                // Tenta via Gemini com timeout de segurança
+                if (geminiApiKey) {
+                    try {
+                        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
+                        const prompt = `Você é um assistente analisando um laudo de laboratório em PDF.
 Extraia APENAS as seguintes informações e retorne em formato JSON válido:
 - "cliente": O nome da empresa/cliente (tente remover sufixos genéricos, pegue o nome principal).
 - "codigo_cliente": O código ou CNPJ do cliente que aparecer no laudo (apenas números, sem pontos, barras ou hífens). Se não encontrar, retorne null.
@@ -134,86 +243,115 @@ Extraia APENAS as seguintes informações e retorne em formato JSON válido:
 
 Responda APENAS com o JSON, sem markdown \`\`\`json.`;
 
-                const geminiRes = await fetch(geminiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { inlineData: { mimeType: 'application/pdf', data: base64PDF } },
-                                { text: prompt }
-                            ]
-                        }],
-                        generationConfig: { temperature: 0.1 }
-                    })
-                });
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 20000); // 20s max
 
-                if (!geminiRes.ok) {
-                    const errText = await geminiRes.text();
-                    throw new Error(`Falha ao processar PDF com Gemini (${geminiRes.status}): ${errText.substring(0, 200)}`);
+                        const geminiRes = await fetch(geminiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            signal: controller.signal,
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [
+                                        { inlineData: { mimeType: 'application/pdf', data: base64PDF } },
+                                        { text: prompt }
+                                    ]
+                                }],
+                                generationConfig: { temperature: 0.1 }
+                            })
+                        });
+                        clearTimeout(timer);
+
+                        if (geminiRes.ok) {
+                            const geminiData = await geminiRes.json();
+                            let textResult = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                            textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
+                            extracted = JSON.parse(textResult);
+                        } else {
+                            const errText = await geminiRes.text();
+                            console.warn(`[Sync] Gemini falhou (${geminiRes.status}):`, errText.substring(0, 120));
+                        }
+                    } catch (geminiErr) {
+                        console.warn('[Sync] Falha na chamada da IA (tentando leitura direta do PDF):', geminiErr.message);
+                    }
                 }
-                const geminiData = await geminiRes.json();
-                let textResult = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
-                
-                const extracted = JSON.parse(textResult);
-                
-                // 5. Match com Cliente — prioridade: client_code, fallback: nome
-                const { data: clients } = await supabaseAdmin
-            .from('clients')
-                    .select('id, name, client_code, google_drive_folder_id');
-                
+
+                // Fallback: extração direta do buffer do PDF caso a IA não tenha respondido ou faltem dados
+                if (!extracted || !extracted.cliente) {
+                    const nativeInfo = extractFromPdfBuffer(fileBuffer, clients || []);
+                    if (nativeInfo) {
+                        extracted = {
+                            cliente: nativeInfo.matchedClient?.name || extracted?.cliente || null,
+                            codigo_cliente: nativeInfo.matchedClient?.client_code || extracted?.codigo_cliente || null,
+                            data_coleta: nativeInfo.data_coleta || extracted?.data_coleta || null,
+                            comentario: nativeInfo.comentario || extracted?.comentario || 'Laudo de laboratório anexado automaticamente.'
+                        };
+                    }
+                }
+
+                // Match com Cliente
                 let matchedClient = null;
 
-                // Tenta por código do cliente (remove pontos, barras e hífens para comparar)
-                if (extracted.codigo_cliente) {
+                // 1. Tenta por código do cliente
+                if (extracted?.codigo_cliente) {
                     const normalizedExtracted = String(extracted.codigo_cliente).replace(/[.\-\/]/g, '');
-                    matchedClient = clients.find(c => {
+                    matchedClient = (clients || []).find(c => {
                         if (!c.client_code) return false;
                         const normalizedDb = String(c.client_code).replace(/[.\-\/]/g, '');
                         return normalizedDb === normalizedExtracted;
                     });
                 }
 
-                // Fallback: busca por nome (substring)
-                if (!matchedClient && extracted.cliente) {
-                    matchedClient = clients.find(c => 
-                        c.name.toLowerCase().includes(extracted.cliente.toLowerCase()) || 
-                        extracted.cliente.toLowerCase().includes(c.name.toLowerCase())
-                    );
+                // 2. Fallback: busca por nome (substring e normalização)
+                if (!matchedClient && extracted?.cliente) {
+                    const normExt = String(extracted.cliente).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                    matchedClient = (clients || []).find(c => {
+                        const normDb = String(c.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                        return normDb.includes(normExt) || normExt.includes(normDb);
+                    });
+                }
+
+                // 3. Fallback: busca por nome no próprio texto do PDF se ainda não casou
+                if (!matchedClient) {
+                    const normPdf = fileBuffer.toString('utf-8').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    matchedClient = (clients || []).find(c => {
+                        if (!c.name || c.name.length < 3) return false;
+                        const normDb = c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                        return normPdf.includes(normDb);
+                    });
                 }
 
                 if (!matchedClient) {
-                    const debugClients = (clients || []).slice(0, 5).map(c => `${c.name} (code: "${c.client_code}" → norm: "${String(c.client_code || '').replace(/[.\-\/]/g, '')}")`).join(' | ');
-                    const normExtracted = String(extracted.codigo_cliente || '').replace(/[.\-\/]/g, '');
-                    results.push({ file: file.name, status: 'error', error: `Cliente não encontrado. Gemini extraiu: "${extracted.cliente}" (código bruto: "${extracted.codigo_cliente}", norm: "${normExtracted}"). Total clientes no DB: ${(clients||[]).length}. Usando Service Role: ${usingServiceRole}. Primeiros 5: ${debugClients}` });
+                    results.push({ 
+                        file: file.name, 
+                        fileId: file.id, 
+                        status: 'error', 
+                        error: `Cliente não identificado no sistema. Extraído: "${extracted?.cliente || 'N/A'}" (código: "${extracted?.codigo_cliente || 'N/A'}").` 
+                    });
                     continue;
                 }
 
-                // 6. Achar visita mais próxima da data de coleta (ignora drafts, mas aceita status null)
+                // 6. Achar visita mais próxima da data de coleta
                 const { data: allVisits } = await supabaseAdmin
                     .from('visits')
                     .select('id, visit_date, lab_report_status, status')
                     .eq('client_id', matchedClient.id)
                     .order('visit_date', { ascending: false });
                 
-                // Filtra drafts no JS para evitar problemas com status NULL no banco
                 const visits = (allVisits || []).filter(v => v.status !== 'draft');
 
-                // Busca visita cuja data bata com a data de coleta (mesmo dia ou mesmo mês)
                 let targetVisit = visits.find(v => {
-                    if (!v.visit_date || !extracted.data_coleta) return false;
+                    if (!v.visit_date || !extracted?.data_coleta) return false;
                     const vDate = v.visit_date.split('T')[0];
                     return vDate === extracted.data_coleta;
                 }) || visits.find(v => {
-                    if (!v.visit_date || !extracted.data_coleta) return false;
+                    if (!v.visit_date || !extracted?.data_coleta) return false;
                     const vDate = v.visit_date.split('T')[0];
-                    // Mesmo mês e ano como fallback
                     return vDate.substring(0, 7) === extracted.data_coleta.substring(0, 7);
                 });
 
-                // 6. Mover arquivo para a pasta do cliente no Drive
-                if (matchedClient.google_drive_folder_id) {
+                // Mover arquivo para a pasta do cliente no Drive
+                if (matchedClient.google_drive_folder_id && file.parents) {
                     const previousParents = file.parents.join(',');
                     await drive.files.update({
                         fileId: file.id,
@@ -223,8 +361,7 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                     });
                 }
 
-                // 7. Atualizar a Visita ou Salvar Pendente
-                const aiComment = extracted.comentario || 'Nenhuma anomalia crítica relatada.';
+                const aiComment = extracted?.comentario || 'Laudo de laboratório anexado automaticamente.';
                 
                 if (targetVisit) {
                     const { error: updateError } = await supabaseAdmin
@@ -241,7 +378,7 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                     }
 
                     processedCount++;
-                    results.push({ file: file.name, status: 'success', visitId: targetVisit.id });
+                    results.push({ file: file.name, fileId: file.id, status: 'success', visitId: targetVisit.id, client: matchedClient.name });
                 } else {
                     // Salvar como laudo pendente no cliente
                     const { data: clientData, error: fetchErr } = await supabaseAdmin
@@ -259,7 +396,7 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                         id: pendingId,
                         url: file.webViewLink,
                         ai_draft: aiComment,
-                        date: extracted.data_coleta || new Date().toISOString().split('T')[0],
+                        date: extracted?.data_coleta || new Date().toISOString().split('T')[0],
                         created_at: new Date().toISOString()
                     });
                     
@@ -271,23 +408,34 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                     if (updateClientErr) throw new Error(`Falha ao salvar pendente: ${updateClientErr.message}`);
                     
                     processedCount++;
-                    results.push({ file: file.name, status: 'pending', clientId: matchedClient.id, message: 'Laudo salvo na fila de pendentes' });
+                    results.push({ file: file.name, fileId: file.id, status: 'pending', clientId: matchedClient.id, client: matchedClient.name, message: 'Laudo salvo na fila de pendentes' });
                 }
 
             } catch (err) {
                 console.error(`Erro processando arquivo ${file.name}:`, err);
-                results.push({ file: file.name, status: 'error', error: err.message });
+                results.push({ file: file.name, fileId: file.id, status: 'error', error: err.message });
             }
         }
 
+        const remaining = Math.max(0, pendingFiles.length - batch.length);
+        const processedFileIds = batch.map(f => f.id);
+
         const errorDetails = results.filter(r => r.status === 'error').map(r => `• ${r.file}: ${r.error}`).join('\n');
-        const successDetails = results.filter(r => r.status === 'success' || r.status === 'pending').map(r => `• ${r.file}`).join('\n');
+        const successDetails = results.filter(r => r.status === 'success' || r.status === 'pending').map(r => `• ${r.file} (${r.client || 'OK'})`).join('\n');
         const detailMsg = [
-            successDetails ? `Arquivos processados:\n${successDetails}` : '',
+            successDetails ? `Arquivos vinculados:\n${successDetails}` : '',
             errorDetails ? `Erros:\n${errorDetails}` : ''
         ].filter(Boolean).join('\n\n');
 
-        return response.status(200).json({ message: detailMsg || 'Nenhum arquivo novo precisou ser sincronizado.', processed: processedCount, results });
+        return response.status(200).json({ 
+            message: detailMsg || 'Lote processado com sucesso.', 
+            processed: processedCount,
+            total: files.length,
+            remaining,
+            batchProcessed: batch.length,
+            processedFileIds,
+            results 
+        });
 
     } catch (error) {
         let pkSnippet = "N/A";
