@@ -537,16 +537,16 @@ function SyncLabReportsButton() {
 
     const handleSync = async () => {
         setIsSyncing(true);
-        setSyncProgress({ current: 0, total: 0, fileName: 'Iniciando verificação...' });
+        setSyncProgress({ current: 0, total: 0, fileName: 'Conectando ao Google Drive...' });
 
         const skipIds = [];
-        let totalCount = 0;
+        let initialTotal = 0;
         let successCount = 0;
         let pendingCount = 0;
         let errorCount = 0;
         const allResults = [];
         let iteration = 0;
-        const maxIterations = 100; // Limite de segurança
+        const maxIterations = 50;
 
         try {
             while (iteration < maxIterations) {
@@ -558,7 +558,7 @@ function SyncLabReportsButton() {
                     res = await fetch('/api/sync-lab-reports', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ batchSize: 1, skipIds }),
+                        body: JSON.stringify({ batchSize: 5, skipIds }),
                     });
                     resText = await res.text();
                 } catch (netErr) {
@@ -573,8 +573,8 @@ function SyncLabReportsButton() {
                     if (res.status === 504) {
                         throw new Error(
                             "Tempo limite esgotado no servidor (504 Gateway Timeout). " +
-                            "O processamento do laudo demorou mais do que o limite da hospedagem. " +
-                            "Tente clicar novamente para continuar dos próximos arquivos."
+                            "O processamento demorou mais do que o limite da hospedagem. " +
+                            "Clique novamente para continuar dos arquivos restantes."
                         );
                     } else if (res.status === 502 || res.status === 503) {
                         throw new Error(`Serviço temporariamente indisponível no servidor (HTTP ${res.status}). Detalhes: ${resText.slice(0, 150)}`);
@@ -587,7 +587,10 @@ function SyncLabReportsButton() {
                     throw new Error(data.error || `Erro retornado pelo servidor (HTTP ${res.status})`);
                 }
 
-                totalCount = data.total ?? totalCount;
+                if (iteration === 1 && typeof data.total === 'number') {
+                    initialTotal = data.total;
+                }
+
                 const batchIds = data.processedFileIds || [];
                 batchIds.forEach(id => {
                     if (!skipIds.includes(id)) skipIds.push(id);
@@ -600,18 +603,21 @@ function SyncLabReportsButton() {
                     else if (r.status === 'error') errorCount++;
                 });
 
-                const currentCount = Math.min(skipIds.length, totalCount);
-                const currentName = data.results?.[0]?.file || '';
+                const totalDisplay = Math.max(initialTotal, skipIds.length);
+                const lastFileName = data.results?.[data.results.length - 1]?.file || '';
                 setSyncProgress({
-                    current: currentCount,
-                    total: totalCount,
-                    fileName: currentName
+                    current: skipIds.length,
+                    total: totalDisplay,
+                    fileName: lastFileName
                 });
 
-                // Se não há mais arquivos na fila ou o lote retornou zero arquivos processados
-                if (data.remaining === 0 || batchIds.length === 0 || skipIds.length >= totalCount) {
+                // Termina se não há mais arquivos restantes ou nenhum arquivo foi processado neste lote
+                if (batchIds.length === 0 || data.remaining === 0) {
                     break;
                 }
+
+                // Pequeno intervalo entre lotes para a interface atualizar e dar respiro à rede
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
 
             // Resumo do feedback

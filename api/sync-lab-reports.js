@@ -22,10 +22,10 @@ const supabaseAdmin = createClient(
 const usingServiceRole = !!serviceRoleKey;
 
 
-// Função auxiliar de extração direta do buffer do PDF (sem dependência estrita de IA)
+// Função auxiliar de extração direta do buffer do PDF (super rápida, sem IA)
 function extractFromPdfBuffer(buffer, clients = []) {
     try {
-        const str = Buffer.isBuffer(buffer) ? buffer.toString('utf-8') : String(buffer);
+        const str = Buffer.isBuffer(buffer) ? buffer.toString('latin1') : String(buffer);
         const lines = str.split(/\r?\n/).filter(l => l.endsWith(') Tj') || l.endsWith(') TJ'));
         const parts = lines.map(l => {
             const m = l.match(/\((.*?)\)\s*T[jJ]/);
@@ -35,29 +35,23 @@ function extractFromPdfBuffer(buffer, clients = []) {
         let matchedClient = null;
         let dataColeta = null;
         let numeroRelatorio = null;
-        let amostra = null;
+        let codigoCliente = null;
+        let nomeCliente = null;
         let ponto = null;
+        let amostra = null;
 
         const normalize = (t) => (t || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const cleanDigits = (t) => String(t || '').replace(/\D/g, '');
         const normalizedPdf = normalize(str);
+        const pdfDigits = cleanDigits(str);
 
-        // 1. Match de cliente pelo código ou nome no texto completo
-        for (const c of clients) {
-            if (c.client_code && normalizedPdf.includes(normalize(String(c.client_code)))) {
-                matchedClient = c;
-                break;
-            }
-            const normName = normalize(c.name);
-            if (normName.length >= 3 && normalizedPdf.includes(normName)) {
-                matchedClient = c;
-                break;
-            }
-        }
-
-        // 2. Extração de campos estruturados do layout do relatório
+        // 1. Extração estruturada do layout do relatório WGA
         for (let i = 0; i < parts.length; i++) {
             const p = parts[i].trim();
-            if (p === 'Data da Coleta') {
+            if (p === 'Cliente' && parts[i + 4]) {
+                nomeCliente = parts[i + 4].trim();
+            }
+            if ((p === 'Data da Coleta' || p.includes('Data da Coleta')) && parts[i + 1]) {
                 for (let j = 1; j <= 5 && i + j < parts.length; j++) {
                     const dMatch = parts[i + j].match(/(\d{2})\/(\d{2})\/(\d{4})/);
                     if (dMatch) {
@@ -66,17 +60,28 @@ function extractFromPdfBuffer(buffer, clients = []) {
                     }
                 }
             }
-            if (p.includes('Relat') && parts[i + 1]) {
-                numeroRelatorio = parts[i + 1].trim();
-            }
             if (p === 'Ponto de Amostragem' && parts[i + 1]) {
                 ponto = parts[i + 1].trim();
+            }
+            if (p.includes('Relatorio') || p.includes('Relatório')) {
+                const numMatch = p.match(/\d+/);
+                if (numMatch) numeroRelatorio = numMatch[0];
             }
             if (p.includes('Amostra') && parts[i + 1]) {
                 amostra = parts[i + 1].trim();
             }
+            if (p === 'Código do Cliente' || p.includes('digo do Cliente')) {
+                for (let j = 1; j <= 4 && i + j < parts.length; j++) {
+                    const dig = cleanDigits(parts[i + j]);
+                    if (dig.length >= 6) {
+                        codigoCliente = dig;
+                        break;
+                    }
+                }
+            }
         }
 
+        // Se data da coleta não foi encontrada pelas tags, faz busca com regex geral
         if (!dataColeta) {
             const dateMatch = str.match(/(\d{2})\/(\d{2})\/(202\d)/);
             if (dateMatch) {
@@ -84,12 +89,44 @@ function extractFromPdfBuffer(buffer, clients = []) {
             }
         }
 
+        // 2. Tenta fazer o match com a lista de clientes
+        for (const c of clients) {
+            // Match por código numérico exato ou no texto completo
+            const cCode = cleanDigits(c.client_code);
+            if (cCode.length >= 5) {
+                if (codigoCliente && cleanDigits(codigoCliente) === cCode) {
+                    matchedClient = c;
+                    break;
+                }
+                if (pdfDigits.includes(cCode)) {
+                    matchedClient = c;
+                    break;
+                }
+            }
+
+            // Match por nome completo
+            const normName = normalize(c.name);
+            if (normName.length >= 3 && normalizedPdf.includes(normName)) {
+                matchedClient = c;
+                break;
+            }
+
+            // Match por nome sem sufixo societário (LTDA, S/A, EIRELI, etc.)
+            const coreName = normName.replace(/\b(ltda|sa|s\/a|s\.a\.|me|epp|eireli)\b/g, '').trim();
+            if (coreName.length >= 4 && normalizedPdf.includes(coreName)) {
+                matchedClient = c;
+                break;
+            }
+        }
+
         const comentario = numeroRelatorio || ponto || amostra
-            ? `Laudo de Ensaio ${numeroRelatorio || ''}${ponto ? ` (Ponto: ${ponto})` : ''}${amostra ? ` - Amostra ${amostra}` : ''} anexado automaticamente.`
+            ? `Laudo de Ensaio ${numeroRelatorio ? `Nº ${numeroRelatorio}` : ''}${ponto ? ` (Ponto: ${ponto})` : ''}${amostra ? ` - Amostra ${amostra}` : ''} anexado automaticamente.`
             : 'Laudo de laboratório anexado automaticamente.';
 
         return {
             matchedClient,
+            nomeCliente,
+            codigoCliente,
             data_coleta: dataColeta,
             numero_relatorio: numeroRelatorio,
             comentario
@@ -138,7 +175,7 @@ export default async function handler(request, response) {
         // Forçar o ID correto (com 'N' maiúsculo) para contornar problemas no banco de dados
         inboxFolderId = '1OU4vJGcwno0wNgpZPx4Gvq8g8DLt6jxb';
 
-        // Tamanho do lote (padrão 1, máximo 2 para evitar timeouts na Vercel)
+        // Tamanho do lote (padrão 5, máximo 10)
         let body = {};
         if (typeof request.body === 'string') {
             try { body = JSON.parse(request.body); } catch { body = {}; }
@@ -146,7 +183,7 @@ export default async function handler(request, response) {
             body = request.body;
         }
 
-        const batchSize = Math.max(1, Math.min(2, parseInt(body.batchSize || request.query?.batchSize || '1', 10)));
+        const batchSize = Math.max(1, Math.min(10, parseInt(body.batchSize || request.query?.batchSize || '5', 10)));
         const skipIds = Array.isArray(body.skipIds) ? body.skipIds : [];
 
         // Auth Google Drive
@@ -189,7 +226,7 @@ export default async function handler(request, response) {
                     ? 'Não encontramos nenhum laudo novo (em PDF) na pasta Inbox do Drive neste momento.' 
                     : 'Todos os laudos disponíveis na Inbox já foram verificados.', 
                 processed: 0,
-                total: files.length,
+                total: 0,
                 remaining: 0,
                 batchProcessed: 0,
                 processedFileIds: [],
@@ -207,7 +244,7 @@ export default async function handler(request, response) {
             .from('clients')
             .select('id, name, client_code, google_drive_folder_id');
 
-        // 4. Configuração da IA (Gemini)
+        // 4. Configuração da IA (Gemini - usada apenas como fallback)
         const { data: aiConfig } = await supabaseAdmin
             .from('ai_settings')
             .select('setting_key, setting_value')
@@ -226,13 +263,26 @@ export default async function handler(request, response) {
                 );
 
                 const fileBuffer = Buffer.from(resFile.data);
-                const base64PDF = fileBuffer.toString('base64');
 
                 let extracted = null;
+                let matchedClient = null;
 
-                // Tenta via Gemini com timeout de segurança
-                if (geminiApiKey) {
+                // 1. TENTA PRIMEIRO A EXTRAÇÃO DIRETA SUPER RÁPIDA DO PDF (~5ms)
+                const nativeInfo = extractFromPdfBuffer(fileBuffer, clients || []);
+                if (nativeInfo && nativeInfo.matchedClient) {
+                    matchedClient = nativeInfo.matchedClient;
+                    extracted = {
+                        cliente: matchedClient.name,
+                        codigo_cliente: matchedClient.client_code,
+                        data_coleta: nativeInfo.data_coleta,
+                        comentario: nativeInfo.comentario
+                    };
+                }
+
+                // 2. SE NÃO CASOU O CLIENTE, TENTA A IA (GEMINI) COMO FALLBACK INTELIGENTE
+                if (!matchedClient && geminiApiKey) {
                     try {
+                        const base64PDF = fileBuffer.toString('base64');
                         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
                         const prompt = `Você é um assistente analisando um laudo de laboratório em PDF.
 Extraia APENAS as seguintes informações e retorne em formato JSON válido:
@@ -244,7 +294,7 @@ Extraia APENAS as seguintes informações e retorne em formato JSON válido:
 Responda APENAS com o JSON, sem markdown \`\`\`json.`;
 
                         const controller = new AbortController();
-                        const timer = setTimeout(() => controller.abort(), 20000); // 20s max
+                        const timer = setTimeout(() => controller.abort(), 15000); // 15s max
 
                         const geminiRes = await fetch(geminiUrl, {
                             method: 'POST',
@@ -267,53 +317,35 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                             let textResult = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
                             textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
                             extracted = JSON.parse(textResult);
+
+                            // Match com Cliente usando dados do Gemini
+                            if (extracted?.codigo_cliente) {
+                                const cleanExt = String(extracted.codigo_cliente).replace(/\D/g, '');
+                                matchedClient = (clients || []).find(c => {
+                                    if (!c.client_code) return false;
+                                    return String(c.client_code).replace(/\D/g, '') === cleanExt;
+                                });
+                            }
+
+                            if (!matchedClient && extracted?.cliente) {
+                                const normExt = String(extracted.cliente).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                                matchedClient = (clients || []).find(c => {
+                                    const normDb = String(c.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                                    return normDb.includes(normExt) || normExt.includes(normDb);
+                                });
+                            }
                         } else {
                             const errText = await geminiRes.text();
-                            console.warn(`[Sync] Gemini falhou (${geminiRes.status}):`, errText.substring(0, 120));
+                            console.warn(`[Sync] Gemini fallback falhou (${geminiRes.status}):`, errText.substring(0, 120));
                         }
                     } catch (geminiErr) {
-                        console.warn('[Sync] Falha na chamada da IA (tentando leitura direta do PDF):', geminiErr.message);
+                        console.warn('[Sync] Falha no fallback Gemini:', geminiErr.message);
                     }
                 }
 
-                // Fallback: extração direta do buffer do PDF caso a IA não tenha respondido ou faltem dados
-                if (!extracted || !extracted.cliente) {
-                    const nativeInfo = extractFromPdfBuffer(fileBuffer, clients || []);
-                    if (nativeInfo) {
-                        extracted = {
-                            cliente: nativeInfo.matchedClient?.name || extracted?.cliente || null,
-                            codigo_cliente: nativeInfo.matchedClient?.client_code || extracted?.codigo_cliente || null,
-                            data_coleta: nativeInfo.data_coleta || extracted?.data_coleta || null,
-                            comentario: nativeInfo.comentario || extracted?.comentario || 'Laudo de laboratório anexado automaticamente.'
-                        };
-                    }
-                }
-
-                // Match com Cliente
-                let matchedClient = null;
-
-                // 1. Tenta por código do cliente
-                if (extracted?.codigo_cliente) {
-                    const normalizedExtracted = String(extracted.codigo_cliente).replace(/[.\-\/]/g, '');
-                    matchedClient = (clients || []).find(c => {
-                        if (!c.client_code) return false;
-                        const normalizedDb = String(c.client_code).replace(/[.\-\/]/g, '');
-                        return normalizedDb === normalizedExtracted;
-                    });
-                }
-
-                // 2. Fallback: busca por nome (substring e normalização)
-                if (!matchedClient && extracted?.cliente) {
-                    const normExt = String(extracted.cliente).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-                    matchedClient = (clients || []).find(c => {
-                        const normDb = String(c.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-                        return normDb.includes(normExt) || normExt.includes(normDb);
-                    });
-                }
-
-                // 3. Fallback: busca por nome no próprio texto do PDF se ainda não casou
+                // 3. SE AINDA NÃO ACHOU, TENTA BUSCA TEXTUAL NO BUFFER
                 if (!matchedClient) {
-                    const normPdf = fileBuffer.toString('utf-8').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    const normPdf = fileBuffer.toString('latin1').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                     matchedClient = (clients || []).find(c => {
                         if (!c.name || c.name.length < 3) return false;
                         const normDb = c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -326,7 +358,7 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                         file: file.name, 
                         fileId: file.id, 
                         status: 'error', 
-                        error: `Cliente não identificado no sistema. Extraído: "${extracted?.cliente || 'N/A'}" (código: "${extracted?.codigo_cliente || 'N/A'}").` 
+                        error: `Cliente não identificado no sistema. Extraído: "${extracted?.cliente || nativeInfo?.nomeCliente || 'N/A'}" (código: "${extracted?.codigo_cliente || nativeInfo?.codigoCliente || 'N/A'}").` 
                     });
                     continue;
                 }
@@ -340,14 +372,15 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                 
                 const visits = (allVisits || []).filter(v => v.status !== 'draft');
 
+                const dataColeta = extracted?.data_coleta || nativeInfo?.data_coleta;
                 let targetVisit = visits.find(v => {
-                    if (!v.visit_date || !extracted?.data_coleta) return false;
+                    if (!v.visit_date || !dataColeta) return false;
                     const vDate = v.visit_date.split('T')[0];
-                    return vDate === extracted.data_coleta;
+                    return vDate === dataColeta;
                 }) || visits.find(v => {
-                    if (!v.visit_date || !extracted?.data_coleta) return false;
+                    if (!v.visit_date || !dataColeta) return false;
                     const vDate = v.visit_date.split('T')[0];
-                    return vDate.substring(0, 7) === extracted.data_coleta.substring(0, 7);
+                    return vDate.substring(0, 7) === dataColeta.substring(0, 7);
                 });
 
                 // Mover arquivo para a pasta do cliente no Drive
@@ -361,7 +394,7 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                     });
                 }
 
-                const aiComment = extracted?.comentario || 'Laudo de laboratório anexado automaticamente.';
+                const aiComment = extracted?.comentario || nativeInfo?.comentario || 'Laudo de laboratório anexado automaticamente.';
                 
                 if (targetVisit) {
                     const { error: updateError } = await supabaseAdmin
@@ -396,7 +429,7 @@ Responda APENAS com o JSON, sem markdown \`\`\`json.`;
                         id: pendingId,
                         url: file.webViewLink,
                         ai_draft: aiComment,
-                        date: extracted?.data_coleta || new Date().toISOString().split('T')[0],
+                        date: dataColeta || new Date().toISOString().split('T')[0],
                         created_at: new Date().toISOString()
                     });
                     
