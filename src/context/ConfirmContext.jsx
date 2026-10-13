@@ -93,17 +93,19 @@ export function ConfirmProvider({ children }) {
         <ConfirmContext.Provider value={{ confirm, alert }}>
             {children}
             <AlertDialog open={state.isOpen} onOpenChange={(open) => !open && handleCancel()}>
-                <AlertDialogContent className="max-w-md">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-3">
+                <AlertDialogContent className="max-w-lg max-h-[85vh] flex flex-col p-6 overflow-hidden">
+                    <AlertDialogHeader className="flex-shrink-0">
+                        <AlertDialogTitle className="flex items-center gap-3 text-lg font-bold">
                             {getIcon()}
                             {state.title}
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-base pt-2">
+                    </AlertDialogHeader>
+                    <div className="flex-1 overflow-y-auto max-h-[55vh] py-3 pr-2 my-1 border-y border-slate-100/80">
+                        <AlertDialogDescription className="text-sm whitespace-pre-wrap text-slate-700 leading-relaxed font-normal">
                             {state.message}
                         </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="gap-2 sm:gap-0">
+                    </div>
+                    <AlertDialogFooter className="flex-shrink-0 pt-2 gap-2 sm:gap-0">
                         {state.cancelLabel && (
                             <AlertDialogCancel onClick={handleCancel}>
                                 {state.cancelLabel}

@@ -623,7 +623,12 @@ function SyncLabReportsButton() {
                 summaryParts.push(`📋 ${pendingCount} laudo(s) salvo(s) na fila de pendentes do cliente (sem visita na data correspondente).`);
             }
             if (errorCount > 0) {
-                summaryParts.push(`⚠️ ${errorCount} arquivo(s) não puderam ser vinculados (cliente não identificado no sistema).`);
+                const errorItems = allResults.filter(r => r.status === 'error');
+                const sampleErrors = errorItems.slice(0, 4).map(e => `• ${e.file}: ${e.error}`).join('\n');
+                const moreCount = errorItems.length - 4;
+                summaryParts.push(
+                    `⚠️ ${errorCount} arquivo(s) não puderam ser vinculados (cliente não identificado no sistema):\n\n${sampleErrors}${moreCount > 0 ? `\n• ... e mais ${moreCount} arquivo(s).` : ''}`
+                );
             }
 
             const hasProcessedAny = successCount > 0 || pendingCount > 0;
