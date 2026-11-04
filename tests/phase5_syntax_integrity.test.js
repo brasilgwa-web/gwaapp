@@ -41,6 +41,9 @@ test('Fase 5.2 - Integridade das integrações nos componentes React (Zero Regre
     assert.match(readingsContent, /WEATHER_OPTIONS/, 'ReadingsTab deve integrar opções climáticas');
     assert.match(readingsContent, /Área Confinada \/ Sem Sinal/, 'ReadingsTab deve conter tratamento para áreas confinadas');
     assert.match(readingsContent, /handleCaptureGps/, 'ReadingsTab deve conter captura GPS');
+    assert.match(readingsContent, /ensureAutoGpsForEquipment/, 'ReadingsTab deve capturar GPS automaticamente no momento da leitura');
+    assert.match(readingsContent, /applyWeatherToAllMutation/, 'ReadingsTab deve permitir aplicar indicador de chuva a todos os equipamentos de uma vez');
+    assert.match(readingsContent, /Atualizar GPS/, 'ReadingsTab deve exibir botão apenas para Atualizar GPS');
     assert.match(readingsContent, /navigator\.geolocation/, 'ReadingsTab deve utilizar a API Geolocation');
 
     const labTabContent = fs.readFileSync(path.join(PROJECT_ROOT, 'src/components/visit/LabReportTab.jsx'), 'utf-8');

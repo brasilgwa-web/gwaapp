@@ -22,6 +22,9 @@ export default function ReadingsTab({ visit, readOnly }) {
     const [localValues, setLocalValues] = React.useState({});
     const [gpsLoadingByEq, setGpsLoadingByEq] = React.useState({});
     const [gpsFeedbackByEq, setGpsFeedbackByEq] = React.useState({});
+    const [globalWeatherValue, setGlobalWeatherValue] = React.useState("none");
+    const [weatherAppliedNotice, setWeatherAppliedNotice] = React.useState(false);
+    const gpsAutoCapturedRef = React.useRef({});
 
     const toggleItem = (id) => {
         setOpenItems(prev => ({ ...prev, [id]: !prev[id] }));
@@ -124,6 +127,7 @@ export default function ReadingsTab({ visit, readOnly }) {
     const saveSampleMutation = useMutation({
         mutationFn: async ({ locationEquipmentId, field, value, updates }) => {
             setIsSaving(true);
+            return await upsertSampleRecord(locationEquipmentId, updates || { [field]: value });
             const rawExisting = visitSamples?.find(s => s.location_equipment_id === locationEquipmentId);
             const parsedExisting = parseSampleRecord(rawExisting) || {};
 
@@ -214,6 +218,109 @@ export default function ReadingsTab({ visit, readOnly }) {
     });
 
     // --- Helpers ---
+    const upsertSampleRecord = async (locationEquipmentId, patch) => {
+        let rawExisting = visitSamples?.find(s => s.location_equipment_id === locationEquipmentId);
+        try {
+            const { data: freshRows } = await supabase
+                .from('visit_equipment_samples')
+                .select('*')
+                .eq('visit_id', visit.id)
+                .eq('location_equipment_id', locationEquipmentId)
+                .limit(1);
+            if (freshRows && freshRows.length > 0) {
+                rawExisting = freshRows[0];
+            }
+        } catch {
+            // Fallback to cached visitSamples
+        }
+
+        const parsedExisting = parseSampleRecord(rawExisting) || {};
+        const nextCleanComp = patch.complementary_info !== undefined
+            ? patch.complementary_info
+            : (parsedExisting.complementary_info || '');
+
+        const nextMeta = {
+            weather_condition: patch.weather_condition !== undefined ? patch.weather_condition : parsedExisting.weather_condition,
+            weather_notes: patch.weather_notes !== undefined ? patch.weather_notes : parsedExisting.weather_notes,
+            gps_status: patch.gps_status !== undefined ? patch.gps_status : parsedExisting.gps_status,
+            gps_latitude: patch.gps_latitude !== undefined ? patch.gps_latitude : parsedExisting.gps_latitude,
+            gps_longitude: patch.gps_longitude !== undefined ? patch.gps_longitude : parsedExisting.gps_longitude,
+            gps_accuracy: patch.gps_accuracy !== undefined ? patch.gps_accuracy : parsedExisting.gps_accuracy,
+            gps_captured_at: patch.gps_captured_at !== undefined ? patch.gps_captured_at : parsedExisting.gps_captured_at,
+        };
+
+        const serializedComp = serializeSampleWithMeta(nextCleanComp, nextMeta);
+        const basePayload = { complementary_info: serializedComp };
+        if (patch.collection_time !== undefined) basePayload.collection_time = patch.collection_time || null;
+        if (patch.analysis_group_id !== undefined) basePayload.analysis_group_id = patch.analysis_group_id || null;
+
+        const extendedPayload = {
+            ...basePayload,
+            weather_condition: nextMeta.weather_condition && nextMeta.weather_condition !== 'none' ? nextMeta.weather_condition : null,
+            weather_notes: nextMeta.weather_notes || null,
+            gps_status: nextMeta.gps_status || null,
+            gps_latitude: nextMeta.gps_latitude ?? null,
+            gps_longitude: nextMeta.gps_longitude ?? null,
+            gps_accuracy: nextMeta.gps_accuracy ?? null,
+            gps_captured_at: nextMeta.gps_captured_at || null,
+        };
+
+        try {
+            if (rawExisting) {
+                return await VisitEquipmentSample.update(rawExisting.id, extendedPayload);
+            }
+            return await VisitEquipmentSample.create({
+                visit_id: visit.id,
+                location_equipment_id: locationEquipmentId,
+                ...extendedPayload
+            });
+        } catch {
+            if (rawExisting) {
+                return await VisitEquipmentSample.update(rawExisting.id, basePayload);
+            }
+            return await VisitEquipmentSample.create({
+                visit_id: visit.id,
+                location_equipment_id: locationEquipmentId,
+                ...basePayload
+            });
+        }
+    };
+
+    const applyWeatherToAllMutation = useMutation({
+        mutationFn: async (weatherValue) => {
+            if (!groupedData || readOnly) return;
+            setIsSaving(true);
+            const normalizedWeather = weatherValue === 'none' ? null : weatherValue;
+            const allEquipmentIds = groupedData.flatMap(loc => loc.equipments.map(eq => eq.uniqueId));
+            await Promise.all(
+                allEquipmentIds.map(locEqId =>
+                    upsertSampleRecord(locEqId, { weather_condition: normalizedWeather })
+                )
+            );
+        },
+        onSuccess: () => {
+            setWeatherAppliedNotice(true);
+            setTimeout(() => setWeatherAppliedNotice(false), 3000);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['visitSamples', visit.id] });
+            queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] });
+            queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+            setTimeout(() => setIsSaving(false), 500);
+        }
+    });
+
+    const ensureAutoGpsForEquipment = (locationEquipmentId) => {
+        if (readOnly) return;
+        const currentSample = getSample(locationEquipmentId);
+        const alreadyHasGps = currentSample?.gps_status === 'captured'
+            || currentSample?.gps_status === 'confined_area'
+            || (currentSample?.gps_latitude !== null && currentSample?.gps_latitude !== undefined);
+        if (!alreadyHasGps && !gpsLoadingByEq[locationEquipmentId] && !gpsAutoCapturedRef.current[locationEquipmentId]) {
+            gpsAutoCapturedRef.current[locationEquipmentId] = true;
+            handleCaptureGps(locationEquipmentId, true);
+        }
+    };
     const handleValueChange = (testId, equipmentId, value) => {
         setLocalValues(prev => ({ ...prev, [`${testId}_${equipmentId}`]: value }));
     };
@@ -231,6 +338,11 @@ export default function ReadingsTab({ visit, readOnly }) {
             min: test.min_value,
             max: test.max_value,
             tolerance: test.tolerance_percent
+        });
+        if (value !== '' && value !== null && value !== undefined) {
+            ensureAutoGpsForEquipment(equipmentId);
+        }
+        const _noop = ({
         });
     };
 
@@ -428,6 +540,41 @@ export default function ReadingsTab({ visit, readOnly }) {
     return (
         <div className="space-y-6 pb-20">
             {/* Toolbar */}
+            {!readOnly && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-blue-50/90 border border-blue-200 px-3 py-2 rounded-lg shadow-sm">
+                    <div className="flex items-center gap-2">
+                        <CloudRain className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div>
+                            <span className="text-xs font-bold text-blue-950 block">Indicador de Chuva / Fator Climático (Aplicar a Todos os Testes)</span>
+                            <span className="text-[11px] text-blue-700">Selecione abaixo para replicar a condição climática em todos os equipamentos da visita de uma só vez:</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Select
+                            value={globalWeatherValue}
+                            onValueChange={(val) => {
+                                setGlobalWeatherValue(val);
+                                applyWeatherToAllMutation.mutate(val);
+                            }}
+                            disabled={applyWeatherToAllMutation.isPending}
+                        >
+                            <SelectTrigger className="h-8 w-full sm:w-[240px] bg-white text-xs border-blue-300 font-medium">
+                                <SelectValue placeholder="Aplicar clima a todos..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {WEATHER_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {weatherAppliedNotice && (
+                            <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded whitespace-nowrap">
+                                ✓ Aplicado a todos!
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
             <div className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200 shadow-sm sticky top-0 z-10">
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                     {isSaving ? <><Loader2 className="w-4 h-4 animate-spin text-blue-600" /><span>Salvando...</span></> : <><Save className="w-4 h-4 text-green-600" /><span>Dados salvos</span></>}
@@ -485,6 +632,19 @@ export default function ReadingsTab({ visit, readOnly }) {
                                             <div className="md:col-span-3">
                                                 <label className="text-xs font-semibold text-slate-500 flex items-center mb-1">
                                                     <CloudRain className="w-3 h-3 mr-1 text-blue-600" />Fator Climático (Chuvas)
+                                                    {!readOnly && sampleData?.weather_condition && sampleData.weather_condition !== 'none' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setGlobalWeatherValue(sampleData.weather_condition);
+                                                                applyWeatherToAllMutation.mutate(sampleData.weather_condition);
+                                                            }}
+                                                            className="ml-auto text-[10px] text-blue-600 hover:text-blue-800 underline font-semibold"
+                                                            title="Aplicar este indicador de chuva a todos os equipamentos da visita"
+                                                        >
+                                                            Aplicar a todos
+                                                        </button>
+                                                    )}
                                                 </label>
                                                 <Select
                                                     disabled={readOnly}
@@ -562,7 +722,7 @@ export default function ReadingsTab({ visit, readOnly }) {
                                                     </span>
                                                 ) : (
                                                     <span className="text-slate-400 italic text-[11px]">
-                                                        Coordenada não registrada neste ponto
+                                                        Registro automático no momento da leitura
                                                     </span>
                                                 )}
                                                 {gpsFeedbackByEq[equipment.uniqueId] && (
@@ -585,7 +745,7 @@ export default function ReadingsTab({ visit, readOnly }) {
                                                         {gpsLoadingByEq[equipment.uniqueId] ? (
                                                             <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Obtendo GPS...</>
                                                         ) : (
-                                                            <><Navigation className="w-3 h-3 mr-1" />{sampleData?.gps_status === 'captured' ? 'Atualizar GPS' : 'Capturar GPS'}</>
+                                                            <><Navigation className="w-3 h-3 mr-1" />Atualizar GPS</>
                                                         )}
                                                     </Button>
                                                     <Button
