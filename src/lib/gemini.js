@@ -3,6 +3,7 @@
 
 import { supabase } from './supabase';
 import { Logger } from './logger';
+import { parseGeminiLabJson } from './labReportMetadataUtils';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -448,4 +449,122 @@ ${contextData.dosagesText || 'N/A'}
     }
 }
 
-export default { generateTechnicalAnalysis, chatWithAI };
+/**
+ * Assistente IA Multimodal (Gemini Vision) para leitura e interpretação de Laudos Laboratoriais (PDF ou Imagem/Print).
+ * Extrai os 4 metadados regulatórios obrigatórios, confronta os resultados analíticos com os limites (VMP)
+ * e formula o parecer técnico preliminar para validação humana obrigatória (Human-in-the-Loop).
+ */
+export async function analyzeLabReportWithAI({ fileBase64, mimeType = 'application/pdf', clientName = '', equipmentLimitsText = '' }) {
+    const aiSettings = await getAISettings();
+
+    if (!aiSettings.apiKey) {
+        throw new Error('API key não configurada. Configure nas Configurações de IA ou no arquivo .env');
+    }
+
+    if (!fileBase64) {
+        throw new Error('Arquivo do laudo (PDF ou imagem) não fornecido para leitura da IA.');
+    }
+
+    const cleanBase64 = fileBase64.includes(',') ? fileBase64.split(',')[1] : fileBase64;
+
+    const prompt = `Você é um engenheiro químico sênior especialista em tratamento de águas e efluentes da WGA Brasil.
+Analise o laudo analítico de laboratório anexado (PDF ou print/imagem) referente ao cliente "${clientName || 'Cliente WGA'}".
+
+${equipmentLimitsText ? `LIMITES OPERACIONAIS / VMP CADASTRADOS NO SISTEMA PARA ESTE CLIENTE:\n${equipmentLimitsText}\n` : ''}
+SUA TAREFA:
+1. Extraia os 4 metadados regulatórios obrigatórios do documento:
+   - "report_number": Número do Relatório de Ensaio / Laudo (ex: "WGA-LAB-2026-088" ou número equivalente impresso no documento).
+   - "collection_date": Data da Coleta ou Amostragem no formato DD/MM/AAAA.
+   - "release_date": Data da Liberação / Emissão do laudo no formato DD/MM/AAAA.
+   - "sampling_point": Identificação do Ponto de Amostragem / Equipamento analisado (ex: "Caldeira B-01", "Torre de Resfriamento", "Efluente Tratado", etc.).
+2. Leia todos os parâmetros físico-químicos ou microbiológicos do laudo e confronte cada resultado obtido com o VMP (Valor Máximo Permitido / faixa de controle impressa no laudo e/ou nos limites operacionais do cliente acima).
+3. Elabore um "technical_opinion" (Parecer Técnico Preliminar) em português brasileiro, com redação técnica refinada, citando expressamente o Nº do Relatório, a Data de Liberação e o Ponto de Amostragem, destacando os parâmetros em conformidade, apontando eventuais desvios/anomalias frente ao VMP e sugerindo ações preventivas ou corretivas sob medida.
+
+Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos markdown \`\`\`json) no seguinte formato exato:
+{
+  "report_number": "string",
+  "collection_date": "DD/MM/AAAA",
+  "release_date": "DD/MM/AAAA",
+  "sampling_point": "string",
+  "parameters_summary": [
+    { "parameter": "Nome", "value": "Resultado + Unidade", "vmp": "Faixa/Limite", "status": "OK | ALERTA | CRITICO" }
+  ],
+  "technical_opinion": "Texto completo do parecer técnico preliminar estruturado para revisão e validação do responsável técnico."
+}`;
+
+    // Modelos com suporte multimodal (Gemini Vision)
+    const primaryVisionModel = aiSettings.model?.includes('gemma') ? 'gemini-2.5-flash' : (aiSettings.model || 'gemini-2.5-flash');
+
+    const makeVisionRequest = async (modelName, attempt = 1, maxAttempts = 2, delayMs = 2500) => {
+        const apiUrl = buildApiUrl(modelName);
+        try {
+            const response = await fetch(`${apiUrl}?key=${aiSettings.apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { inlineData: { mimeType, data: cleanBase64 } },
+                            { text: prompt }
+                        ]
+                    }],
+                    generationConfig: {
+                        temperature: 0.2,
+                        maxOutputTokens: Math.max(aiSettings.maxTokens || 2048, 2048)
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                const errMsg = errData.error?.message || `Erro HTTP ${response.status} na leitura do laudo`;
+                if (isOverloadedError(errMsg, response.status) && attempt < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                    return makeVisionRequest(modelName, attempt + 1, maxAttempts, delayMs);
+                }
+                if (isOverloadedError(errMsg, response.status)) {
+                    const err = new Error(errMsg);
+                    err._isOverloaded = true;
+                    throw err;
+                }
+                throw new Error(errMsg);
+            }
+
+            const data = await response.json();
+            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!rawText) {
+                throw new Error('A IA não retornou conteúdo ao ler o arquivo do laudo.');
+            }
+
+            return parseGeminiLabJson(rawText);
+        } catch (error) {
+            if (attempt < maxAttempts && (error.name === 'TypeError' || isOverloadedError(error.message))) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                return makeVisionRequest(modelName, attempt + 1, maxAttempts, delayMs);
+            }
+            if (isOverloadedError(error.message)) {
+                error._isOverloaded = true;
+            }
+            throw error;
+        }
+    };
+
+    try {
+        return await makeVisionRequest(primaryVisionModel);
+    } catch (primaryError) {
+        if (primaryError._isOverloaded) {
+            const fallbacks = getFallbackModels(primaryVisionModel);
+            for (const fbModel of fallbacks) {
+                try {
+                    return await makeVisionRequest(fbModel, 1, 2, 2000);
+                } catch (fbErr) {
+                    console.warn(`Vision fallback ${fbModel} falhou:`, fbErr.message);
+                }
+            }
+        }
+        Logger.error('AI_LAB_VISION', 'Erro ao analisar laudo laboratorial com IA', primaryError);
+        throw primaryError;
+    }
+}
+
+export default { generateTechnicalAnalysis, chatWithAI, analyzeLabReportWithAI };

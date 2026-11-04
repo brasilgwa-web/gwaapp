@@ -3,6 +3,8 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getWeatherReportLabel, formatGpsForReport, hasSampleMetadata } from '@/lib/fieldMetadataUtils';
+import { parseLabReportData } from '@/lib/labReportMetadataUtils';
 
 // Register Font
 Font.register({
@@ -707,11 +709,10 @@ const ReportPdf = ({ data, settings }) => {
                     ) : (
                         fullReportStructure.map((loc, idx) => {
                             // Filter equipments that have at least one valid test result
-                            // OR have sample metadata (collection_time or complementary_info) filled
+                            // OR have sample metadata (collection_time, weather, gps or complementary_info) filled
                             const activeEquipments = loc.equipments.filter(eq =>
                                 eq.tests?.some(t => t.result?.measured_value !== null && t.result?.measured_value !== undefined && t.result?.measured_value !== '') ||
-                                eq.sample?.collection_time ||
-                                eq.sample?.complementary_info
+                                hasSampleMetadata(eq.sample)
                             );
 
                             if (activeEquipments.length === 0) return null;
@@ -727,6 +728,8 @@ const ReportPdf = ({ data, settings }) => {
                                             const val = test.result?.measured_value;
                                             return val !== null && val !== undefined && val !== '';
                                         });
+                                        const weatherLabel = getWeatherReportLabel(eq.sample?.weather_condition);
+                                        const gpsLabel = formatGpsForReport(eq.sample);
 
                                         return (
                                             <View key={eqIdx} style={{ marginBottom: 8 }}>
@@ -736,8 +739,14 @@ const ReportPdf = ({ data, settings }) => {
                                                         <View style={styles.dot} />
                                                         <Text>{eq.equipment.name}</Text>
                                                     </View>
-                                                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                                                        {eq.sample?.collection_time && <Text style={{ color: '#475569', fontSize: 8 }}>Coleta: {eq.sample.collection_time.substring(0, 5)}h</Text>}
+                                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                        {eq.sample?.collection_time && <Text style={{ color: '#475569', fontSize: 8, marginRight: 8 }}>Coleta: {eq.sample.collection_time.substring(0, 5)}h</Text>}
+                                                        {weatherLabel && <Text style={{ color: '#475569', fontSize: 8, marginRight: 8 }}>Clima: {weatherLabel}</Text>}
+                                                        {gpsLabel && (
+                                                            <View style={{ backgroundColor: '#e0f2fe', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 2, paddingHorizontal: 4, paddingVertical: 1, marginRight: 8 }}>
+                                                                <Text style={{ color: '#0369a1', fontSize: 7.5, fontWeight: 700 }}>GPS: {gpsLabel}</Text>
+                                                            </View>
+                                                        )}
                                                         {eq.sample?.complementary_info && <Text style={{ color: '#475569', fontSize: 8 }}>Anál. Compl.: {eq.sample.complementary_info}</Text>}
                                                     </View>
                                                 </View>
@@ -874,6 +883,56 @@ const ReportPdf = ({ data, settings }) => {
                         <MarkdownText text={visit.observations || "Sem observações técnicas."} />
                     </View>
                 </View>
+
+                {/* --- LAB REPORT ANALYSIS (Optional when validated/filled) --- */}
+                {(() => {
+                    const labParsed = parseLabReportData(visit);
+                    if (!labParsed.comments || !labParsed.comments.trim() || labParsed.metadata?.include_in_report === false) {
+                        return null;
+                    }
+                    const meta = labParsed.metadata || {};
+                    const hasRegMeta = meta.report_number || meta.collection_date || meta.release_date || meta.sampling_point;
+                    return (
+                        <View style={styles.section}>
+                            <View style={styles.sectionTitle}>
+                                <View style={{ ...styles.sectionIndicator, backgroundColor: '#7e22ce' }} />
+                                <Text>Análise de Laudos Laboratoriais</Text>
+                            </View>
+                            {hasRegMeta && (
+                                <View style={{
+                                    flexDirection: 'row',
+                                    backgroundColor: '#faf5ff',
+                                    borderWidth: 1,
+                                    borderColor: '#e9d5ff',
+                                    borderBottomWidth: 0,
+                                    padding: 6,
+                                    borderTopLeftRadius: 4,
+                                    borderTopRightRadius: 4,
+                                }}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 7, color: '#64748b' }}>Nº do Relatório</Text>
+                                        <Text style={{ fontSize: 8, fontWeight: 700, color: '#0f172a' }}>{meta.report_number || 'N/I'}</Text>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 7, color: '#64748b' }}>Data de Coleta</Text>
+                                        <Text style={{ fontSize: 8, fontWeight: 700, color: '#0f172a' }}>{meta.collection_date || 'N/I'}</Text>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 7, color: '#64748b' }}>Data da Liberação</Text>
+                                        <Text style={{ fontSize: 8, fontWeight: 700, color: '#0f172a' }}>{meta.release_date || 'N/I'}</Text>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 7, color: '#64748b' }}>Ponto de Amostragem</Text>
+                                        <Text style={{ fontSize: 8, fontWeight: 700, color: '#0f172a' }}>{meta.sampling_point || 'N/I'}</Text>
+                                    </View>
+                                </View>
+                            )}
+                            <View style={{ ...styles.textBlock, minHeight: 50, borderTopLeftRadius: hasRegMeta ? 0 : 4, borderTopRightRadius: hasRegMeta ? 0 : 4 }}>
+                                <MarkdownText text={labParsed.comments} />
+                            </View>
+                        </View>
+                    );
+                })()}
 
                 {/* --- GENERAL OBS --- */}
                 <View style={styles.section}>

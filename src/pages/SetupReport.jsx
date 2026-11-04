@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { useConfirm } from "@/context/ConfirmContext";
 import { format } from "date-fns";
 import SignaturePad from "@/components/visit/SignaturePad";
+import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML } from "@/lib/emailTemplates";
 
 const dataURLtoBlob = (dataurl) => {
     let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
@@ -808,9 +809,31 @@ export default function SetupReport() {
                                     <li><code>{'{client_name}'}</code> - Nome do Cliente</li>
                                     <li><code>{'{date}'}</code> - Data da Visita (dd/mm/aaaa)</li>
                                     <li><code>{'{link}'}</code> - Link do Relatório (Google Drive)</li>
+                                    <li><code>{'{report_number}'}</code> - Número do Relatório Técnico</li>
+                                    <li><code>{'{technician_name}'}</code> - Nome do Técnico Responsável</li>
+                                    <li><code>{'{lab_link}'}</code> - Link do Laudo Laboratorial (se anexado)</li>
                                 </ul>
                             </div>
 
+                            <div className="space-y-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-indigo-50/70 p-3 rounded-md border border-indigo-200">
+                                <div>
+                                    <span className="text-xs font-semibold text-indigo-900 block">Template Oficial Corporativo — WGA Integra 360</span>
+                                    <span className="text-[11px] text-indigo-700">Aplica o layout HTML corporativo homologado com quadro resumo da visita e botão de acesso rápido.</span>
+                                </div>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-50 shrink-0"
+                                    onClick={() => {
+                                        setEmailSubject(WGA_INTEGRA_360_EMAIL_SUBJECT);
+                                        setEmailBody(WGA_INTEGRA_360_EMAIL_HTML);
+                                    }}
+                                >
+                                    Aplicar Template Oficial WGA Integra 360
+                                </Button>
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="emailSubject">Assunto do Email</Label>
                                 <Input

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product, EquipmentDosageParams, ClientProduct, AnalysisGroupItem, LocationEquipmentTest } from "@/api/entities";
+import { parseSampleRecord } from "@/lib/fieldMetadataUtils";
 
 export function useReportData(id) {
     return useQuery({
@@ -83,8 +84,9 @@ export function useReportData(id) {
                         const catalogItem = allEquipments.find(e => e.id === le.equipment_id);
                         if (!catalogItem) return null;
 
-                        // Attach Sample Info (Time, Complementary)
-                        const sampleInfo = allSamples.find(s => s.location_equipment_id === le.id);
+                        // Attach Sample Info (Time, Complementary, Weather, GPS)
+                        const rawSampleInfo = allSamples.find(s => s.location_equipment_id === le.id);
+                        const sampleInfo = parseSampleRecord(rawSampleInfo);
 
                         // 1. Tests linked via Equipment Configuration (Standard)
                         const linkedTestsData = allEquipmentTests.filter(et => et.equipment_id === catalogItem.id);

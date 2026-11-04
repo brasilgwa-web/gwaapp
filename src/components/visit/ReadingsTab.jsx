@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Location, LocationEquipment, Equipment, EquipmentTest, TestDefinition, TestResult, Visit, AnalysisGroup, AnalysisGroupItem, VisitEquipmentSample, LocationEquipmentTest } from "@/api/entities";
 import { Input } from "@/components/ui/input";
 import { calculateStatus, getStatusColor } from "@/components/analysisUtils";
-import { AlertCircle, CheckCircle, MinusCircle, Beaker, ChevronDown, ChevronUp, MapPin, ChevronsUpDown, Save, Loader2, Clock, FileText, Layers, Info } from "lucide-react";
+import { AlertCircle, CheckCircle, MinusCircle, Beaker, ChevronDown, ChevronUp, MapPin, ChevronsUpDown, Save, Loader2, Clock, FileText, Layers, Info, CloudRain, Navigation, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { WEATHER_OPTIONS, parseSampleRecord, serializeSampleWithMeta, formatGpsForReport } from "@/lib/fieldMetadataUtils";
 
 import { supabase } from "@/lib/supabase";
 
@@ -19,6 +20,8 @@ export default function ReadingsTab({ visit, readOnly }) {
     const [allExpanded, setAllExpanded] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
     const [localValues, setLocalValues] = React.useState({});
+    const [gpsLoadingByEq, setGpsLoadingByEq] = React.useState({});
+    const [gpsFeedbackByEq, setGpsFeedbackByEq] = React.useState({});
 
     const toggleItem = (id) => {
         setOpenItems(prev => ({ ...prev, [id]: !prev[id] }));
@@ -119,21 +122,75 @@ export default function ReadingsTab({ visit, readOnly }) {
     });
 
     const saveSampleMutation = useMutation({
-        mutationFn: async ({ locationEquipmentId, field, value }) => {
+        mutationFn: async ({ locationEquipmentId, field, value, updates }) => {
             setIsSaving(true);
-            const existing = visitSamples?.find(s => s.location_equipment_id === locationEquipmentId);
-            if (existing) {
-                return VisitEquipmentSample.update(existing.id, { [field]: value });
-            } else {
-                return VisitEquipmentSample.create({
-                    visit_id: visit.id,
-                    location_equipment_id: locationEquipmentId,
-                    [field]: value
-                });
+            const rawExisting = visitSamples?.find(s => s.location_equipment_id === locationEquipmentId);
+            const parsedExisting = parseSampleRecord(rawExisting) || {};
+
+            const patch = updates || { [field]: value };
+
+            // Determine clean complementary info and metadata state
+            const nextCleanComp = patch.complementary_info !== undefined
+                ? patch.complementary_info
+                : (parsedExisting.complementary_info || '');
+
+            const nextMeta = {
+                weather_condition: patch.weather_condition !== undefined ? patch.weather_condition : parsedExisting.weather_condition,
+                weather_notes: patch.weather_notes !== undefined ? patch.weather_notes : parsedExisting.weather_notes,
+                gps_status: patch.gps_status !== undefined ? patch.gps_status : parsedExisting.gps_status,
+                gps_latitude: patch.gps_latitude !== undefined ? patch.gps_latitude : parsedExisting.gps_latitude,
+                gps_longitude: patch.gps_longitude !== undefined ? patch.gps_longitude : parsedExisting.gps_longitude,
+                gps_accuracy: patch.gps_accuracy !== undefined ? patch.gps_accuracy : parsedExisting.gps_accuracy,
+                gps_captured_at: patch.gps_captured_at !== undefined ? patch.gps_captured_at : parsedExisting.gps_captured_at,
+            };
+
+            const serializedComp = serializeSampleWithMeta(nextCleanComp, nextMeta);
+
+            // Standard payload (guaranteed columns in any DB version)
+            const basePayload = {
+                complementary_info: serializedComp,
+            };
+            if (patch.collection_time !== undefined) basePayload.collection_time = patch.collection_time || null;
+            if (patch.analysis_group_id !== undefined) basePayload.analysis_group_id = patch.analysis_group_id || null;
+
+            // Extended payload (includes native DDL columns if migration has been applied)
+            const extendedPayload = {
+                ...basePayload,
+                weather_condition: nextMeta.weather_condition && nextMeta.weather_condition !== 'none' ? nextMeta.weather_condition : null,
+                weather_notes: nextMeta.weather_notes || null,
+                gps_status: nextMeta.gps_status || null,
+                gps_latitude: nextMeta.gps_latitude ?? null,
+                gps_longitude: nextMeta.gps_longitude ?? null,
+                gps_accuracy: nextMeta.gps_accuracy ?? null,
+                gps_captured_at: nextMeta.gps_captured_at || null,
+            };
+
+            try {
+                if (rawExisting) {
+                    return await VisitEquipmentSample.update(rawExisting.id, extendedPayload);
+                } else {
+                    return await VisitEquipmentSample.create({
+                        visit_id: visit.id,
+                        location_equipment_id: locationEquipmentId,
+                        ...extendedPayload
+                    });
+                }
+            } catch (err) {
+                // Transparent fallback if native DDL columns are not yet created in Supabase
+                if (rawExisting) {
+                    return await VisitEquipmentSample.update(rawExisting.id, basePayload);
+                } else {
+                    return await VisitEquipmentSample.create({
+                        visit_id: visit.id,
+                        location_equipment_id: locationEquipmentId,
+                        ...basePayload
+                    });
+                }
             }
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['visitSamples', visit.id] });
+            queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] });
             queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
             setTimeout(() => setIsSaving(false), 500);
         }
@@ -179,10 +236,76 @@ export default function ReadingsTab({ visit, readOnly }) {
 
     const handleSampleChange = (locationEquipmentId, field, value) => {
         saveSampleMutation.mutate({ locationEquipmentId, field, value });
+
+        // Auto-captura silenciosa de GPS ao preencher Hora da Coleta (se o ponto ainda não tiver GPS registrado)
+        if (field === 'collection_time' && value) {
+            const currentSample = getSample(locationEquipmentId);
+            if (!currentSample?.gps_status && currentSample?.gps_latitude === null) {
+                handleCaptureGps(locationEquipmentId, true);
+            }
+        }
+    };
+
+    const handleCaptureGps = (locationEquipmentId, isSilent = false) => {
+        if (readOnly) return;
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+            if (!isSilent) {
+                setGpsFeedbackByEq(prev => ({
+                    ...prev,
+                    [locationEquipmentId]: 'Navegador sem suporte a GPS. Use "Área Confinada / Sem Sinal".'
+                }));
+            }
+            return;
+        }
+
+        setGpsLoadingByEq(prev => ({ ...prev, [locationEquipmentId]: true }));
+        setGpsFeedbackByEq(prev => ({ ...prev, [locationEquipmentId]: '' }));
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude, accuracy } = position.coords;
+                saveSampleMutation.mutate({
+                    locationEquipmentId,
+                    updates: {
+                        gps_status: 'captured',
+                        gps_latitude: Number(latitude.toFixed(6)),
+                        gps_longitude: Number(longitude.toFixed(6)),
+                        gps_accuracy: accuracy ? Math.round(accuracy) : null,
+                        gps_captured_at: new Date().toISOString()
+                    }
+                });
+                setGpsLoadingByEq(prev => ({ ...prev, [locationEquipmentId]: false }));
+            },
+            (error) => {
+                setGpsLoadingByEq(prev => ({ ...prev, [locationEquipmentId]: false }));
+                if (!isSilent) {
+                    const msg = error.code === 1
+                        ? 'Permissão de localização negada no navegador. Habilite o GPS ou marque "Área Confinada".'
+                        : 'Sinal de GPS fraco ou indisponível no local. Tente novamente ou marque "Área Confinada".';
+                    setGpsFeedbackByEq(prev => ({ ...prev, [locationEquipmentId]: msg }));
+                }
+            },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+        );
+    };
+
+    const handleSetConfinedArea = (locationEquipmentId) => {
+        if (readOnly) return;
+        setGpsFeedbackByEq(prev => ({ ...prev, [locationEquipmentId]: '' }));
+        saveSampleMutation.mutate({
+            locationEquipmentId,
+            updates: {
+                gps_status: 'confined_area',
+                gps_latitude: null,
+                gps_longitude: null,
+                gps_accuracy: null,
+                gps_captured_at: new Date().toISOString()
+            }
+        });
     };
 
     const getResult = (testId, equipmentId) => results?.find(r => r.test_definition_id === testId && r.equipment_id === equipmentId);
-    const getSample = (locEqId) => visitSamples?.find(s => s.location_equipment_id === locEqId);
+    const getSample = (locEqId) => parseSampleRecord(visitSamples?.find(s => s.location_equipment_id === locEqId));
 
 
     // --- Data Preparation ---
@@ -343,60 +466,141 @@ export default function ReadingsTab({ visit, readOnly }) {
 
                                 <CollapsibleContent>
 
-                                    {/* V1.1: Equipment Header Inputs (Time, Group, Complementary) */}
-                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 bg-blue-50/30 border-b border-blue-100">
-                                        {/* Hora */}
-                                        <div className="md:col-span-2">
-                                            <label className="text-xs font-semibold text-slate-500 flex items-center mb-1"><Clock className="w-3 h-3 mr-1" />Hora Coleta</label>
-                                            <Input
-                                                type="time"
-                                                className="h-8 bg-white"
-                                                defaultValue={sampleData?.collection_time ? sampleData.collection_time.substring(0, 5) : ''}
-                                                onBlur={(e) => handleSampleChange(equipment.uniqueId, 'collection_time', e.target.value)}
-                                                disabled={readOnly}
-                                            />
+                                    {/* V1.1 + WGA 360: Equipment Header Inputs (Time, Weather, Group, Complementary, GPS) */}
+                                    <div className="p-4 bg-blue-50/30 border-b border-blue-100 space-y-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                            {/* Hora */}
+                                            <div className="md:col-span-2">
+                                                <label className="text-xs font-semibold text-slate-500 flex items-center mb-1"><Clock className="w-3 h-3 mr-1" />Hora Coleta</label>
+                                                <Input
+                                                    type="time"
+                                                    className="h-8 bg-white"
+                                                    defaultValue={sampleData?.collection_time ? sampleData.collection_time.substring(0, 5) : ''}
+                                                    onBlur={(e) => handleSampleChange(equipment.uniqueId, 'collection_time', e.target.value)}
+                                                    disabled={readOnly}
+                                                />
+                                            </div>
+
+                                            {/* Fator Climático (Chuvas) */}
+                                            <div className="md:col-span-3">
+                                                <label className="text-xs font-semibold text-slate-500 flex items-center mb-1">
+                                                    <CloudRain className="w-3 h-3 mr-1 text-blue-600" />Fator Climático (Chuvas)
+                                                </label>
+                                                <Select
+                                                    disabled={readOnly}
+                                                    value={sampleData?.weather_condition || "none"}
+                                                    onValueChange={(val) => handleSampleChange(equipment.uniqueId, 'weather_condition', val === 'none' ? null : val)}
+                                                >
+                                                    <SelectTrigger className="h-8 bg-white text-xs">
+                                                        <SelectValue placeholder="Condição climática..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {WEATHER_OPTIONS.map(opt => (
+                                                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Grupo */}
+                                            <div className="md:col-span-3">
+                                                <label className="text-xs font-semibold text-slate-500 flex items-center mb-1"><Layers className="w-3 h-3 mr-1" />Grupo de Análise</label>
+                                                <Select
+                                                    disabled={readOnly}
+                                                    value={sampleData?.analysis_group_id || ""}
+                                                    onValueChange={(val) => applyGroupMutation.mutate({ locationEquipmentId: equipment.uniqueId, groupId: val, equipmentId: equipment.catalog_id })}
+                                                >
+                                                    <SelectTrigger className="h-8 bg-white"><SelectValue placeholder="Selecione um Kit..." /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {analysisGroups?.map(g => (
+                                                            <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+
+                                                {/* Helper to show what's in the group */}
+                                                {sampleData?.analysis_group_id && analysisGroupItems && allTests && (
+                                                    <div className="mt-1 text-[10px] text-slate-500 leading-tight">
+                                                        <span className="font-semibold">Inclui: </span>
+                                                        {analysisGroupItems
+                                                            .filter(i => i.group_id === sampleData.analysis_group_id)
+                                                            .map(i => allTests.find(t => t.id === i.test_definition_id)?.name)
+                                                            .filter(Boolean)
+                                                            .join(', ') || "Nenhum teste vinculado."
+                                                        }
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Análises Complementares */}
+                                            <div className="md:col-span-4">
+                                                <label className="text-xs font-semibold text-slate-500 flex items-center mb-1"><FileText className="w-3 h-3 mr-1" />Análises Complementares em Laboratório</label>
+                                                <Input
+                                                    className="h-8 bg-white"
+                                                    placeholder="Ex: Ferro total, Cobre..."
+                                                    defaultValue={sampleData?.complementary_info || ''}
+                                                    onBlur={(e) => handleSampleChange(equipment.uniqueId, 'complementary_info', e.target.value)}
+                                                    disabled={readOnly}
+                                                />
+                                            </div>
                                         </div>
 
-                                        {/* Grupo */}
-                                        <div className="md:col-span-4">
-                                            <label className="text-xs font-semibold text-slate-500 flex items-center mb-1"><Layers className="w-3 h-3 mr-1" />Grupo de Análise</label>
-                                            <Select
-                                                disabled={readOnly}
-                                                value={sampleData?.analysis_group_id || ""}
-                                                onValueChange={(val) => applyGroupMutation.mutate({ locationEquipmentId: equipment.uniqueId, groupId: val, equipmentId: equipment.catalog_id })}
-                                            >
-                                                <SelectTrigger className="h-8 bg-white"><SelectValue placeholder="Selecione um Kit..." /></SelectTrigger>
-                                                <SelectContent>
-                                                    {analysisGroups?.map(g => (
-                                                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                        {/* Barra de Rastreabilidade Geográfica (GPS) no Ponto de Coleta */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-blue-100/80 text-xs">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-semibold text-slate-600 flex items-center gap-1">
+                                                    <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                                                    Geolocalização (GPS):
+                                                </span>
+                                                {sampleData?.gps_status === 'captured' && sampleData?.gps_latitude !== null ? (
+                                                    <span className="bg-sky-100 text-sky-800 border border-sky-200 px-2 py-0.5 rounded font-mono font-semibold text-[11px]">
+                                                        📍 {formatGpsForReport(sampleData)}
+                                                    </span>
+                                                ) : sampleData?.gps_status === 'confined_area' ? (
+                                                    <span className="bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded font-medium text-[11px]">
+                                                        🏢 Área confinada / Sinal indisponível
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 italic text-[11px]">
+                                                        Coordenada não registrada neste ponto
+                                                    </span>
+                                                )}
+                                                {gpsFeedbackByEq[equipment.uniqueId] && (
+                                                    <span className="text-amber-700 text-[11px] font-medium">
+                                                        ({gpsFeedbackByEq[equipment.uniqueId]})
+                                                    </span>
+                                                )}
+                                            </div>
 
-                                            {/* Helper to show what's in the group */}
-                                            {sampleData?.analysis_group_id && analysisGroupItems && allTests && (
-                                                <div className="mt-1 text-[10px] text-slate-500 leading-tight">
-                                                    <span className="font-semibold">Inclui: </span>
-                                                    {analysisGroupItems
-                                                        .filter(i => i.group_id === sampleData.analysis_group_id)
-                                                        .map(i => allTests.find(t => t.id === i.test_definition_id)?.name)
-                                                        .filter(Boolean)
-                                                        .join(', ') || "Nenhum teste vinculado."
-                                                    }
+                                            {!readOnly && (
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 text-xs bg-white border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                        onClick={() => handleCaptureGps(equipment.uniqueId, false)}
+                                                        disabled={!!gpsLoadingByEq[equipment.uniqueId]}
+                                                    >
+                                                        {gpsLoadingByEq[equipment.uniqueId] ? (
+                                                            <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Obtendo GPS...</>
+                                                        ) : (
+                                                            <><Navigation className="w-3 h-3 mr-1" />{sampleData?.gps_status === 'captured' ? 'Atualizar GPS' : 'Capturar GPS'}</>
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className={`h-7 text-xs border ${sampleData?.gps_status === 'confined_area' ? 'bg-amber-100 border-amber-300 text-amber-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+                                                        onClick={() => handleSetConfinedArea(equipment.uniqueId)}
+                                                        title="Registrar que o ponto fica em casa de caldeira, subsolo ou área sem sinal de satélite"
+                                                    >
+                                                        <Building2 className="w-3 h-3 mr-1" />
+                                                        Área Confinada / Sem Sinal
+                                                    </Button>
                                                 </div>
                                             )}
-                                        </div>
-
-                                        {/* Análises Complementares */}
-                                        <div className="md:col-span-6">
-                                            <label className="text-xs font-semibold text-slate-500 flex items-center mb-1"><FileText className="w-3 h-3 mr-1" />Análises Complementares em Laboratório</label>
-                                            <Input
-                                                className="h-8 bg-white"
-                                                placeholder="Ex: Ferro total, Cobre..."
-                                                defaultValue={sampleData?.complementary_info || ''}
-                                                onBlur={(e) => handleSampleChange(equipment.uniqueId, 'complementary_info', e.target.value)}
-                                                disabled={readOnly}
-                                            />
                                         </div>
                                     </div>
 

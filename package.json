@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/phase1_2_field_metadata.test.js tests/phase3_lab_report_ai.test.js tests/phase4_email_template.test.js tests/phase5_syntax_integrity.test.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -4,6 +4,8 @@ import { formatDateAsLocal } from '@/lib/utils';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import EquipmentTrendChart from './EquipmentTrendChart';
+import { getWeatherReportLabel, formatGpsForReport, hasSampleMetadata } from '@/lib/fieldMetadataUtils';
+import { parseLabReportData } from '@/lib/labReportMetadataUtils';
 
 // Helper para converter markdown básico em HTML
 function renderMarkdown(text) {
@@ -330,11 +332,10 @@ export function ReportTemplate({ data }) {
                         <div className="space-y-6">
                             {fullReportStructure.map((loc, idx) => {
                                 // Filter equipments that have at least one valid test result
-                                // OR have sample metadata (collection_time or complementary_info) filled
+                                // OR have sample metadata (collection_time, weather, gps or complementary_info) filled
                                 const activeEquipments = loc.equipments.filter(eq =>
                                     eq.tests?.some(t => t.result?.measured_value !== null && t.result?.measured_value !== undefined && t.result?.measured_value !== '') ||
-                                    eq.sample?.collection_time ||
-                                    eq.sample?.complementary_info
+                                    hasSampleMetadata(eq.sample)
                                 );
 
                                 if (activeEquipments.length === 0) return null;
@@ -348,16 +349,24 @@ export function ReportTemplate({ data }) {
                                         {activeEquipments.map((eq, eqIdx) => {
                                             // Filter tests for this equipment
                                             const activeTests = eq.tests.filter(t => t.result?.measured_value !== null && t.result?.measured_value !== undefined && t.result?.measured_value !== '');
+                                            const weatherLabel = getWeatherReportLabel(eq.sample?.weather_condition);
+                                            const gpsLabel = formatGpsForReport(eq.sample);
 
                                             return (
                                                 <div key={eqIdx} className="mb-4">
-                                                    <div className="bg-blue-50/50 px-3 py-2 border border-blue-100 rounded-t-sm flex justify-between items-center text-xs">
+                                                    <div className="bg-blue-50/50 px-3 py-2 border border-blue-100 rounded-t-sm flex flex-wrap justify-between items-center gap-2 text-xs">
                                                         <div className="font-bold text-blue-900 flex items-center gap-2">
                                                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                                                             {eq.equipment.name}
                                                         </div>
-                                                        <div className="flex gap-4 text-slate-600">
+                                                        <div className="flex flex-wrap items-center gap-3 text-slate-600">
                                                             {eq.sample?.collection_time && <span><span className="font-semibold">Coleta:</span> {eq.sample.collection_time.substring(0, 5)}h</span>}
+                                                            {weatherLabel && <span><span className="font-semibold">Clima:</span> {weatherLabel}</span>}
+                                                            {gpsLabel && (
+                                                                <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-mono font-semibold text-[10px] border border-sky-200">
+                                                                    📍 GPS: {gpsLabel}
+                                                                </span>
+                                                            )}
                                                             {eq.sample?.complementary_info && <span><span className="font-semibold">Análises comp. em laboratório:</span> {eq.sample.complementary_info}</span>}
                                                         </div>
                                                     </div>
@@ -510,6 +519,34 @@ export function ReportTemplate({ data }) {
                         {visit.observations ? renderMarkdown(visit.observations) : "Sem observações técnicas."}
                     </div>
                 </section>
+
+                {/* 4.1 Análise de Laudos Laboratoriais (Opcional quando validado/preenchido) */}
+                {(() => {
+                    const labParsed = parseLabReportData(visit);
+                    if (!labParsed.comments || !labParsed.comments.trim() || labParsed.metadata?.include_in_report === false) {
+                        return null;
+                    }
+                    const meta = labParsed.metadata || {};
+                    const hasRegMeta = meta.report_number || meta.collection_date || meta.release_date || meta.sampling_point;
+                    return (
+                        <section className="mb-6">
+                            <h2 className="text-sm font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">
+                                Análise de Laudos Laboratoriais
+                            </h2>
+                            {hasRegMeta && (
+                                <div className="grid grid-cols-4 gap-2 bg-purple-50/70 border border-purple-200 rounded-t p-2 text-[10px] text-slate-700">
+                                    <div><span className="text-slate-500 block">Nº do Relatório:</span><strong className="text-slate-900">{meta.report_number || 'N/I'}</strong></div>
+                                    <div><span className="text-slate-500 block">Data de Coleta:</span><strong className="text-slate-900">{meta.collection_date || 'N/I'}</strong></div>
+                                    <div><span className="text-slate-500 block">Data da Liberação:</span><strong className="text-slate-900">{meta.release_date || 'N/I'}</strong></div>
+                                    <div><span className="text-slate-500 block">Ponto de Amostragem:</span><strong className="text-slate-900">{meta.sampling_point || 'N/I'}</strong></div>
+                                </div>
+                            )}
+                            <div className={`bg-slate-50 p-3 border border-slate-200 text-xs text-justify min-h-[50px] ${hasRegMeta ? 'rounded-b border-t-0' : 'rounded'}`}>
+                                {renderMarkdown(labParsed.comments)}
+                            </div>
+                        </section>
+                    );
+                })()}
 
                 {/* 5. Observações Gerais */}
                 <section className="mb-8">

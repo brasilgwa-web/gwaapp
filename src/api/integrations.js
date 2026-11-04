@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { formatEmailHtmlBody } from '../lib/emailTemplates';
 
 // Supabase Storage Implementation
 const UploadFile = async ({ file }) => {
@@ -50,7 +51,7 @@ const SendEmail = async ({ to, subject, body }) => {
             body: JSON.stringify({
                 to,
                 subject,
-                html: body.replace(/\n/g, '<br>'), // Simple txt to html conversion
+                html: formatEmailHtmlBody(body),
                 text: body
             })
         });

@@ -26,6 +26,8 @@ import { Label } from "@/components/ui/label";
 
 import SignaturePad from "./SignaturePad";
 import { ClientContact } from "@/api/entities";
+import { getWeatherReportLabel, formatGpsForReport } from "@/lib/fieldMetadataUtils";
+import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML, renderEmailTemplate } from "@/lib/emailTemplates";
 
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
@@ -241,11 +243,19 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             let equipmentDataText = '';
             if (freshReportData?.fullReportStructure?.length > 0) {
                 freshReportData.fullReportStructure.forEach(location => {
-                    equipmentDataText += `\n\n📍  LOCAL: ${location.name}\n`;
+                    equipmentDataText += `\n\n📍  LOCAL: ${location.location?.name || location.name}\n`;
                     location.equipments?.forEach(eq => {
                         equipmentDataText += `\n  🔧 EQUIPAMENTO: ${eq.equipment.name}\n`;
                         if (eq.sample?.collection_time) {
                             equipmentDataText += `     Coleta: ${eq.sample.collection_time}\n`;
+                        }
+                        const weatherLabel = getWeatherReportLabel(eq.sample?.weather_condition);
+                        if (weatherLabel) {
+                            equipmentDataText += `     Fator Climático (Chuvas): ${weatherLabel}\n`;
+                        }
+                        const gpsLabel = formatGpsForReport(eq.sample);
+                        if (gpsLabel) {
+                            equipmentDataText += `     GPS do Ponto: ${gpsLabel}\n`;
                         }
                         if (eq.tests?.length > 0) {
                             eq.tests.forEach(test => {
@@ -837,7 +847,22 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 await Visit.update(visit.id, { status: 'completed' });
             }
 
-            // Dynamic Email Template
+            // Dynamic Email Template (WGA Integra 360 Official Template as default fallback)
+            let subjectTemplate = reportSettings?.email_subject_default || WGA_INTEGRA_360_EMAIL_SUBJECT;
+            let bodyTemplate = reportSettings?.email_body_default || WGA_INTEGRA_360_EMAIL_HTML;
+            const computedReportNumber = visit.report_number || `${format(safeDate, 'yyMM')}-${String(reportSettings?.current_report_number || 1).padStart(6, '0')}`;
+            const computedTechName = reportData?.technicianUser?.full_name || user?.full_name || visit.technician_email || 'Equipe Técnica WGA Brasil';
+            const emailVars = {
+                client_name: visit.client?.name || '',
+                date: format(safeDate, 'dd/MM/yyyy'),
+                link: driveLink || '#',
+                report_number: computedReportNumber,
+                technician_name: computedTechName,
+                lab_link: visit.lab_report_url || driveLink || '#'
+            };
+            const emailSubject = renderEmailTemplate(subjectTemplate, emailVars);
+            const emailBody = renderEmailTemplate(bodyTemplate, emailVars);
+            if (false) {
             let subjectTemplate = reportSettings?.email_subject_default || 'Relatório de Visita Técnica - {client_name} - {date}';
             let bodyTemplate = reportSettings?.email_body_default || `
                 <div style="font-family: Arial, sans-serif; color: #333;">
@@ -856,6 +881,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             const emailSubject = replaceVars(subjectTemplate);
             const emailBody = replaceVars(bodyTemplate);
 
+            } // end legacy replaceVars block
             // Collect all emails
             const recipients = [visit.client?.email];
 
