@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import esbuild from 'esbuild';
 
 const PROJECT_ROOT = process.cwd();
 
@@ -27,6 +28,11 @@ test('Fase 5.1 - Todos os arquivos dos 7 entregáveis existem e possuem conteúd
         assert.equal(fs.existsSync(fullPath), true, `Arquivo ausente: ${relPath}`);
         const content = fs.readFileSync(fullPath, 'utf-8');
         assert.ok(content.length > 100, `Arquivo vazio ou incompleto: ${relPath}`);
+        if (relPath.endsWith('.js') || relPath.endsWith('.jsx')) {
+            const loader = relPath.endsWith('.jsx') ? 'jsx' : 'js';
+            const transformed = esbuild.transformSync(content, { loader, sourcefile: relPath });
+            assert.ok(transformed.code.length > 0, `Falha na compilação JSX/JS de ${relPath}`);
+        }
     }
 });
 

@@ -834,7 +834,6 @@ export default function SetupReport() {
                                     Aplicar Template Oficial WGA Integra 360
                                 </Button>
                             </div>
-                            <div className="space-y-2">
                                 <Label htmlFor="emailSubject">Assunto do Email</Label>
                                 <Input
                                     id="emailSubject"
