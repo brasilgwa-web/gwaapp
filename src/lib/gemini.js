@@ -14,11 +14,11 @@ const DEFAULT_MAX_TOKENS = 4096;
 // Fallback models to try when the primary model is overloaded/high demand
 // Order: best quality first, then progressively faster/lighter models
 const FALLBACK_MODELS = [
-    'gemini-2.5-pro',
+// Prioritize Flash/Lite models with Free-Tier quota before Pro
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
     'gemini-2.0-flash',
-// Retired 1.5 models removed from fallback list
+    'gemini-2.5-pro',
 ];
 
 // Check if an error message indicates the model is overloaded / high demand
@@ -41,11 +41,17 @@ export function isOverloadedError(errorMessage, statusCode) {
         || msg.includes('resource exhausted')
         || msg.includes('rate limit')
         || msg.includes('quota')
+        || msg.includes('billing')
         || msg.includes('not found')
         || msg.includes('not supported')
         || msg.includes('developer instruction is not enabled')
         || msg.includes('resposta vazia da api gemini')
         || msg.includes('max_tokens');
+}
+
+export function isQuotaOrBillingError(errorMessage) {
+    const msg = (errorMessage || '').toLowerCase();
+    return msg.includes('quota') || msg.includes('billing') || msg.includes('limit: 0');
 }
 
 // Build the API URL for a given model
@@ -229,7 +235,7 @@ Responda em português brasileiro:`;
                 const errorMessage = errorData.error?.message || 'Erro na API Gemini';
 
                 // Se o modelo está sobrecarregado e ainda temos tentativas, retry
-                if (isOverloadedError(errorMessage, response.status) && attempt < maxAttempts) {
+                if (isOverloadedError(errorMessage, response.status) && !isQuotaOrBillingError(errorMessage) && attempt < maxAttempts) {
                     console.warn(`Modelo ${modelName} sobrecarregado. Tentativa ${attempt}/${maxAttempts}. Aguardando ${delayMs / 1000}s...`);
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                     return makeRequest(modelName, attempt + 1, maxAttempts, delayMs);
@@ -322,7 +328,10 @@ Responda em português brasileiro:`;
             // Todos os modelos falharam
             const allModels = [aiSettings.model, ...fallbacks].join(', ');
             Logger.error('AI_GENERATION', `Todos os modelos falharam (${allModels})`, primaryError);
-            throw new Error(`Todos os modelos estão sobrecarregados (${allModels}). Tente novamente em alguns minutos.`);
+            const isQuota = isQuotaOrBillingError(primaryError.message);
+            throw new Error(isQuota
+                ? `Limite de cota/saldo da chave da API Google atingido em todos os modelos (${allModels}). Verifique a chave em Configurações de IA ou ative o faturamento no Google AI Studio.`
+                : `Todos os modelos estão sobrecarregados (${allModels}). Tente novamente em alguns minutos.`);
         }
 
         // Erro não é de sobrecarga, propagar normalmente
@@ -413,7 +422,7 @@ ${contextData.dosagesText || 'N/A'}
             if (!response.ok) {
                 const err = await response.json();
                 const errMsg = err.error?.message || 'Erro no chat IA';
-                if (isOverloadedError(errMsg, response.status) && attempt < maxAttempts) {
+                if (isOverloadedError(errMsg, response.status) && !isQuotaOrBillingError(errMsg) && attempt < maxAttempts) {
                     console.warn(`Chat: Modelo ${modelName} sobrecarregado. Tentativa ${attempt}/${maxAttempts}...`);
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                     return makeChatRequest(modelName, attempt + 1, maxAttempts, delayMs);
@@ -460,7 +469,10 @@ ${contextData.dosagesText || 'N/A'}
             }
 
             const allModels = [aiSettings.model, ...fallbacks].join(', ');
-            throw new Error(`Todos os modelos estão sobrecarregados (${allModels}). Tente novamente em alguns minutos.`);
+            const isQuota = isQuotaOrBillingError(primaryError.message);
+            throw new Error(isQuota
+                ? `Limite de cota/saldo da chave da API Google atingido em todos os modelos (${allModels}). Verifique a chave em Configurações de IA ou ative o faturamento no Google AI Studio.`
+                : `Todos os modelos estão sobrecarregados (${allModels}). Tente novamente em alguns minutos.`);
         }
         throw primaryError;
     }
@@ -535,7 +547,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos markdown \`\`\`json) n
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
                 const errMsg = errData.error?.message || `Erro HTTP ${response.status} na leitura do laudo`;
-                if (isOverloadedError(errMsg, response.status) && attempt < maxAttempts) {
+                if (isOverloadedError(errMsg, response.status) && !isQuotaOrBillingError(errMsg) && attempt < maxAttempts) {
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                     return makeVisionRequest(modelName, attempt + 1, maxAttempts, delayMs);
                 }
