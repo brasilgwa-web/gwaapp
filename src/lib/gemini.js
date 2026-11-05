@@ -8,8 +8,8 @@ import { parseGeminiLabJson } from './labReportMetadataUtils';
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 // Default values if DB settings not available
-const DEFAULT_MODEL = 'gemini-1.5-pro';
-const DEFAULT_MAX_TOKENS = 2048;
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MAX_TOKENS = 4096;
 
 // Fallback models to try when the primary model is overloaded/high demand
 // Order: best quality first, then progressively faster/lighter models
@@ -18,17 +18,34 @@ const FALLBACK_MODELS = [
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
     'gemini-2.0-flash',
-    'gemini-1.5-flash',
+// Retired 1.5 models removed from fallback list
 ];
 
 // Check if an error message indicates the model is overloaded / high demand
-function isOverloadedError(errorMessage, statusCode) {
-    if (statusCode === 429 || statusCode === 503) return true;
+export function extractCandidateText(data) {
+    const parts = data?.candidates?.[0]?.content?.parts;
+    if (!Array.isArray(parts) || parts.length === 0) return '';
+    const nonThoughtParts = parts.filter(p => !p?.thought && typeof p?.text === 'string');
+    if (nonThoughtParts.length > 0) {
+        return nonThoughtParts.map(p => p.text).join('').trim();
+    }
+    const anyTextParts = parts.filter(p => typeof p?.text === 'string');
+    return anyTextParts.map(p => p.text).join('').trim();
+}
+
+export function isOverloadedError(errorMessage, statusCode) {
+    if ([404, 429, 500, 502, 503, 504].includes(statusCode)) return true;
     const msg = (errorMessage || '').toLowerCase();
     return msg.includes('overloaded')
         || msg.includes('high demand')
         || msg.includes('resource exhausted')
-        || msg.includes('rate limit');
+        || msg.includes('rate limit')
+        || msg.includes('quota')
+        || msg.includes('not found')
+        || msg.includes('not supported')
+        || msg.includes('developer instruction is not enabled')
+        || msg.includes('resposta vazia da api gemini')
+        || msg.includes('max_tokens');
 }
 
 // Build the API URL for a given model
@@ -60,7 +77,7 @@ async function getAISettings() {
         });
 
         return {
-            model: settings.gemini_model || DEFAULT_MODEL,
+            model: (settings.gemini_model && !settings.gemini_model.includes('1.5')) ? settings.gemini_model : DEFAULT_MODEL,
             maxTokens: parseInt(settings.max_output_tokens) || DEFAULT_MAX_TOKENS,
             prompt: settings.technical_analysis_prompt || null,
             // Usar API key do banco se disponível, senão usar do .env
@@ -202,7 +219,7 @@ Responda em português brasileiro:`;
                         temperature: 0.7,
                         topK: 40,
                         topP: 0.95,
-                        maxOutputTokens: aiSettings.maxTokens,
+                        maxOutputTokens: Math.max(aiSettings.maxTokens || 2048, 4096),
                     }
                 })
             });
@@ -231,7 +248,7 @@ Responda em português brasileiro:`;
             }
 
             const data = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const text = extractCandidateText(data);
 
             if (!text) {
                 // Diagnóstico detalhado
@@ -389,7 +406,7 @@ ${contextData.dosagesText || 'N/A'}
                 body: JSON.stringify({
                     contents,
                     systemInstruction: { parts: [{ text: systemInstructionText }] },
-                    generationConfig: { temperature: 0.5, maxOutputTokens: 1000 }
+                    generationConfig: { temperature: 0.5, maxOutputTokens: Math.max(aiSettings.maxTokens || 2048, 2048) }
                 })
             });
 
@@ -411,7 +428,7 @@ ${contextData.dosagesText || 'N/A'}
             }
 
             const data = await response.json();
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
+            return extractCandidateText(data) || 'Sem resposta.';
         } catch (error) {
             if (attempt < maxAttempts && (error.name === 'TypeError' || isOverloadedError(error.message))) {
                 await new Promise(resolve => setTimeout(resolve, delayMs));
@@ -510,7 +527,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos markdown \`\`\`json) n
                     }],
                     generationConfig: {
                         temperature: 0.2,
-                        maxOutputTokens: Math.max(aiSettings.maxTokens || 2048, 2048)
+                        maxOutputTokens: Math.max(aiSettings.maxTokens || 2048, 4096)
                     }
                 })
             });
@@ -531,7 +548,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos markdown \`\`\`json) n
             }
 
             const data = await response.json();
-            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const rawText = extractCandidateText(data);
             if (!rawText) {
                 throw new Error('A IA não retornou conteúdo ao ler o arquivo do laudo.');
             }
