@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import RichTextEditor from "@/components/ui/RichTextEditor";
 import ColorPicker from "@/components/ui/ColorPicker";
 // ... imports
-import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate, MessageSquareText } from "lucide-react";
+import { FileText, Upload, Save, Loader2, Image, CheckCircle, AlignLeft, Plus, Trash2, Pencil, PenTool, Mail, LayoutTemplate, MessageSquareText, Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -17,6 +17,8 @@ import { useConfirm } from "@/context/ConfirmContext";
 import { format } from "date-fns";
 import SignaturePad from "@/components/visit/SignaturePad";
 import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML } from "@/lib/emailTemplates";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { REPORT_TYPE_OPTIONS, resolveReportSettingsByType } from "@/lib/reportTypeUtils";
 
 const dataURLtoBlob = (dataurl) => {
     let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
@@ -157,7 +159,23 @@ export default function SetupReport() {
     const [isSavingResp, setIsSavingResp] = useState(false);
 
     // Fetch existing settings
-    const { data: settings, isLoading } = useQuery({
+    const [selectedType, setSelectedType] = useState('technical');
+    const { data: allSettings, isLoading } = useQuery({
+        queryKey: ['allReportSettings'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('report_settings')
+                .select('*')
+                .order('created_at', { ascending: true });
+            if (error) {
+                console.error('Error fetching settings:', error);
+                return [];
+            }
+            return data || [];
+        }
+    });
+    const settings = resolveReportSettingsByType(allSettings, selectedType);
+    const { data: _legacySettings } = useQuery({ enabled: false,
         queryKey: ['reportSettings'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -221,6 +239,12 @@ export default function SetupReport() {
             }
 
             setCoverBackgroundColor(settings.cover_background_color || '#1e40af');
+            setLogoPreview(settings.logo_url || null);
+            setLogo2Preview(settings.logo2_url || null);
+            setCoverImagePreview(settings.cover_image_url || null);
+            setLogoFile(null);
+            setLogo2File(null);
+            setCoverImageFile(null);
             if (settings.logo_url) {
                 setLogoPreview(settings.logo_url);
             }
@@ -259,7 +283,9 @@ export default function SetupReport() {
             }
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['allReportSettings'] });
             queryClient.invalidateQueries({ queryKey: ['reportSettings'] });
+            queryClient.invalidateQueries({ queryKey: ['fullReport'] });
             alert({ title: 'Sucesso', message: 'Configurações salvas com sucesso!', type: 'success' });
         },
         onError: (error) => {
@@ -409,7 +435,11 @@ export default function SetupReport() {
                 cover_background_color: coverBackgroundColor,
                 cover_image_url: coverImageUrl,
                 comments_orientations_enabled: commentsEnabled,
-                comments_orientations_text: commentsText
+                comments_orientations_text: commentsText,
+                cover_style_config: {
+                    ...(settings?.cover_style_config || {}),
+                    report_type: selectedType
+                }
             });
 
         } catch (error) {
@@ -518,6 +548,62 @@ export default function SetupReport() {
             <div>
                 <h1 className="text-2xl font-bold text-slate-900">Configurações de Relatório</h1>
                 <p className="text-slate-500">Configure o formato e aparência dos relatórios</p>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-blue-50/60 p-4 rounded-lg border border-blue-200">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
+                    <Label className="text-slate-800 font-semibold whitespace-nowrap">Configurando Modelo / Capa:</Label>
+                    <Select value={selectedType} onValueChange={setSelectedType}>
+                        <SelectTrigger className="w-full sm:w-[360px] bg-white border-blue-300 font-medium">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {REPORT_TYPE_OPTIONS.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 bg-white border-blue-200 text-blue-700 hover:bg-blue-50"
+                    onClick={() => {
+                        const otherType = selectedType === 'technical' ? 'laboratory' : 'technical';
+                        const otherSettings = resolveReportSettingsByType(allSettings, otherType);
+                        if (!otherSettings) {
+                            alert({ title: 'Erro', message: 'Configurações do outro modelo não encontradas.', type: 'error' });
+                            return;
+                        }
+
+                        confirm({
+                            title: 'Copiar Configurações',
+                            message: 'Deseja copiar os dados (logos, textos, rodapé e capa) do outro modelo para a tela atual? Você ainda poderá revisar antes de clicar em Salvar.',
+                            type: 'warning',
+                            onConfirm: () => {
+                                setFooterText(otherSettings.footer_text || '');
+                                setReportTitle(otherSettings.report_title || '');
+                                setEmailSubject(otherSettings.email_subject_default || '');
+                                setEmailBody(otherSettings.email_body_default || '');
+                                setCommentsEnabled(otherSettings.comments_orientations_enabled !== false);
+                                setCommentsText(otherSettings.comments_orientations_text || '');
+                                setCoverEnabled(otherSettings.cover_enabled !== false);
+                                setCoverContent(otherSettings.cover_content || '');
+                                setCoverBackgroundColor(otherSettings.cover_background_color || '#1e40af');
+                                setLogoPreview(otherSettings.logo_url || null);
+                                setLogoFile(null);
+                                setLogo2Preview(otherSettings.logo2_url || null);
+                                setLogo2File(null);
+                                setCoverImagePreview(otherSettings.cover_image_url || null);
+                                setCoverImageFile(null);
+                                alert({ title: 'Copiado', message: 'Dados copiados para a tela! Clique em Salvar Configurações para gravar.', type: 'success' });
+                            }
+                        });
+                    }}
+                >
+                    <Copy className="w-4 h-4" /> Copiar configurações do outro modelo
+                </Button>
             </div>
 
             <Tabs defaultValue="general" className="w-full">

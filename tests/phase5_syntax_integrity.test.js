@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import esbuild from 'esbuild';
+import { resolveReportSettingsByType, getVisitReportType, buildVisitReportTypePayload } from '../src/lib/reportTypeUtils.js';
 
 const PROJECT_ROOT = process.cwd();
 
@@ -10,6 +11,7 @@ const DELIVERED_FILES = [
     'migrations_propostas_wga_360.sql',
     'src/lib/fieldMetadataUtils.js',
     'src/lib/labReportMetadataUtils.js',
+    'src/lib/reportTypeUtils.js',
     'src/lib/emailTemplates.js',
     'src/lib/gemini.js',
     'src/hooks/useReportData.js',
@@ -65,4 +67,29 @@ test('Fase 5.2 - Integridade das integrações nos componentes React (Zero Regre
     assert.match(reportPdfContent, /formatGpsForReport/, 'ReportPdf deve exibir geolocalização GPS no PDF');
     assert.match(reportPdfContent, /getWeatherReportLabel/, 'ReportPdf deve exibir fator climático no PDF');
     assert.match(reportPdfContent, /Análise de Laudos Laboratoriais/, 'ReportPdf deve conter seção opcional de Laudos no PDF');
+});
+
+test('Fase 5.3 - Seletor de Capas / Tipo de Relatório (Serviço Técnico vs Serviço Analítico)', () => {
+    const mockDbRows = [
+        { id: 'row-tech', report_title: 'WGA INTEGRA 360', cover_image_url: 'https://example.com/cover-tech.png', current_report_number: 538, highest_emitted_number: 537 },
+        { id: 'row-lab', report_title: 'Relatório de Ensaio Analitico', cover_image_url: 'https://example.com/cover-lab.png', current_report_number: 3, highest_emitted_number: 2 }
+    ];
+
+    const resolvedTech = resolveReportSettingsByType(mockDbRows, 'technical');
+    assert.equal(resolvedTech.id, 'row-tech');
+    assert.equal(resolvedTech.cover_image_url, 'https://example.com/cover-tech.png');
+    assert.equal(resolvedTech.current_report_number, 538);
+
+    const resolvedLab = resolveReportSettingsByType(mockDbRows, 'laboratory');
+    assert.equal(resolvedLab.id, 'row-lab');
+    assert.equal(resolvedLab.cover_image_url, 'https://example.com/cover-lab.png');
+    // Numeração sequencial preservada em 538 mesmo ao trocar para a capa analítica
+    assert.equal(resolvedLab.current_report_number, 538);
+
+    const visitInitial = { id: 'v1', lab_report_comments: 'Parecer validado' };
+    assert.equal(getVisitReportType(visitInitial), 'technical');
+
+    const { safeFallbackPayload } = buildVisitReportTypePayload(visitInitial, 'laboratory');
+    const visitAfterSave = { ...visitInitial, ...safeFallbackPayload };
+    assert.equal(getVisitReportType(visitAfterSave), 'laboratory');
 });

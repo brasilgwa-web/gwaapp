@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Visit, Client, Location, LocationEquipment, TestResult, TestDefinition, Equipment, EquipmentTest, VisitPhoto, User, VisitDosage, VisitEquipmentSample, Product, EquipmentDosageParams, ClientProduct, AnalysisGroupItem, LocationEquipmentTest } from "@/api/entities";
 import { parseSampleRecord } from "@/lib/fieldMetadataUtils";
+import { resolveReportSettingsByType, getVisitReportType } from "@/lib/reportTypeUtils";
 
 export function useReportData(id) {
     return useQuery({
@@ -180,7 +181,13 @@ export function useReportData(id) {
             }).filter(loc => loc.equipments.length > 0);
 
             // Fetch Report Settings (logo, sequential number)
-            const { data: reportSettings } = await supabase
+            // Fetch Report Settings (logo, cover, sequential number) based on visit report type
+            const { data: allReportSettings } = await supabase
+                .from('report_settings')
+                .select('*')
+                .order('created_at', { ascending: true });
+            const reportSettings = resolveReportSettingsByType(allReportSettings, getVisitReportType(visit));
+            const _legacyReportSettings = await supabase
                 .from('report_settings')
                 .select('*')
                 .limit(1)

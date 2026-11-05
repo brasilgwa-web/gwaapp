@@ -28,6 +28,7 @@ import SignaturePad from "./SignaturePad";
 import { ClientContact } from "@/api/entities";
 import { getWeatherReportLabel, formatGpsForReport } from "@/lib/fieldMetadataUtils";
 import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML, renderEmailTemplate } from "@/lib/emailTemplates";
+import { REPORT_TYPE_OPTIONS, getVisitReportType, buildVisitReportTypePayload } from "@/lib/reportTypeUtils";
 
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
@@ -1044,6 +1045,45 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                     </div>
                 )
             }
+
+            {/* Tipo de Relatório / Seletor de Capa (Técnico vs Analítico) */}
+            <Card className="border-blue-200 bg-blue-50/20">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        Tipo de Relatório e Capa
+                    </CardTitle>
+                    <CardDescription>
+                        Selecione o modelo de capa e cabeçalho para esta visita (Relatório de Serviço Técnico em Campo ou Relatório de Serviço Analítico).
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Select
+                        value={getVisitReportType(visit)}
+                        onValueChange={async (val) => {
+                            const { extendedPayload, safeFallbackPayload } = buildVisitReportTypePayload(visit, val);
+                            try {
+                                await Visit.update(visit.id, extendedPayload);
+                            } catch {
+                                await Visit.update(visit.id, safeFallbackPayload);
+                            }
+                            queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
+                            queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] });
+                            if (onUpdateVisit) onUpdateVisit({ ...visit, ...safeFallbackPayload, report_type: val });
+                        }}
+                        disabled={readOnly}
+                    >
+                        <SelectTrigger className="w-full md:w-[440px] bg-white">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {REPORT_TYPE_OPTIONS.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </CardContent>
+            </Card>
 
             {/* 0. Horários */}
             <Card>
