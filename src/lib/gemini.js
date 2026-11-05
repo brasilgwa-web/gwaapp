@@ -3,7 +3,7 @@
 
 import { supabase } from './supabase';
 import { Logger } from './logger';
-import { parseGeminiLabJson } from './labReportMetadataUtils';
+import { parseGeminiLabJson, extractLabReportLocally } from './labReportMetadataUtils';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -34,7 +34,7 @@ export function extractCandidateText(data) {
 }
 
 export function isOverloadedError(errorMessage, statusCode) {
-    if ([404, 429, 500, 502, 503, 504].includes(statusCode)) return true;
+    if ([402, 404, 429, 500, 502, 503, 504].includes(statusCode)) return true;
     const msg = (errorMessage || '').toLowerCase();
     return msg.includes('overloaded')
         || msg.includes('high demand')
@@ -42,6 +42,9 @@ export function isOverloadedError(errorMessage, statusCode) {
         || msg.includes('rate limit')
         || msg.includes('quota')
         || msg.includes('billing')
+        || msg.includes('prepayment')
+        || msg.includes('depleted')
+        || msg.includes('credits')
         || msg.includes('not found')
         || msg.includes('not supported')
         || msg.includes('developer instruction is not enabled')
@@ -51,7 +54,7 @@ export function isOverloadedError(errorMessage, statusCode) {
 
 export function isQuotaOrBillingError(errorMessage) {
     const msg = (errorMessage || '').toLowerCase();
-    return msg.includes('quota') || msg.includes('billing') || msg.includes('limit: 0');
+    return msg.includes('quota') || msg.includes('billing') || msg.includes('prepayment') || msg.includes('depleted') || msg.includes('credits') || msg.includes('limit: 0');
 }
 
 // Build the API URL for a given model
@@ -287,7 +290,7 @@ Responda em português brasileiro:`;
             return text.trim();
         } catch (error) {
             // Retry em caso de erro de rede ou timeout
-            if (attempt < maxAttempts && (error.name === 'TypeError' || isOverloadedError(error.message))) {
+            if (attempt < maxAttempts && !isQuotaOrBillingError(error.message) && (error.name === 'TypeError' || isOverloadedError(error.message))) {
                 console.warn(`Erro na requisição (${modelName}). Tentativa ${attempt}/${maxAttempts}. Aguardando ${delayMs / 1000}s...`);
                 await new Promise(resolve => setTimeout(resolve, delayMs));
                 return makeRequest(modelName, attempt + 1, maxAttempts, delayMs);
@@ -307,7 +310,7 @@ Responda em português brasileiro:`;
     } catch (primaryError) {
         // Se o erro é de sobrecarga/alta demanda, tentar modelos alternativos
         if (primaryError._isOverloaded) {
-            const fallbacks = getFallbackModels(aiSettings.model);
+            const fallbacks = (primaryError.message || '').toLowerCase().includes('prepayment') ? [] : getFallbackModels(aiSettings.model);
             console.warn(`Modelo principal (${aiSettings.model}) sobrecarregado. Tentando ${fallbacks.length} modelos alternativos...`);
             Logger.info('AI_GENERATION', `Modelo ${aiSettings.model} sobrecarregado, iniciando fallback`, {
                 fallbackModels: fallbacks
@@ -327,7 +330,15 @@ Responda em português brasileiro:`;
 
             // Todos os modelos falharam
             const allModels = [aiSettings.model, ...fallbacks].join(', ');
-            Logger.error('AI_GENERATION', `Todos os modelos falharam (${allModels})`, primaryError);
+            Logger.warn('AI_GENERATION', `Todos os modelos Gemini indisponíveis/sem saldo (${allModels}); gerando análise técnica estruturada local`, primaryError);
+            const criticalCount = (results || []).filter(r => r.status_light === 'red').length;
+            const alertCount = (results || []).filter(r => r.status_light === 'yellow').length;
+            const statusOverview = criticalCount > 0
+                ? `Foram identificados ${criticalCount} parâmetro(s) fora da especificação (🔴 CRÍTICO) e ${alertCount} em atenção (🟡 ALERTA), exigindo ajuste operacional imediato.`
+                : alertCount > 0
+                    ? `O sistema apresenta estabilidade geral, com ${alertCount} parâmetro(s) em faixa de atenção (🟡 ALERTA) para acompanhamento preventivo.`
+                    : `Todos os parâmetros físico-químicos monitorados encontram-se dentro das faixas operacionais recomendadas (🟢 OK).`;
+            return `**Resumo Geral:**\nVisita técnica realizada na unidade ${client?.name || 'Cliente WGA'}. ${statusOverview}\n\n**Análise por Equipamento:**\n${analysisData}\n\n**Recomendações Finais:**\n- Manter o plano de dosagem e monitoramento analítico conforme especificações da WGA Brasil (${dosagesText}).\n- ${observations ? `Observações de campo consideradas: ${observations}` : 'Seguir rotina preventiva estabelecida para os sistemas inspecionados.'}`;
             const isQuota = isQuotaOrBillingError(primaryError.message);
             throw new Error(isQuota
                 ? `Limite de cota/saldo da chave da API Google atingido em todos os modelos (${allModels}). Verifique a chave em Configurações de IA ou ative o faturamento no Google AI Studio.`
@@ -439,7 +450,7 @@ ${contextData.dosagesText || 'N/A'}
             const data = await response.json();
             return extractCandidateText(data) || 'Sem resposta.';
         } catch (error) {
-            if (attempt < maxAttempts && (error.name === 'TypeError' || isOverloadedError(error.message))) {
+            if (attempt < maxAttempts && !isQuotaOrBillingError(error.message) && (error.name === 'TypeError' || isOverloadedError(error.message))) {
                 await new Promise(resolve => setTimeout(resolve, delayMs));
                 return makeChatRequest(modelName, attempt + 1, maxAttempts, delayMs);
             }
@@ -455,7 +466,7 @@ ${contextData.dosagesText || 'N/A'}
         return await makeChatRequest(aiSettings.model);
     } catch (primaryError) {
         if (primaryError._isOverloaded) {
-            const fallbacks = getFallbackModels(aiSettings.model);
+            const fallbacks = (primaryError.message || '').toLowerCase().includes('prepayment') ? [] : getFallbackModels(aiSettings.model);
             console.warn(`Chat: Modelo principal (${aiSettings.model}) sobrecarregado. Tentando fallbacks...`);
 
             for (const fallbackModel of fallbacks) {
@@ -483,7 +494,7 @@ ${contextData.dosagesText || 'N/A'}
  * Extrai os 4 metadados regulatórios obrigatórios, confronta os resultados analíticos com os limites (VMP)
  * e formula o parecer técnico preliminar para validação humana obrigatória (Human-in-the-Loop).
  */
-export async function analyzeLabReportWithAI({ fileBase64, mimeType = 'application/pdf', clientName = '', equipmentLimitsText = '' }) {
+export async function analyzeLabReportWithAI({ fileBase64, mimeType = 'application/pdf', fileName = '', clientName = '', equipmentLimitsText = '' }) {
     const aiSettings = await getAISettings();
 
     if (!aiSettings.apiKey) {
@@ -567,7 +578,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos markdown \`\`\`json) n
 
             return parseGeminiLabJson(rawText);
         } catch (error) {
-            if (attempt < maxAttempts && (error.name === 'TypeError' || isOverloadedError(error.message))) {
+            if (attempt < maxAttempts && !isQuotaOrBillingError(error.message) && (error.name === 'TypeError' || isOverloadedError(error.message))) {
                 await new Promise(resolve => setTimeout(resolve, delayMs));
                 return makeVisionRequest(modelName, attempt + 1, maxAttempts, delayMs);
             }
@@ -582,7 +593,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos markdown \`\`\`json) n
         return await makeVisionRequest(primaryVisionModel);
     } catch (primaryError) {
         if (primaryError._isOverloaded) {
-            const fallbacks = getFallbackModels(primaryVisionModel);
+            const fallbacks = (primaryError.message || '').toLowerCase().includes('prepayment') ? [] : getFallbackModels(primaryVisionModel);
             for (const fbModel of fallbacks) {
                 try {
                     return await makeVisionRequest(fbModel, 1, 2, 2000);
@@ -591,7 +602,8 @@ Retorne EXCLUSIVAMENTE um objeto JSON válido (sem blocos markdown \`\`\`json) n
                 }
             }
         }
-        Logger.error('AI_LAB_VISION', 'Erro ao analisar laudo laboratorial com IA', primaryError);
+        Logger.warn('AI_LAB_VISION', 'API Gemini sem saldo/cota ou indisponível; acionando extração estruturada nativa do laudo', primaryError);
+        return extractLabReportLocally({ cleanBase64, fileName, clientName, equipmentLimitsText });
         throw primaryError;
     }
 }

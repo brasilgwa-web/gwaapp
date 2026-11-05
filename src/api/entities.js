@@ -109,6 +109,11 @@ const createAdapter = (tableName, defaultSortField = 'created_at') => ({
         // Assuming 'id' or defaultSortField if not provided. Use defaultSortField from adapter closure.
 
         let sortField = orderBy || defaultSortField;
+        let sortAsc = true;
+        if (typeof sortField === 'string' && sortField.startsWith('-')) {
+            sortField = sortField.substring(1);
+            sortAsc = false;
+        }
         if (sortField === 'created_at' && defaultSortField === 'created_date') {
             sortField = 'created_date';
         }
@@ -122,7 +127,7 @@ const createAdapter = (tableName, defaultSortField = 'created_at') => ({
 
             // We MUST order for range pagination to be stable
             // If orderBy is not provided, use defaultSortField
-            query = query.order(sortField, { ascending: true }); // Default ascending for stability? Or specific?
+            query = query.order(sortField, { ascending: sortAsc });
             // Original code: "We will skip explicit sort unless passed". 
             // Issue: Range pagination WITHOUT sort is unstable in Postgres. 
             // We should enforce sort. 'id' is safest if available, or defaultSortField.

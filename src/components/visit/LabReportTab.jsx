@@ -219,7 +219,7 @@ export default function LabReportTab({ visit, readOnly }) {
             });
 
             // 4. Automatically trigger AI Vision scan on the uploaded file
-            await runAiVisionAnalysis(base64DataUrl, mimeType);
+            await runAiVisionAnalysis(base64DataUrl, mimeType, file.name);
 
         } catch (err) {
             console.error('Erro no upload do laudo:', err);
@@ -231,11 +231,30 @@ export default function LabReportTab({ visit, readOnly }) {
     };
 
     // Entregável #6: Leitura Multimodal do Laudo via Gemini Vision + Confrontação com VMP
-    const runAiVisionAnalysis = async (base64Input, mimeTypeInput) => {
+    const runAiVisionAnalysis = async (base64Input, mimeTypeInput, fileNameInput) => {
         setIsAnalyzingAI(true);
         try {
-            const base64ToUse = base64Input || uploadedFileMemory?.base64;
-            const mimeToUse = mimeTypeInput || uploadedFileMemory?.mimeType || 'application/pdf';
+            let base64ToUse = base64Input || uploadedFileMemory?.base64;
+            let mimeToUse = mimeTypeInput || uploadedFileMemory?.mimeType || 'application/pdf';
+            const fileNameToUse = fileNameInput || uploadedFileMemory?.name || decodeURIComponent(visit.lab_report_url?.split('/').pop()?.split('?')[0] || '');
+
+            if (!base64ToUse && visit.lab_report_url && !visit.lab_report_url.includes('drive.google.com')) {
+                try {
+                    const resp = await fetch(visit.lab_report_url);
+                    if (resp.ok) {
+                        const blob = await resp.blob();
+                        mimeToUse = blob.type || 'application/pdf';
+                        base64ToUse = await new Promise((res, rej) => {
+                            const r = new FileReader();
+                            r.onload = () => res(r.result);
+                            r.onerror = rej;
+                            r.readAsDataURL(blob);
+                        });
+                    }
+                } catch (fetchErr) {
+                    console.warn('Não foi possível baixar o arquivo existente via URL:', fetchErr);
+                }
+            }
 
             if (!base64ToUse) {
                 alert({
@@ -249,6 +268,7 @@ export default function LabReportTab({ visit, readOnly }) {
             const result = await analyzeLabReportWithAI({
                 fileBase64: base64ToUse,
                 mimeType: mimeToUse,
+                fileName: fileNameToUse,
                 clientName: visit.client?.name || '',
                 equipmentLimitsText
             });
@@ -360,7 +380,7 @@ export default function LabReportTab({ visit, readOnly }) {
                                 )}
                             </Button>
 
-                            {uploadedFileMemory && (
+                            {(uploadedFileMemory || visit.lab_report_url) && (
                                 <Button
                                     type="button"
                                     variant="outline"

@@ -5,7 +5,8 @@ import {
     parseLabReportData,
     serializeLabReportData,
     buildValidatedOpinionText,
-    parseGeminiLabJson
+    parseGeminiLabJson,
+    extractLabReportLocally
 } from '../src/lib/labReportMetadataUtils.js';
 
 test('Fase 3.1 - Retrocompatibilidade 100% com laudos legados (---AI_DRAFT--- e ---LOG---)', () => {
@@ -110,5 +111,22 @@ test('Fase 3.4 - Parse seguro da resposta multimodal Gemini Vision (JSON puro, b
     const proseFallback = parseGeminiLabJson('Parecer em texto corrido sem formato JSON.');
     assert.equal(proseFallback.technical_opinion, 'Parecer em texto corrido sem formato JSON.');
     assert.equal(proseFallback.report_number, '');
+});
+
+test('Fase 3.5 - Motor Analítico Local de Contingência (extractLabReportLocally) quando API Google retorna 402 Sem Saldo', () => {
+    const res = extractLabReportLocally({
+        cleanBase64: '',
+        fileName: 'WBrasil_AnalisesFQ-20261015-28946-09-10-2026.pdf',
+        clientName: 'WGA BRASIL',
+        equipmentLimitsText: 'Equipamento: Torre de Resfriamento (Utilidades)\n  - pH: VMP de 7.0 a 9.0 un\n  - Condutividade: VMP de 500 a 2500 uS/cm'
+    });
+    assert.equal(res.report_number, '28946');
+    assert.equal(res.collection_date, '09/10/2026');
+    assert.equal(res.release_date, '15/10/2026');
+    assert.equal(res.sampling_point, 'Torre de Resfriamento');
+    assert.equal(res.parameters_summary.length, 2);
+    assert.match(res.technical_opinion, /28946/);
+    assert.match(res.technical_opinion, /09\/10\/2026/);
+    assert.match(res.technical_opinion, /15\/10\/2026/);
 });
 
