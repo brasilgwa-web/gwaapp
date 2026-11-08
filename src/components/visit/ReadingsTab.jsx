@@ -155,7 +155,14 @@ function WeatherBatchCard({ globalWeatherValue, setGlobalWeatherValue, visitSamp
 }
 
 function EquipmentWeatherTags({ sampleData, readOnly, onChange }) {
-    const { current: eqCur, history: eqHist } = parseWeatherState(sampleData?.weather_condition);
+    const { alert } = useConfirm();
+    const [localCondition, setLocalCondition] = React.useState(sampleData?.weather_condition || null);
+
+    React.useEffect(() => {
+        setLocalCondition(sampleData?.weather_condition || null);
+    }, [sampleData?.weather_condition]);
+
+    const { current: eqCur, history: eqHist } = parseWeatherState(localCondition);
     const isEqComplete = Boolean(eqCur && eqHist);
     const [isEqExpanded, setIsEqExpanded] = React.useState(!isEqComplete);
 
@@ -170,6 +177,7 @@ function EquipmentWeatherTags({ sampleData, readOnly, onChange }) {
         const nextCur = type === 'current' ? (eqCur === value ? null : value) : eqCur;
         const nextHist = type === 'history' ? (eqHist === value ? null : value) : eqHist;
         const nextVal = buildWeatherConditionValue(nextCur, nextHist);
+        setLocalCondition(nextVal);
         onChange(nextVal);
         if (nextCur && nextHist) {
             setIsEqExpanded(false);
@@ -197,9 +205,33 @@ function EquipmentWeatherTags({ sampleData, readOnly, onChange }) {
         );
     }
 
+    const handleManualCollapse = () => {
+        if (!isEqComplete) {
+            alert({
+                title: 'Fator Climático Obrigatório',
+                message: 'Selecione tanto "1. Clima no momento da medição" quanto "2. Histórico de chuvas recentes" antes de recolher.',
+                type: 'warning'
+            });
+            return;
+        }
+        setIsEqExpanded(false);
+    };
+
     return (
-        <div className="space-y-1.5 bg-white/90 p-2 rounded-lg border border-amber-300">
-            <div className="flex flex-wrap gap-1">
+        <div className={`space-y-2 bg-white/95 p-2.5 rounded-lg border ${isEqComplete ? 'border-blue-200' : 'border-amber-300'}`}>
+            <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100">
+                <span className="text-[11px] font-bold text-slate-700">
+                    1. Clima no momento da medição <span className="text-red-600">*</span>
+                </span>
+                <button
+                    type="button"
+                    onClick={handleManualCollapse}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200"
+                >
+                    Recolher <ChevronUp className="w-3 h-3" />
+                </button>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
                 {CURRENT_WEATHER_OPTIONS.map(opt => (
                     <button
                         key={opt.value}
@@ -216,7 +248,11 @@ function EquipmentWeatherTags({ sampleData, readOnly, onChange }) {
                     </button>
                 ))}
             </div>
-            <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-100">
+            <div className="pt-1.5 border-t border-slate-100 space-y-1.5">
+                <span className="text-[11px] font-bold text-slate-700 block">
+                    2. Histórico de chuvas recentes <span className="text-red-600">*</span>
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {RAIN_HISTORY_OPTIONS.map(opt => (
                     <button
                         key={opt.value}
@@ -232,6 +268,7 @@ function EquipmentWeatherTags({ sampleData, readOnly, onChange }) {
                         {opt.shortLabel}
                     </button>
                 ))}
+                </div>
             </div>
         </div>
     );
