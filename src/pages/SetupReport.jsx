@@ -174,7 +174,10 @@ export default function SetupReport() {
             return data || [];
         }
     });
-    const settings = resolveReportSettingsByType(allSettings, selectedType);
+    const settings = React.useMemo(
+        () => resolveReportSettingsByType(allSettings, selectedType),
+        [allSettings, selectedType]
+    );
     const { data: _legacySettings } = useQuery({ enabled: false,
         queryKey: ['reportSettings'],
         queryFn: async () => {
@@ -256,7 +259,7 @@ export default function SetupReport() {
                 setCoverImagePreview(settings.cover_image_url);
             }
         }
-    }, [settings]);
+    }, [settings?.id, settings?.updated_at, selectedType]);
 
     // Save mutation
     const saveMutation = useMutation({
