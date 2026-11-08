@@ -1,47 +1,83 @@
 // Template Oficial Corporativo WGA Integra 360 (Entregável #4)
+// Layout de 2 Colunas (Logo WGA Brasil Integra 360 à esquerda + Conteúdo e Botão ACESSAR RELATÓRIO à direita)
 // Suporta variáveis dinâmicas com 100% de retrocompatibilidade:
-// {client_name}, {date}, {link}, {report_number}, {technician_name}, {lab_link}
+// {client_name}, {date}, {link}, {report_number}, {technician_name}, {lab_link}, {logo_url}
+
+export const DEFAULT_WGA_LOGO_URL = 'https://gwaapp.vercel.app/icon.png';
 
 export const WGA_INTEGRA_360_EMAIL_SUBJECT = 'Relatório Técnico WGA Integra 360 - {client_name} ({date})';
 
-export const WGA_INTEGRA_360_EMAIL_HTML = `<div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 640px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #1e293b;">
-  <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%); padding: 24px 28px; color: #ffffff;">
-    <div style="font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.85; margin-bottom: 4px;">WGA BRASIL • TRATAMENTO DE ÁGUAS</div>
-    <h1 style="margin: 0; font-size: 20px; font-weight: 700;">Relatório Técnico — WGA Integra 360</h1>
-  </div>
-  <div style="padding: 28px;">
-    <p style="margin-top: 0; font-size: 14px; line-height: 1.6;">Olá, <strong>{client_name}</strong>,</p>
-    <p style="font-size: 14px; line-height: 1.6; color: #334155;">
-      Informamos que o atendimento técnico em campo foi concluído e o seu <strong>Relatório de Atendimento Técnico</strong> já está disponível para consulta e download na plataforma <strong>WGA Integra 360</strong>.
-    </p>
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px;">
-      <tr>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; color: #64748b; width: 40%;">Relatório Nº</td>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">{report_number}</td>
-      </tr>
-      <tr>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; color: #64748b;">Data da Visita</td>
-        <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #0f172a;">{date}</td>
-      </tr>
-      <tr>
-        <td style="padding: 10px 14px; color: #64748b;">Responsável pelo Atendimento</td>
-        <td style="padding: 10px 14px; font-weight: 600; color: #0f172a;">{technician_name}</td>
-      </tr>
-    </table>
-    <div style="text-align: center; margin: 28px 0;">
-      <a href="{link}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #1d4ed8; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; padding: 12px 28px; border-radius: 6px;">
-        Acessar Relatório Técnico (PDF)
-      </a>
-    </div>
-    <p style="font-size: 12px; line-height: 1.5; color: #64748b; margin-top: 20px;">
-      Em caso de dúvidas técnicas ou necessidade de esclarecimentos adicionais sobre os parâmetros monitorados e recomendações operacionais, nossa equipe de engenharia permanece à disposição.
-    </p>
-  </div>
-  <div style="background-color: #f1f5f9; padding: 16px 28px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b; text-align: center;">
-    <strong>WGA Brasil Tratamento de Águas</strong> • Sistema WGA Integra 360<br/>
-    atendimento@wgabrasil.com.br • (11) 9.6348-9922
-  </div>
+export const WGA_INTEGRA_360_EMAIL_HTML = `<div style="font-family: Arial, Helvetica, sans-serif; max-width: 680px; margin: 0 auto; background-color: #ffffff; color: #222222;" data-wga-template="integra-360-v2" data-client="{client_name}" data-date="{date}" data-report="{report_number}" data-technician="{technician_name}">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; width: 100%; max-width: 680px; background-color: #ffffff;">
+    <tr>
+      <td width="175" valign="top" style="width: 175px; vertical-align: top; padding: 28px 16px; border: 1px solid #dbeafe; border-right: 3px solid #286fb4; text-align: center; background-color: #ffffff;">
+        <img src="{logo_url}" alt="WGA Brasil Integra 360" width="145" style="max-width: 145px; width: 100%; height: auto; display: block; margin: 0 auto; border: 0;" />
+      </td>
+      <td valign="top" style="vertical-align: top; padding: 12px 24px 16px 24px; font-family: Arial, Helvetica, sans-serif;">
+        <h1 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: #555555; font-family: Arial, Helvetica, sans-serif; text-transform: uppercase; letter-spacing: 0.2px;">
+          APP WGA INTEGRA
+        </h1>
+        <div style="margin: 0 0 12px 0; font-size: 15px; font-weight: 700; color: #286fb4; line-height: 1.35; font-family: Arial, Helvetica, sans-serif;">
+          Plataforma Digital de Assistência Técnica e Relatórios de Ensaios analíticos
+        </div>
+        <p style="margin: 0 0 18px 0; font-size: 13.5px; color: #111111; line-height: 1.48; font-family: Arial, Helvetica, sans-serif;">
+          Relatórios técnicos, registros de campo e monitoramento operacional são disponibilizados através do APP WGA, permitindo rastreabilidade, transparência e acompanhamento das atividades realizadas em campo.
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; margin: 0 0 22px 0;">
+          <tr>
+            <td align="center" bgcolor="#286fb4" style="background-color: #286fb4; padding: 14px 20px; text-align: center;">
+              <a href="{link}" target="_blank" rel="noopener noreferrer" style="display: block; width: 100%; color: #ffffff; font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; text-decoration: none; text-transform: uppercase; letter-spacing: 0.4px;">
+                ACESSAR RELATÓRIO
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin: 0 0 12px 0; font-size: 12.5px; color: #555555; line-height: 1.45; font-family: Arial, Helvetica, sans-serif;">
+          &#9888;&#65039; Havendo dificuldades no acesso ao relatório, entre em contato com nosso suporte técnico:
+        </p>
+        <div style="margin: 0 0 12px 0; font-size: 13.5px; line-height: 1.75; color: #286fb4; font-family: Arial, Helvetica, sans-serif;">
+          <div>&#9993; <a href="mailto:suporte@wgabrasil.com.br" style="color: #286fb4; text-decoration: none;">suporte@wgabrasil.com.br</a></div>
+          <div>&#9993; <a href="mailto:atendimento@wgabrasil.com.br" style="color: #286fb4; text-decoration: none;">atendimento@wgabrasil.com.br</a></div>
+          <div>&#9742; WhatsApp: +55 (11) 9.6348-9922</div>
+          <div style="padding-left: 20px;">
+            <a href="https://www.wgabrasil.com.br" target="_blank" rel="noopener noreferrer" style="color: #0000ee; text-decoration: underline;">www.wgabrasil.com.br</a>
+          </div>
+        </div>
+        <p style="margin: 12px 0 14px 0; font-size: 12.5px; color: #555555; line-height: 1.4; font-family: Arial, Helvetica, sans-serif;">
+          Ou entre em contato diretamente com nosso time de atendimento a clientes.
+        </p>
+        <p style="margin: 0; font-size: 11px; color: #666666; line-height: 1.4; font-family: Arial, Helvetica, sans-serif;">
+          WGA Brasil. &bull; Gestão em processos &bull; Consultoria Ambiental e Energética em Sistemas de Águas e Processos Industriais
+        </p>
+      </td>
+    </tr>
+  </table>
 </div>`;
+
+/**
+ * Detecta se um template salvo no banco é vazio, legado simples ou a versão v1 (coluna única)
+ * ou se foi desconfigurado pelo RichTextEditor (sem a estrutura de 2 colunas),
+ * retornando o template oficial WGA Integra 360 de 2 colunas atualizado.
+ */
+export function resolveEmailBodyTemplate(savedBody) {
+    if (!savedBody || typeof savedBody !== 'string' || !savedBody.trim()) {
+        return WGA_INTEGRA_360_EMAIL_HTML;
+    }
+    const trimmed = savedBody.trim();
+    // Se já contém o template v2 de 2 colunas intacto
+    if (trimmed.includes('data-wga-template="integra-360-v2"') && trimmed.includes('<table')) {
+        return trimmed;
+    }
+    // Se é o template v1 antigo (coluna única com gradiente) ou foi corrompido pelo TipTap (contém APP WGA INTEGRA mas perdeu <table>)
+    if (
+        trimmed.includes('Relatório Técnico — WGA Integra 360') ||
+        (trimmed.includes('APP WGA INTEGRA') && !trimmed.includes('<table')) ||
+        trimmed.includes('Segue abaixo o link para o relatório da visita técnica')
+    ) {
+        return WGA_INTEGRA_360_EMAIL_HTML;
+    }
+    return trimmed;
+}
 
 /**
  * Substitui de forma segura todas as variáveis dinâmicas suportadas pelo template de email.
@@ -55,7 +91,8 @@ export function renderEmailTemplate(templateStr, vars = {}) {
         link: vars.link || '#',
         report_number: vars.report_number || '-',
         technician_name: vars.technician_name || 'Equipe Técnica WGA Brasil',
-        lab_link: vars.lab_link || vars.link || '#'
+        lab_link: vars.lab_link || vars.link || '#',
+        logo_url: vars.logo_url || DEFAULT_WGA_LOGO_URL
     };
 
     return templateStr
@@ -64,7 +101,8 @@ export function renderEmailTemplate(templateStr, vars = {}) {
         .replace(/\{link\}/g, safeVars.link)
         .replace(/\{report_number\}/g, safeVars.report_number)
         .replace(/\{technician_name\}/g, safeVars.technician_name)
-        .replace(/\{lab_link\}/g, safeVars.lab_link);
+        .replace(/\{lab_link\}/g, safeVars.lab_link)
+        .replace(/\{logo_url\}/g, safeVars.logo_url);
 }
 
 /**
@@ -79,4 +117,3 @@ export function formatEmailHtmlBody(bodyStr) {
     }
     return bodyStr.replace(/\n/g, '<br>');
 }
-

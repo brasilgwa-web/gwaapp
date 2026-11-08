@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import SignaturePad from "./SignaturePad";
 import { ClientContact } from "@/api/entities";
 import { getWeatherReportLabel, formatGpsForReport, isWeatherComplete } from "@/lib/fieldMetadataUtils";
-import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML, renderEmailTemplate } from "@/lib/emailTemplates";
+import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML, renderEmailTemplate, resolveEmailBodyTemplate } from "@/lib/emailTemplates";
 import { REPORT_TYPE_OPTIONS, getVisitReportType, buildVisitReportTypePayload } from "@/lib/reportTypeUtils";
 
 
@@ -872,7 +872,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
             // Dynamic Email Template (WGA Integra 360 Official Template as default fallback)
             let subjectTemplate = reportSettings?.email_subject_default || WGA_INTEGRA_360_EMAIL_SUBJECT;
-            let bodyTemplate = reportSettings?.email_body_default || WGA_INTEGRA_360_EMAIL_HTML;
+            let bodyTemplate = resolveEmailBodyTemplate(reportSettings?.email_body_default);
             const computedReportNumber = visit.report_number || `${format(safeDate, 'yyMM')}-${String(reportSettings?.current_report_number || 1).padStart(6, '0')}`;
             const computedTechName = reportData?.technicianUser?.full_name || user?.full_name || visit.technician_email || 'Equipe Técnica WGA Brasil';
             const emailVars = {
@@ -881,7 +881,8 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 link: driveLink || '#',
                 report_number: computedReportNumber,
                 technician_name: computedTechName,
-                lab_link: visit.lab_report_url || driveLink || '#'
+                lab_link: visit.lab_report_url || driveLink || '#',
+                logo_url: reportSettings?.logo_url || undefined
             };
             const emailSubject = renderEmailTemplate(subjectTemplate, emailVars);
             const emailBody = renderEmailTemplate(bodyTemplate, emailVars);

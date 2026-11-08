@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { useConfirm } from "@/context/ConfirmContext";
 import { format } from "date-fns";
 import SignaturePad from "@/components/visit/SignaturePad";
-import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML } from "@/lib/emailTemplates";
+import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML, renderEmailTemplate, resolveEmailBodyTemplate } from "@/lib/emailTemplates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { REPORT_TYPE_OPTIONS, resolveReportSettingsByType } from "@/lib/reportTypeUtils";
 
@@ -210,9 +210,9 @@ export default function SetupReport() {
             setInitialNumber(settings.current_report_number?.toString() || '1');
             setFooterText(settings.footer_text || '');
             setReportTitle(settings.report_title || '');
-            setEmailSubject(settings.email_subject_default || 'Relatório de Visita Técnica - {client_name} - {date}');
+            setEmailSubject(settings.email_subject_default || WGA_INTEGRA_360_EMAIL_SUBJECT);
 
-            setEmailBody(settings.email_body_default || '');
+            setEmailBody(resolveEmailBodyTemplate(settings.email_body_default));
 
             // Comments/Orientations settings
             setCommentsEnabled(settings.comments_orientations_enabled !== false);
@@ -898,14 +898,15 @@ export default function SetupReport() {
                                     <li><code>{'{report_number}'}</code> - Número do Relatório Técnico</li>
                                     <li><code>{'{technician_name}'}</code> - Nome do Técnico Responsável</li>
                                     <li><code>{'{lab_link}'}</code> - Link do Laudo Laboratorial (se anexado)</li>
+                                    <li><code>{'{logo_url}'}</code> - URL do Logo Oficial WGA Brasil</li>
                                 </ul>
                             </div>
 
                             <div className="space-y-2">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-indigo-50/70 p-3 rounded-md border border-indigo-200">
                                 <div>
-                                    <span className="text-xs font-semibold text-indigo-900 block">Template Oficial Corporativo — WGA Integra 360</span>
-                                    <span className="text-[11px] text-indigo-700">Aplica o layout HTML corporativo homologado com quadro resumo da visita e botão de acesso rápido.</span>
+                                    <span className="text-xs font-semibold text-indigo-900 block">Template Oficial Corporativo — APP WGA INTEGRA 360 (Layout 2 Colunas)</span>
+                                    <span className="text-[11px] text-indigo-700">Aplica o layout HTML corporativo homologado com logo lateral WGA Brasil Integra 360 e botão ACESSAR RELATÓRIO.</span>
                                 </div>
                                 <Button
                                     type="button"
@@ -917,7 +918,7 @@ export default function SetupReport() {
                                         setEmailBody(WGA_INTEGRA_360_EMAIL_HTML);
                                     }}
                                 >
-                                    Aplicar Template Oficial WGA Integra 360
+                                    Restaurar Template Oficial WGA Integra 360
                                 </Button>
                             </div>
                                 <Label htmlFor="emailSubject">Assunto do Email</Label>
@@ -929,17 +930,36 @@ export default function SetupReport() {
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="emailBody">Corpo do Email</Label>
-                                <div className="text-xs text-slate-500 mb-1">
-                                    Use o editor para formatar o email. Variáveis dinâmicas: <code className="bg-slate-100 px-1 rounded">{'{client_name}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{date}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{link}'}</code>
+                            <div className="space-y-3">
+                                <Label htmlFor="emailBody">Pré-visualização do E-mail (Como o cliente receberá)</Label>
+                                <div className="border border-slate-200 rounded-lg p-4 bg-white shadow-sm overflow-x-auto">
+                                    <div
+                                        dangerouslySetInnerHTML={{
+                                            __html: renderEmailTemplate(emailBody || WGA_INTEGRA_360_EMAIL_HTML, {
+                                                client_name: 'Cliente Exemplo Ltda',
+                                                date: format(new Date(), 'dd/MM/yyyy'),
+                                                link: '#preview-relatorio',
+                                                report_number: previewNumber,
+                                                technician_name: 'Equipe Técnica WGA Brasil',
+                                                logo_url: logoPreview || settings?.logo_url
+                                            })
+                                        }}
+                                    />
                                 </div>
-                                <RichTextEditor
-                                    value={emailBody}
-                                    onChange={setEmailBody}
-                                    placeholder="<div><h1>Seu Relatório</h1><p>Prezado cliente...</p></div>"
-                                    minHeight="300px"
-                                />
+
+                                <div className="space-y-1.5 pt-2">
+                                    <Label htmlFor="emailBodyHtml" className="text-xs text-slate-600">
+                                        Código HTML do Template (edite textos ou variáveis preservando o layout de 2 colunas)
+                                    </Label>
+                                    <Textarea
+                                        id="emailBodyHtml"
+                                        value={emailBody}
+                                        onChange={(e) => setEmailBody(e.target.value)}
+                                        rows={10}
+                                        className="font-mono text-xs bg-slate-50"
+                                        placeholder="Cole ou edite o HTML do template de e-mail..."
+                                    />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
