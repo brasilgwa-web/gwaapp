@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
     WEATHER_OPTIONS,
+    CURRENT_WEATHER_OPTIONS,
+    RAIN_HISTORY_OPTIONS,
+    parseWeatherState,
+    buildWeatherConditionValue,
     parseSampleRecord,
     serializeSampleWithMeta,
     getWeatherReportLabel,
@@ -89,5 +93,20 @@ test('Fase 2: Dual-Layer Serialization & Parsing (Fallback transparente em compl
     assert.equal(parsed.gps_longitude, -46.633308);
     assert.equal(parsed.gps_accuracy, 5);
     assert.equal(formatGpsForReport(parsed), '-23.550520, -46.633308 (Precisão: ±5m)');
+});
+
+test('Fase 2.1: Segmented Controls (Clima Atual + Histórico de Chuvas) — codificação, parse e rótulo de relatório', () => {
+    assert.equal(CURRENT_WEATHER_OPTIONS.length, 4);
+    assert.equal(RAIN_HISTORY_OPTIONS.length, 3);
+
+    const combined = buildWeatherConditionValue('sunny', 'rain_24h');
+    assert.equal(combined, 'sunny|rain_24h');
+
+    const state = parseWeatherState(combined);
+    assert.equal(state.current, 'sunny');
+    assert.equal(state.history, 'rain_24h');
+
+    const label = getWeatherReportLabel(combined);
+    assert.equal(label, 'Ensolarado | Chuva Recente: Últimas 24h');
 });
 

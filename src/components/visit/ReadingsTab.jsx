@@ -9,9 +9,153 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { WEATHER_OPTIONS, parseSampleRecord, serializeSampleWithMeta, formatGpsForReport } from "@/lib/fieldMetadataUtils";
+import { WEATHER_OPTIONS, CURRENT_WEATHER_OPTIONS, RAIN_HISTORY_OPTIONS, parseWeatherState, buildWeatherConditionValue, getWeatherReportLabel, parseSampleRecord, serializeSampleWithMeta, formatGpsForReport } from "@/lib/fieldMetadataUtils";
 
 import { supabase } from "@/lib/supabase";
+
+function WeatherBatchCard({ globalWeatherValue, setGlobalWeatherValue, visitSamples, applyWeatherToAllMutation, weatherAppliedNotice }) {
+    const firstSavedWeather = visitSamples?.map(s => parseSampleRecord(s)?.weather_condition).find(Boolean);
+    const activeWeatherRaw = globalWeatherValue !== 'none' ? globalWeatherValue : (firstSavedWeather || null);
+    const { current: activeCurrent, history: activeHistory } = parseWeatherState(activeWeatherRaw);
+    const activeSummary = getWeatherReportLabel(activeWeatherRaw);
+
+    const handleGlobalTagClick = (type, value) => {
+        const nextCur = type === 'current' ? (activeCurrent === value ? null : value) : activeCurrent;
+        const nextHist = type === 'history' ? (activeHistory === value ? null : value) : activeHistory;
+        const nextCombined = buildWeatherConditionValue(nextCur, nextHist) || 'none';
+        setGlobalWeatherValue(nextCombined);
+        applyWeatherToAllMutation.mutate(nextCombined);
+    };
+
+    return (
+        <div className="bg-blue-50/90 border border-blue-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-blue-100/70 border-b border-blue-200">
+                <div className="flex items-center gap-2">
+                    <CloudRain className="w-4 h-4 text-blue-700 shrink-0" />
+                    <span className="text-xs sm:text-sm font-bold text-blue-950">
+                        🌤️ Indicador de Chuva / Fator Climático (Aplicar a Todos os Testes)
+                    </span>
+                </div>
+                <div className="flex items-center gap-2">
+                    {activeSummary && (
+                        <span className="text-[11px] font-medium text-blue-800 bg-white/90 border border-blue-200 px-2 py-0.5 rounded-full">
+                            {activeSummary}
+                        </span>
+                    )}
+                    {weatherAppliedNotice && (
+                        <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                            ✓ Aplicado a todos!
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <div className="p-3.5 space-y-3">
+                <div className="space-y-1.5">
+                    <span className="text-xs font-semibold text-slate-700 block">
+                        1. Clima Atual <span className="font-normal text-slate-500">(Como está o clima no MOMENTO da coleta?)</span>
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {CURRENT_WEATHER_OPTIONS.map(opt => {
+                            const isSelected = activeCurrent === opt.value;
+                            return (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    disabled={applyWeatherToAllMutation.isPending}
+                                    onClick={() => handleGlobalTagClick('current', opt.value)}
+                                    className={`min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border transition-all flex items-center justify-center text-center select-none active:scale-[0.98] ${
+                                        isSelected
+                                            ? 'bg-blue-600 text-white border-blue-700 shadow-sm ring-2 ring-blue-300'
+                                            : 'bg-white text-slate-700 border-slate-300 hover:bg-blue-50 hover:border-blue-300'
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-blue-100">
+                    <span className="text-xs font-semibold text-slate-700 block">
+                        2. Histórico de Chuvas <span className="font-normal text-slate-500">(Houve chuva RECENTE na região?)</span>
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {RAIN_HISTORY_OPTIONS.map(opt => {
+                            const isSelected = activeHistory === opt.value;
+                            return (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    disabled={applyWeatherToAllMutation.isPending}
+                                    onClick={() => handleGlobalTagClick('history', opt.value)}
+                                    className={`min-h-[40px] px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold border transition-all flex items-center justify-center text-center select-none active:scale-[0.98] ${
+                                        isSelected
+                                            ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm ring-2 ring-indigo-300'
+                                            : 'bg-white text-slate-700 border-slate-300 hover:bg-indigo-50 hover:border-indigo-300'
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function EquipmentWeatherTags({ sampleData, readOnly, onChange }) {
+    const { current: eqCur, history: eqHist } = parseWeatherState(sampleData?.weather_condition);
+    const handleEqTagClick = (type, value) => {
+        if (readOnly) return;
+        const nextCur = type === 'current' ? (eqCur === value ? null : value) : eqCur;
+        const nextHist = type === 'history' ? (eqHist === value ? null : value) : eqHist;
+        const nextVal = buildWeatherConditionValue(nextCur, nextHist);
+        onChange(nextVal);
+    };
+
+    return (
+        <div className="space-y-1.5 bg-white/90 p-2 rounded-lg border border-blue-200">
+            <div className="flex flex-wrap gap-1">
+                {CURRENT_WEATHER_OPTIONS.map(opt => (
+                    <button
+                        key={opt.value}
+                        type="button"
+                        disabled={readOnly}
+                        onClick={() => handleEqTagClick('current', opt.value)}
+                        className={`px-2 py-1 rounded text-[11px] font-medium border transition-all ${
+                            eqCur === opt.value
+                                ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50'
+                        }`}
+                    >
+                        {opt.shortLabel}
+                    </button>
+                ))}
+            </div>
+            <div className="flex flex-wrap gap-1 pt-1 border-t border-slate-100">
+                {RAIN_HISTORY_OPTIONS.map(opt => (
+                    <button
+                        key={opt.value}
+                        type="button"
+                        disabled={readOnly}
+                        onClick={() => handleEqTagClick('history', opt.value)}
+                        className={`px-2 py-1 rounded text-[11px] font-medium border transition-all ${
+                            eqHist === opt.value
+                                ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50'
+                        }`}
+                    >
+                        {opt.shortLabel}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export default function ReadingsTab({ visit, readOnly }) {
     if (!visit) return null;
@@ -541,7 +685,10 @@ export default function ReadingsTab({ visit, readOnly }) {
         <div className="space-y-6 pb-20">
             {/* Toolbar */}
             {!readOnly && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-blue-50/90 border border-blue-200 px-3 py-2 rounded-lg shadow-sm">
+                <WeatherBatchCard globalWeatherValue={globalWeatherValue} setGlobalWeatherValue={setGlobalWeatherValue} visitSamples={visitSamples} applyWeatherToAllMutation={applyWeatherToAllMutation} weatherAppliedNotice={weatherAppliedNotice} />
+            )}
+            {false && (
+                <div className="hidden">
                     <div className="flex items-center gap-2">
                         <CloudRain className="w-4 h-4 text-blue-600 shrink-0" />
                         <div>
@@ -651,7 +798,8 @@ export default function ReadingsTab({ visit, readOnly }) {
                                                     value={sampleData?.weather_condition || "none"}
                                                     onValueChange={(val) => handleSampleChange(equipment.uniqueId, 'weather_condition', val === 'none' ? null : val)}
                                                 >
-                                                    <SelectTrigger className="h-8 bg-white text-xs">
+                                                <EquipmentWeatherTags sampleData={sampleData} readOnly={readOnly} onChange={(val) => handleSampleChange(equipment.uniqueId, 'weather_condition', val)} />
+                                                <SelectTrigger className="hidden">
                                                         <SelectValue placeholder="Condição climática..." />
                                                     </SelectTrigger>
                                                     <SelectContent>

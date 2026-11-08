@@ -9,6 +9,59 @@ export const WEATHER_OPTIONS = [
     { value: 'post_rain', label: '💧 Pós-Chuva (Influência Pluvial)', reportLabel: 'Pós-Chuva (Influência Pluvial)' },
 ];
 
+// Segmented Controls / Quick-Tap Tags para dispositivos móveis em campo (2 dimensões: Clima Atual + Histórico de Chuvas)
+export const CURRENT_WEATHER_OPTIONS = [
+    { value: 'sunny', label: '☀️ Ensolarado', shortLabel: '☀️ Ensolarado', reportLabel: 'Ensolarado' },
+    { value: 'cloudy', label: '☁️ Nublado', shortLabel: '☁️ Nublado', reportLabel: 'Nublado' },
+    { value: 'light_rain', label: '🌧️ Chuva Leve', shortLabel: '🌧️ Chovendo Leve', reportLabel: 'Chuva Leve' },
+    { value: 'heavy_rain', label: '⛈️ Chuva Forte/T.', shortLabel: '⛈️ Tempestade', reportLabel: 'Chuva Forte / Tempestade' },
+];
+
+export const RAIN_HISTORY_OPTIONS = [
+    { value: 'no_rain', label: '❌ Não Choveu', shortLabel: '❌ Não choveu', reportLabel: 'Não Choveu' },
+    { value: 'rain_24h', label: '⏱️ Últimas 24h', shortLabel: '⏱️ Últimas 24h', reportLabel: 'Últimas 24h' },
+    { value: 'rain_24_48h', label: '⏳ Histórico Recente (24h a 48h)', shortLabel: '⏳ De 24h a 48h atrás', reportLabel: 'Recente (24h a 48h)' },
+];
+
+/**
+ * Converte o valor salvo em `weather_condition` (novo formato `current|history` ou legado)
+ * em um objeto `{ current, history }` para os botões de seleção rápida (Segmented Controls).
+ */
+export function parseWeatherState(weatherCondition) {
+    if (!weatherCondition || weatherCondition === 'none') {
+        return { current: null, history: null };
+    }
+    const raw = String(weatherCondition).trim();
+    if (raw.includes('|')) {
+        const [cur, hist] = raw.split('|');
+        return {
+            current: cur || null,
+            history: hist || null
+        };
+    }
+    // Retrocompatibilidade com valores legados de 1 dimensão
+    if (raw === 'post_rain') {
+        return { current: null, history: 'rain_24_48h' };
+    }
+    if (CURRENT_WEATHER_OPTIONS.some(o => o.value === raw)) {
+        return { current: raw, history: null };
+    }
+    if (RAIN_HISTORY_OPTIONS.some(o => o.value === raw)) {
+        return { current: null, history: raw };
+    }
+    return { current: null, history: null };
+}
+
+/**
+ * Codifica `{ current, history }` em uma string `current|history` compatível com a coluna `weather_condition` e Dual-Layer.
+ */
+export function buildWeatherConditionValue(current, history) {
+    const c = current && current !== 'none' ? current : '';
+    const h = history && history !== 'none' ? history : '';
+    if (!c && !h) return null;
+    return `${c}|${h}`;
+}
+
 const META_MARKER = '[[WGA_META:';
 const META_END = ']]';
 
@@ -105,8 +158,25 @@ export function serializeSampleWithMeta(cleanComplementaryInfo, meta = {}) {
  */
 export function getWeatherReportLabel(weatherCondition) {
     if (!weatherCondition || weatherCondition === 'none') return null;
-    const found = WEATHER_OPTIONS.find(o => o.value === weatherCondition);
-    return found ? found.reportLabel : weatherCondition;
+    const raw = String(weatherCondition).trim();
+    if (raw.includes('|')) {
+        const { current, history } = parseWeatherState(raw);
+        const curOpt = CURRENT_WEATHER_OPTIONS.find(o => o.value === current);
+        const histOpt = RAIN_HISTORY_OPTIONS.find(o => o.value === history);
+        if (curOpt && histOpt) {
+            return `${curOpt.reportLabel} | Chuva Recente: ${histOpt.reportLabel}`;
+        }
+        if (curOpt) return curOpt.reportLabel;
+        if (histOpt) return `Chuva Recente: ${histOpt.reportLabel}`;
+        return null;
+    }
+    const found = WEATHER_OPTIONS.find(o => o.value === raw);
+    if (found) return found.reportLabel;
+    const foundCur = CURRENT_WEATHER_OPTIONS.find(o => o.value === raw);
+    if (foundCur) return foundCur.reportLabel;
+    const foundHist = RAIN_HISTORY_OPTIONS.find(o => o.value === raw);
+    if (foundHist) return `Chuva Recente: ${foundHist.reportLabel}`;
+    return raw;
 }
 
 /**
