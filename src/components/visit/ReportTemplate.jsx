@@ -520,8 +520,8 @@ export function ReportTemplate({ data }) {
                     </div>
                 </section>
 
-                {/* 4.1 Análise de Laudos Laboratoriais (Opcional quando validado/preenchido) */}
-                {(() => {
+                {/* 4.1 Análise de Laudos Laboratoriais (Desativado em staging até definição das regras de negócio) */}
+                {false && (() => {
                     const labParsed = parseLabReportData(visit);
                     if (!labParsed.comments || !labParsed.comments.trim() || labParsed.metadata?.include_in_report === false) {
                         return null;

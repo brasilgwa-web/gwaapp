@@ -884,8 +884,8 @@ const ReportPdf = ({ data, settings }) => {
                     </View>
                 </View>
 
-                {/* --- LAB REPORT ANALYSIS (Optional when validated/filled) --- */}
-                {(() => {
+                {/* --- LAB REPORT ANALYSIS (Desativado em staging até definição das regras de negócio) --- */}
+                {false && (() => {
                     const labParsed = parseLabReportData(visit);
                     if (!labParsed.comments || !labParsed.comments.trim() || labParsed.metadata?.include_in_report === false) {
                         return null;

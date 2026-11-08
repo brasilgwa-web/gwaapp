@@ -49,9 +49,8 @@ test('Fase 5.2 - Integridade das integrações nos componentes React (Zero Regre
     assert.match(readingsContent, /navigator\.geolocation/, 'ReadingsTab deve utilizar a API Geolocation');
 
     const labTabContent = fs.readFileSync(path.join(PROJECT_ROOT, 'src/components/visit/LabReportTab.jsx'), 'utf-8');
-    assert.match(labTabContent, /analyzeLabReportWithAI/, 'LabReportTab deve integrar leitura multimodal Gemini Vision');
-    assert.match(labTabContent, /Validar e Incluir nos Comentários/, 'LabReportTab deve conter botão de validação técnica formal');
-    assert.match(labTabContent, /Histórico de Laudos do Cliente/, 'LabReportTab deve exibir histórico de laudos do cliente');
+    assert.match(labTabContent, /Laudo do Laboratório/, 'LabReportTab deve manter tela original de Laudo do Laboratório');
+    assert.match(labTabContent, /Comentários Complementares/, 'LabReportTab deve manter Comentários Complementares');
 
     const geminiContent = fs.readFileSync(path.join(PROJECT_ROOT, 'src/lib/gemini.js'), 'utf-8');
     assert.match(geminiContent, /export async function generateTechnicalAnalysis/, 'generateTechnicalAnalysis original deve permanecer intacta');
