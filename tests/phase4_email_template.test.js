@@ -49,6 +49,10 @@ test('Fase 4.2 - Retrocompatibilidade 100% com templates customizados legados ({
     assert.equal(rendered, '<p>Prezado Condomínio Solar, segue o relatório de 01/11/2026: <a href="https://example.com/pdf">Abrir</a></p>');
     assert.equal(resolveEmailBodyTemplate(''), WGA_INTEGRA_360_EMAIL_HTML);
     assert.equal(resolveEmailBodyTemplate('<p>Segue abaixo o link para o relatório da visita técnica</p>'), WGA_INTEGRA_360_EMAIL_HTML);
+    assert.equal(
+        resolveEmailBodyTemplate('<p><strong>Prezado(a) cliente {client_name} ,</strong></p><p><strong>Agradecemos por nos receber em nossa última visita técnica.</strong></p>'),
+        WGA_INTEGRA_360_EMAIL_HTML
+    );
 });
 
 test('Fase 4.3 - Preservação da estrutura HTML rica vs conversão de quebras de linha em texto simples (formatEmailHtmlBody)', () => {

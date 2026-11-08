@@ -55,28 +55,23 @@ export const WGA_INTEGRA_360_EMAIL_HTML = `<div style="font-family: Arial, Helve
 </div>`;
 
 /**
- * Detecta se um template salvo no banco é vazio, legado simples ou a versão v1 (coluna única)
- * ou se foi desconfigurado pelo RichTextEditor (sem a estrutura de 2 colunas),
- * retornando o template oficial WGA Integra 360 de 2 colunas atualizado.
+ * Garante que qualquer template legado salvo anteriormente no banco (ex.: "Prezado(a) cliente...",
+ * "Agradecemos por nos receber...", "Segue abaixo o link...", ou versão v1 de coluna única)
+ * seja atualizado automaticamente para o layout oficial corporativo de 2 colunas (APP WGA INTEGRA).
+ * Se o template já estiver no formato de 2 colunas ("APP WGA INTEGRA" + "<table"), preserva edições customizadas.
  */
 export function resolveEmailBodyTemplate(savedBody) {
     if (!savedBody || typeof savedBody !== 'string' || !savedBody.trim()) {
         return WGA_INTEGRA_360_EMAIL_HTML;
     }
     const trimmed = savedBody.trim();
-    // Se já contém o template v2 de 2 colunas intacto
-    if (trimmed.includes('data-wga-template="integra-360-v2"') && trimmed.includes('<table')) {
+    if (
+        (trimmed.includes('data-wga-template="integra-360-v2"') || trimmed.includes('APP WGA INTEGRA')) &&
+        trimmed.includes('<table')
+    ) {
         return trimmed;
     }
-    // Se é o template v1 antigo (coluna única com gradiente) ou foi corrompido pelo TipTap (contém APP WGA INTEGRA mas perdeu <table>)
-    if (
-        trimmed.includes('Relatório Técnico — WGA Integra 360') ||
-        (trimmed.includes('APP WGA INTEGRA') && !trimmed.includes('<table')) ||
-        trimmed.includes('Segue abaixo o link para o relatório da visita técnica')
-    ) {
-        return WGA_INTEGRA_360_EMAIL_HTML;
-    }
-    return trimmed;
+    return WGA_INTEGRA_360_EMAIL_HTML;
 }
 
 /**
@@ -92,7 +87,7 @@ export function renderEmailTemplate(templateStr, vars = {}) {
         report_number: vars.report_number || '-',
         technician_name: vars.technician_name || 'Equipe Técnica WGA Brasil',
         lab_link: vars.lab_link || vars.link || '#',
-        logo_url: vars.logo_url || DEFAULT_WGA_LOGO_URL
+        logo_url: (vars.logo_url && vars.logo_url.startsWith('http')) ? vars.logo_url : DEFAULT_WGA_LOGO_URL
     };
 
     return templateStr

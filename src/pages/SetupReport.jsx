@@ -584,8 +584,8 @@ export default function SetupReport() {
                             onConfirm: () => {
                                 setFooterText(otherSettings.footer_text || '');
                                 setReportTitle(otherSettings.report_title || '');
-                                setEmailSubject(otherSettings.email_subject_default || '');
-                                setEmailBody(otherSettings.email_body_default || '');
+                                setEmailSubject(otherSettings.email_subject_default || WGA_INTEGRA_360_EMAIL_SUBJECT);
+                                setEmailBody(resolveEmailBodyTemplate(otherSettings.email_body_default));
                                 setCommentsEnabled(otherSettings.comments_orientations_enabled !== false);
                                 setCommentsText(otherSettings.comments_orientations_text || '');
                                 setCoverEnabled(otherSettings.cover_enabled !== false);

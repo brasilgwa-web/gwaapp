@@ -873,6 +873,13 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             // Dynamic Email Template (WGA Integra 360 Official Template as default fallback)
             let subjectTemplate = reportSettings?.email_subject_default || WGA_INTEGRA_360_EMAIL_SUBJECT;
             let bodyTemplate = resolveEmailBodyTemplate(reportSettings?.email_body_default);
+            if (reportSettings?.id && reportSettings?.email_body_default !== bodyTemplate) {
+                supabase
+                    .from('report_settings')
+                    .update({ email_body_default: bodyTemplate, updated_at: new Date().toISOString() })
+                    .eq('id', reportSettings.id)
+                    .then(() => {});
+            }
             const computedReportNumber = visit.report_number || `${format(safeDate, 'yyMM')}-${String(reportSettings?.current_report_number || 1).padStart(6, '0')}`;
             const computedTechName = reportData?.technicianUser?.full_name || user?.full_name || visit.technician_email || 'Equipe Técnica WGA Brasil';
             const emailVars = {
@@ -882,7 +889,7 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 report_number: computedReportNumber,
                 technician_name: computedTechName,
                 lab_link: visit.lab_report_url || driveLink || '#',
-                logo_url: reportSettings?.logo_url || undefined
+                logo_url: reportSettings?.logo_url || reportData?.reportSettings?.logo_url || undefined
             };
             const emailSubject = renderEmailTemplate(subjectTemplate, emailVars);
             const emailBody = renderEmailTemplate(bodyTemplate, emailVars);
