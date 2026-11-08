@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 
 import SignaturePad from "./SignaturePad";
 import { ClientContact } from "@/api/entities";
-import { getWeatherReportLabel, formatGpsForReport } from "@/lib/fieldMetadataUtils";
+import { getWeatherReportLabel, formatGpsForReport, isWeatherComplete } from "@/lib/fieldMetadataUtils";
 import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML, renderEmailTemplate } from "@/lib/emailTemplates";
 import { REPORT_TYPE_OPTIONS, getVisitReportType, buildVisitReportTypePayload } from "@/lib/reportTypeUtils";
 
@@ -363,7 +363,21 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         }
     };
 
+    const hasMissingWeather = () => {
+        const allEquipments = reportData?.fullReportStructure?.flatMap(loc => loc.equipments || []) || [];
+        if (allEquipments.length === 0) return false;
+        return allEquipments.some(eq => !isWeatherComplete(eq.sample?.weather_condition));
+    };
+
     const handleFinalize = async () => {
+        if (hasMissingWeather()) {
+            await alert({
+                title: 'Fator Climático Obrigatório',
+                message: 'É obrigatório preencher o Indicador de Chuva / Fator Climático (1. Clima Atual e 2. Histórico de Chuvas) na aba Leituras antes de finalizar a visita.',
+                type: 'warning'
+            });
+            return;
+        }
         const confirmed = await confirm({
             title: 'Finalizar Visita',
             message: 'Tem certeza que deseja finalizar? O estoque será debitado e a visita será concluída.',
@@ -480,6 +494,14 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     };
 
     const handleOpenPreview = async () => {
+        if (!readOnly && hasMissingWeather()) {
+            await alert({
+                title: 'Fator Climático Obrigatório',
+                message: 'É obrigatório preencher o Indicador de Chuva / Fator Climático (1. Clima Atual e 2. Histórico de Chuvas) na aba Leituras antes de visualizar ou enviar o relatório.',
+                type: 'warning'
+            });
+            return;
+        }
         // Validation: Mandatory Tech Resp
         if (needsTechnicalResponsible && !technicalResponsibleId) {
             await alert({

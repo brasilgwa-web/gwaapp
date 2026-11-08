@@ -62,6 +62,14 @@ export function buildWeatherConditionValue(current, history) {
     return `${c}|${h}`;
 }
 
+/**
+ * Verifica se ambas as dimensões obrigatórias do Fator Climático (1. Clima Atual e 2. Histórico de Chuvas) foram preenchidas.
+ */
+export function isWeatherComplete(weatherCondition) {
+    const { current, history } = parseWeatherState(weatherCondition);
+    return Boolean(current && history);
+}
+
 const META_MARKER = '[[WGA_META:';
 const META_END = ']]';
 

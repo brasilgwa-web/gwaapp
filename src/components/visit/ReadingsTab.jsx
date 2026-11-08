@@ -9,15 +9,25 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { WEATHER_OPTIONS, CURRENT_WEATHER_OPTIONS, RAIN_HISTORY_OPTIONS, parseWeatherState, buildWeatherConditionValue, getWeatherReportLabel, parseSampleRecord, serializeSampleWithMeta, formatGpsForReport } from "@/lib/fieldMetadataUtils";
+import { WEATHER_OPTIONS, CURRENT_WEATHER_OPTIONS, RAIN_HISTORY_OPTIONS, parseWeatherState, buildWeatherConditionValue, isWeatherComplete, getWeatherReportLabel, parseSampleRecord, serializeSampleWithMeta, formatGpsForReport } from "@/lib/fieldMetadataUtils";
+import { useConfirm } from "@/context/ConfirmContext";
 
 import { supabase } from "@/lib/supabase";
 
 function WeatherBatchCard({ globalWeatherValue, setGlobalWeatherValue, visitSamples, applyWeatherToAllMutation, weatherAppliedNotice }) {
+    const { alert } = useConfirm();
     const firstSavedWeather = visitSamples?.map(s => parseSampleRecord(s)?.weather_condition).find(Boolean);
     const activeWeatherRaw = globalWeatherValue !== 'none' ? globalWeatherValue : (firstSavedWeather || null);
     const { current: activeCurrent, history: activeHistory } = parseWeatherState(activeWeatherRaw);
+    const isComplete = Boolean(activeCurrent && activeHistory);
+    const [isExpanded, setIsExpanded] = React.useState(!isComplete);
     const activeSummary = getWeatherReportLabel(activeWeatherRaw);
+
+    React.useEffect(() => {
+        if (isComplete) {
+            setIsExpanded(false);
+        }
+    }, [isComplete]);
 
     const handleGlobalTagClick = (type, value) => {
         const nextCur = type === 'current' ? (activeCurrent === value ? null : value) : activeCurrent;
@@ -25,20 +35,45 @@ function WeatherBatchCard({ globalWeatherValue, setGlobalWeatherValue, visitSamp
         const nextCombined = buildWeatherConditionValue(nextCur, nextHist) || 'none';
         setGlobalWeatherValue(nextCombined);
         applyWeatherToAllMutation.mutate(nextCombined);
+        if (nextCur && nextHist) {
+            setIsExpanded(false);
+        }
+    };
+
+    const handleToggleHeader = () => {
+        if (isExpanded && !isComplete) {
+            alert({
+                title: 'Fator Climático Obrigatório',
+                message: 'Por favor, selecione uma opção em "1. Clima Atual" e uma opção em "2. Histórico de Chuvas" para concluir e recolher este painel.',
+                type: 'warning'
+            });
+            return;
+        }
+        setIsExpanded(prev => !prev);
     };
 
     return (
-        <div className="bg-blue-50/90 border border-blue-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-blue-100/70 border-b border-blue-200">
+        <div className={`border rounded-xl shadow-sm overflow-hidden transition-all ${isComplete ? 'bg-blue-50/70 border-blue-200' : 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-200'}`}>
+            <div
+                onClick={handleToggleHeader}
+                className={`flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 cursor-pointer select-none transition-colors ${
+                    isComplete ? 'bg-blue-100/70 hover:bg-blue-100' : 'bg-amber-100/80 hover:bg-amber-100'
+                } ${isExpanded ? 'border-b border-blue-200' : ''}`}
+            >
                 <div className="flex items-center gap-2">
-                    <CloudRain className="w-4 h-4 text-blue-700 shrink-0" />
-                    <span className="text-xs sm:text-sm font-bold text-blue-950">
+                    <CloudRain className={`w-4 h-4 shrink-0 ${isComplete ? 'text-blue-700' : 'text-amber-700'}`} />
+                    <span className="text-xs sm:text-sm font-bold text-slate-900">
                         🌤️ Indicador de Chuva / Fator Climático (Aplicar a Todos os Testes)
                     </span>
+                    {!isComplete && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-amber-800 bg-amber-200/80 border border-amber-300 px-2 py-0.5 rounded-full">
+                            * Obrigatório
+                        </span>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     {activeSummary && (
-                        <span className="text-[11px] font-medium text-blue-800 bg-white/90 border border-blue-200 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-semibold text-blue-900 bg-white border border-blue-200 px-2.5 py-0.5 rounded-full shadow-2xs">
                             {activeSummary}
                         </span>
                     )}
@@ -47,13 +82,24 @@ function WeatherBatchCard({ globalWeatherValue, setGlobalWeatherValue, visitSamp
                             ✓ Aplicado a todos!
                         </span>
                     )}
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleHeader();
+                        }}
+                        className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 bg-white/80 px-2 py-0.5 rounded border border-blue-200"
+                    >
+                        {isExpanded ? <>Recolher <ChevronUp className="w-3.5 h-3.5" /></> : <>Alterar <ChevronDown className="w-3.5 h-3.5" /></>}
+                    </button>
                 </div>
             </div>
 
-            <div className="p-3.5 space-y-3">
+            {isExpanded && (
+            <div className="p-3.5 space-y-3 bg-white/60">
                 <div className="space-y-1.5">
                     <span className="text-xs font-semibold text-slate-700 block">
-                        1. Clima Atual <span className="font-normal text-slate-500">(Como está o clima no MOMENTO da coleta?)</span>
+                        1. Clima Atual <span className="text-red-600">*</span> <span className="font-normal text-slate-500">(Como está o clima no MOMENTO da coleta?)</span>
                     </span>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {CURRENT_WEATHER_OPTIONS.map(opt => {
@@ -79,7 +125,7 @@ function WeatherBatchCard({ globalWeatherValue, setGlobalWeatherValue, visitSamp
 
                 <div className="space-y-1.5 pt-2 border-t border-blue-100">
                     <span className="text-xs font-semibold text-slate-700 block">
-                        2. Histórico de Chuvas <span className="font-normal text-slate-500">(Houve chuva RECENTE na região?)</span>
+                        2. Histórico de Chuvas <span className="text-red-600">*</span> <span className="font-normal text-slate-500">(Houve chuva RECENTE na região?)</span>
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         {RAIN_HISTORY_OPTIONS.map(opt => {
@@ -103,22 +149,56 @@ function WeatherBatchCard({ globalWeatherValue, setGlobalWeatherValue, visitSamp
                     </div>
                 </div>
             </div>
+            )}
         </div>
     );
 }
 
 function EquipmentWeatherTags({ sampleData, readOnly, onChange }) {
     const { current: eqCur, history: eqHist } = parseWeatherState(sampleData?.weather_condition);
+    const isEqComplete = Boolean(eqCur && eqHist);
+    const [isEqExpanded, setIsEqExpanded] = React.useState(!isEqComplete);
+
+    React.useEffect(() => {
+        if (isEqComplete) {
+            setIsEqExpanded(false);
+        }
+    }, [isEqComplete]);
+
     const handleEqTagClick = (type, value) => {
         if (readOnly) return;
         const nextCur = type === 'current' ? (eqCur === value ? null : value) : eqCur;
         const nextHist = type === 'history' ? (eqHist === value ? null : value) : eqHist;
         const nextVal = buildWeatherConditionValue(nextCur, nextHist);
         onChange(nextVal);
+        if (nextCur && nextHist) {
+            setIsEqExpanded(false);
+        }
     };
 
+    if (isEqComplete && !isEqExpanded) {
+        const curLabel = CURRENT_WEATHER_OPTIONS.find(o => o.value === eqCur)?.shortLabel || eqCur;
+        const histLabel = RAIN_HISTORY_OPTIONS.find(o => o.value === eqHist)?.shortLabel || eqHist;
+        return (
+            <div className="flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-blue-200 text-xs">
+                <span className="font-semibold text-slate-700 truncate">
+                    {curLabel} <span className="text-slate-400">•</span> {histLabel}
+                </span>
+                {!readOnly && (
+                    <button
+                        type="button"
+                        onClick={() => setIsEqExpanded(true)}
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 underline shrink-0"
+                    >
+                        Alterar
+                    </button>
+                )}
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-1.5 bg-white/90 p-2 rounded-lg border border-blue-200">
+        <div className="space-y-1.5 bg-white/90 p-2 rounded-lg border border-amber-300">
             <div className="flex flex-wrap gap-1">
                 {CURRENT_WEATHER_OPTIONS.map(opt => (
                     <button
@@ -160,6 +240,7 @@ function EquipmentWeatherTags({ sampleData, readOnly, onChange }) {
 export default function ReadingsTab({ visit, readOnly }) {
     if (!visit) return null;
     const queryClient = useQueryClient();
+    const { alert } = useConfirm();
     const [openItems, setOpenItems] = React.useState({});
     const [allExpanded, setAllExpanded] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
@@ -485,6 +566,15 @@ export default function ReadingsTab({ visit, readOnly }) {
         });
         if (value !== '' && value !== null && value !== undefined) {
             ensureAutoGpsForEquipment(equipmentId);
+            const eqSample = getSample(equipmentId);
+            const effectiveWeather = eqSample?.weather_condition || (globalWeatherValue !== 'none' ? globalWeatherValue : null);
+            if (!isWeatherComplete(effectiveWeather)) {
+                alert({
+                    title: 'Fator Climático Obrigatório',
+                    message: 'O preenchimento de "1. Clima Atual" e "2. Histórico de Chuvas" no Indicador de Chuva / Fator Climático é obrigatório. Por favor, selecione as duas opções acima.',
+                    type: 'warning'
+                });
+            }
         }
         const _noop = ({
         });

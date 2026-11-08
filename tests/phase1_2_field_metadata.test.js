@@ -7,6 +7,7 @@ import {
     RAIN_HISTORY_OPTIONS,
     parseWeatherState,
     buildWeatherConditionValue,
+    isWeatherComplete,
     parseSampleRecord,
     serializeSampleWithMeta,
     getWeatherReportLabel,
@@ -108,5 +109,8 @@ test('Fase 2.1: Segmented Controls (Clima Atual + Histórico de Chuvas) — codi
 
     const label = getWeatherReportLabel(combined);
     assert.equal(label, 'Ensolarado | Chuva Recente: Últimas 24h');
+    assert.equal(isWeatherComplete(combined), true);
+    assert.equal(isWeatherComplete(buildWeatherConditionValue('sunny', null)), false);
+    assert.equal(isWeatherComplete(null), false);
 });
 
