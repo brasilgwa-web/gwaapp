@@ -402,8 +402,8 @@ const MarkdownText = ({ text }) => {
 const renderCoverHtml = (html) => {
     if (!html) return null;
 
-    // Strip style attributes to avoid noise
-    const clean = html.replace(/ style="[^"]*"/gi, '');
+    // Strip HTML comments and style attributes to avoid noise
+    const clean = html.replace(/<!--[\s\S]*?-->/g, '').replace(/ style="[^"]*"/gi, '');
 
     // Split by block-level tags
     const blocks = clean.split(/(?=<(?:h[1-6]|p|ul|ol|hr|br)[ >])/i);

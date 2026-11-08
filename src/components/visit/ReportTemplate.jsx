@@ -69,7 +69,7 @@ const DEFAULT_COMMENTS_HTML = `
 
 function CoverPage({ settings }) {
     const bgColor = settings?.cover_background_color || '#1e40af';
-    const coverContent = settings?.cover_content;
+    const coverContent = (settings?.cover_content || '').replace(/<!--[\s\S]*?-->/g, '');
     const coverImageUrl = settings?.cover_image_url;
 
     // If custom cover image exists, render it as full-page

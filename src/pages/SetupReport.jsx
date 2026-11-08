@@ -18,7 +18,7 @@ import { format } from "date-fns";
 import SignaturePad from "@/components/visit/SignaturePad";
 import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML, renderEmailTemplate, resolveEmailBodyTemplate } from "@/lib/emailTemplates";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { REPORT_TYPE_OPTIONS, resolveReportSettingsByType } from "@/lib/reportTypeUtils";
+import { REPORT_TYPE_OPTIONS, resolveReportSettingsByType, buildReportSettingsSavePayload } from "@/lib/reportTypeUtils";
 
 const dataURLtoBlob = (dataurl) => {
     let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
@@ -264,22 +264,37 @@ export default function SetupReport() {
     // Save mutation
     const saveMutation = useMutation({
         mutationFn: async (data) => {
-            if (settings?.id) {
-                // Update existing
+            const { primaryId, primaryPayload, secondaryId, secondaryPayload } = buildReportSettingsSavePayload(
+                allSettings,
+                selectedType,
+                data
+            );
+            const nowIso = new Date().toISOString();
+
+            if (primaryId) {
                 const { error } = await supabase
                     .from('report_settings')
                     .update({
-                        ...data,
-                        updated_at: new Date().toISOString()
+                        ...primaryPayload,
+                        updated_at: nowIso
                     })
-                    .eq('id', settings.id);
+                    .eq('id', primaryId);
                 if (error) throw error;
+
+                if (secondaryId && secondaryPayload) {
+                    await supabase
+                        .from('report_settings')
+                        .update({
+                            ...secondaryPayload,
+                            updated_at: nowIso
+                        })
+                        .eq('id', secondaryId);
+                }
             } else {
-                // Create new
                 const { error } = await supabase
                     .from('report_settings')
                     .insert([{
-                        ...data,
+                        ...primaryPayload,
                         initial_report_number: parseInt(data.current_report_number) || 1
                     }]);
                 if (error) throw error;
@@ -438,11 +453,7 @@ export default function SetupReport() {
                 cover_background_color: coverBackgroundColor,
                 cover_image_url: coverImageUrl,
                 comments_orientations_enabled: commentsEnabled,
-                comments_orientations_text: commentsText,
-                cover_style_config: {
-                    ...(settings?.cover_style_config || {}),
-                    report_type: selectedType
-                }
+                comments_orientations_text: commentsText
             });
 
         } catch (error) {

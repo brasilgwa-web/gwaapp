@@ -55,10 +55,9 @@ export const WGA_INTEGRA_360_EMAIL_HTML = `<div style="font-family: Arial, Helve
 </div>`;
 
 /**
- * Garante que qualquer template legado salvo anteriormente no banco (ex.: "Prezado(a) cliente...",
- * "Agradecemos por nos receber...", "Segue abaixo o link...", ou versão v1 de coluna única)
- * seja atualizado automaticamente para o layout oficial corporativo de 2 colunas (APP WGA INTEGRA).
- * Se o template já estiver no formato de 2 colunas ("APP WGA INTEGRA" + "<table"), preserva edições customizadas.
+ * Garante que templates legados antigos ("Agradecemos por nos receber...", "Segue abaixo o link...",
+ * ou versão v1 de coluna única) sejam atualizados para o layout oficial corporativo de 2 colunas,
+ * mas preserva 100% qualquer customização feita pelo administrador nas Configurações de Relatório.
  */
 export function resolveEmailBodyTemplate(savedBody) {
     if (!savedBody || typeof savedBody !== 'string' || !savedBody.trim()) {
@@ -66,12 +65,14 @@ export function resolveEmailBodyTemplate(savedBody) {
     }
     const trimmed = savedBody.trim();
     if (
-        (trimmed.includes('data-wga-template="integra-360-v2"') || trimmed.includes('APP WGA INTEGRA')) &&
-        trimmed.includes('<table')
+        trimmed.includes('Agradecemos por nos receber em nossa última visita técnica') ||
+        trimmed.includes('Segue abaixo o link para o relatório da visita técnica') ||
+        trimmed.includes('Relatório Técnico — WGA Integra 360') ||
+        (trimmed.includes('APP WGA INTEGRA') && !trimmed.includes('<table'))
     ) {
-        return trimmed;
+        return WGA_INTEGRA_360_EMAIL_HTML;
     }
-    return WGA_INTEGRA_360_EMAIL_HTML;
+    return trimmed;
 }
 
 /**

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import esbuild from 'esbuild';
-import { resolveReportSettingsByType, getVisitReportType, buildVisitReportTypePayload, isUserAdminRole, getReportTypeFromUserRole } from '../src/lib/reportTypeUtils.js';
+import { resolveReportSettingsByType, getVisitReportType, buildVisitReportTypePayload, buildReportSettingsSavePayload, isUserAdminRole, getReportTypeFromUserRole } from '../src/lib/reportTypeUtils.js';
 
 const PROJECT_ROOT = process.cwd();
 
@@ -109,4 +109,48 @@ test('Fase 5.3 - Seletor de Capas / Tipo de Relatório (Serviço Técnico vs Ser
     assert.equal(getVisitReportType(visitAfterSave, { role: 'tecnico' }), 'technical');
     // Perfil Admin respeita a escolha salva na visita
     assert.equal(getVisitReportType(visitAfterSave, { role: 'admin' }), 'laboratory');
+
+    // Teste de Independência Dual-Layer (Geral, Email e Capa) mesmo com apenas 1 linha em report_settings
+    const singleRowDb = [{
+        id: 'singleton-1',
+        current_report_number: 600,
+        highest_emitted_number: 599,
+        report_title: 'Relatório de Atendimento Técnico em Campo',
+        footer_text: 'Rodapé Técnico',
+        email_subject_default: 'Assunto Técnico - {client_name}',
+        email_body_default: '<div>Corpo Email Técnico</div>',
+        cover_image_url: 'https://example.com/capa-tecnica.jpg',
+        cover_content: '<h1>Capa Técnica</h1>'
+    }];
+
+    // Admin salva configurações para o modelo Analítico ('laboratory')
+    const { primaryPayload: afterLabSave } = buildReportSettingsSavePayload(singleRowDb, 'laboratory', {
+        current_report_number: 600,
+        report_title: 'Relatório de Ensaio Analítico',
+        footer_text: 'Rodapé Laboratório ISO 9001',
+        email_subject_default: 'Laudo Analítico - {client_name}',
+        email_body_default: '<div>Corpo Email Analítico</div>',
+        cover_image_url: 'https://example.com/capa-analitica.jpg',
+        cover_content: '<h1>Capa Analítica</h1>'
+    });
+
+    const dbAfterLabSave = [{ ...singleRowDb[0], ...afterLabSave }];
+
+    // Verifica que ambos os modelos ('technical' e 'laboratory') mantêm Geral, Email e Capa 100% independentes
+    const checkTech = resolveReportSettingsByType(dbAfterLabSave, 'technical');
+    const checkLab = resolveReportSettingsByType(dbAfterLabSave, 'laboratory');
+
+    assert.equal(checkTech.report_title, 'Relatório de Atendimento Técnico em Campo');
+    assert.equal(checkTech.footer_text, 'Rodapé Técnico');
+    assert.equal(checkTech.email_subject_default, 'Assunto Técnico - {client_name}');
+    assert.equal(checkTech.email_body_default, '<div>Corpo Email Técnico</div>');
+    assert.equal(checkTech.cover_image_url, 'https://example.com/capa-tecnica.jpg');
+    assert.equal(checkTech.cover_content, '<h1>Capa Técnica</h1>');
+
+    assert.equal(checkLab.report_title, 'Relatório de Ensaio Analítico');
+    assert.equal(checkLab.footer_text, 'Rodapé Laboratório ISO 9001');
+    assert.equal(checkLab.email_subject_default, 'Laudo Analítico - {client_name}');
+    assert.equal(checkLab.email_body_default, '<div>Corpo Email Analítico</div>');
+    assert.equal(checkLab.cover_image_url, 'https://example.com/capa-analitica.jpg');
+    assert.equal(checkLab.cover_content, '<h1>Capa Analítica</h1>');
 });
