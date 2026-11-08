@@ -20,7 +20,8 @@ import {
     Copy,
     Sparkles,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Search
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Visit } from "@/api/entities";
@@ -55,22 +56,53 @@ export default function LabReportTab({ visit, readOnly }) {
     const [isUploadingLab, setIsUploadingLab] = useState(false);
     const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
     const [uploadedFileMemory, setUploadedFileMemory] = useState(null); // { base64, mimeType, name }
-    const [showHistory, setShowHistory] = useState(true);
+    const [showHistory, setShowHistory] = useState(false);
+    const [historySearch, setHistorySearch] = useState('');
+    const [visibleHistoryCount, setVisibleHistoryCount] = useState(5);
+    const [historyFetchLimit, setHistoryFetchLimit] = useState(30);
+    const [expandedHistoryIds, setExpandedHistoryIds] = useState({});
 
     // Fetch equipment/test VMP structure for this visit to cross-reference in AI
     const { data: reportData } = useReportData(visit.id);
 
-    // Fetch Historical Lab Reports for this Client (Entregável #2)
-    const { data: historicalLabVisits, isLoading: isLoadingHistory } = useQuery({
-        queryKey: ['clientLabHistory', visit.client_id, visit.id],
+    // Lightweight count of historical lab reports (so header shows count even while collapsed)
+    const { data: historyTotalCount } = useQuery({
+        queryKey: ['clientLabHistoryCount', visit.client_id, visit.id],
         queryFn: async () => {
-            if (!visit.client_id) return [];
-            const allClientVisits = await Visit.filter({ client_id: visit.client_id }, '-visit_date', 200);
-            return (allClientVisits || [])
-                .filter(v => v.id !== visit.id && (v.lab_report_url || v.lab_report_comments))
-                .sort((a, b) => (b.visit_date || '').localeCompare(a.visit_date || ''));
+            if (!visit.client_id) return 0;
+            const { count, error } = await supabase
+                .from('visits')
+                .select('id', { count: 'exact', head: true })
+                .eq('client_id', visit.client_id)
+                .neq('id', visit.id)
+                .or('lab_report_url.not.is.null,lab_report_comments.not.is.null');
+            if (error) return 0;
+            return count || 0;
         },
         enabled: !!visit.client_id
+    });
+
+    // Fetch Historical Lab Reports for this Client (Entregável #2 — Lazy + Server-Filtered + Projected)
+    const { data: historicalLabVisits, isLoading: isLoadingHistory } = useQuery({
+        queryKey: ['clientLabHistory', visit.client_id, visit.id, historyFetchLimit],
+        queryFn: async () => {
+            if (!visit.client_id) return [];
+            const { data, error } = await supabase
+                .from('visits')
+                .select('id, visit_date, lab_report_url, lab_report_comments')
+                .eq('client_id', visit.client_id)
+                .neq('id', visit.id)
+                .or('lab_report_url.not.is.null,lab_report_comments.not.is.null')
+                .order('visit_date', { ascending: false })
+                .limit(historyFetchLimit);
+            if (error) {
+                console.warn('Fallback history query:', error);
+                const fallbackVisits = await Visit.filter({ client_id: visit.client_id }, '-visit_date', historyFetchLimit);
+                return (fallbackVisits || []).filter(v => v.id !== visit.id && (v.lab_report_url || v.lab_report_comments));
+            }
+            return data || [];
+        },
+        enabled: !!visit.client_id && showHistory
     });
 
     // Build VMP limits text from client's configured equipments
@@ -661,7 +693,7 @@ export default function LabReportTab({ visit, readOnly }) {
                         <div>
                             <CardTitle className="text-base flex items-center gap-2 text-slate-800">
                                 <History className="w-5 h-5 text-blue-600" />
-                                Histórico de Laudos do Cliente ({historicalLabVisits?.length || 0})
+                                Histórico de Laudos do Cliente ({historyTotalCount ?? historicalLabVisits?.length ?? 0})
                             </CardTitle>
                             <CardDescription>
                                 Consulte laudos analíticos e pareceres de visitas anteriores deste cliente sem sair da tela.
@@ -684,8 +716,145 @@ export default function LabReportTab({ visit, readOnly }) {
                             <p className="text-sm text-slate-500 italic py-4 text-center">
                                 Nenhum laudo anterior encontrado no histórico deste cliente.
                             </p>
-                        ) : (
-                            <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                        ) : (() => {
+                            const normalizedSearch = historySearch.trim().toLowerCase();
+                            const parsedList = historicalLabVisits.map(hv => ({
+                                visit: hv,
+                                parsed: parseLabReportData(hv),
+                                dateStr: formatDateAsLocal(hv.visit_date)
+                            }));
+                            const filteredList = normalizedSearch
+                                ? parsedList.filter(({ parsed, dateStr }) => {
+                                    const haystack = [
+                                        dateStr,
+                                        parsed.metadata?.report_number,
+                                        parsed.metadata?.sampling_point,
+                                        parsed.metadata?.collection_date,
+                                        parsed.comments,
+                                        parsed.aiDraft
+                                    ].filter(Boolean).join(' ').toLowerCase();
+                                    return haystack.includes(normalizedSearch);
+                                })
+                                : parsedList;
+                            const visibleList = filteredList.slice(0, visibleHistoryCount);
+
+                            return (
+                                <div className="space-y-3">
+                                    <div className="relative">
+                                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                        <Input
+                                            value={historySearch}
+                                            onChange={(e) => {
+                                                setHistorySearch(e.target.value);
+                                                setVisibleHistoryCount(5);
+                                            }}
+                                            placeholder="Buscar por Nº do laudo, ponto de amostragem, data ou parâmetro..."
+                                            className="pl-9 h-9 text-xs bg-slate-50"
+                                        />
+                                    </div>
+
+                                    {filteredList.length === 0 ? (
+                                        <p className="text-xs text-slate-500 italic py-4 text-center">
+                                            Nenhum laudo encontrado para "{historySearch}".
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                                            {visibleList.map(({ visit: histVisit, parsed: histParsed, dateStr }) => {
+                                                const summaryText = histParsed.comments || histParsed.aiDraft || 'Laudo anexado sem comentários adicionais.';
+                                                const isItemExpanded = Boolean(expandedHistoryIds[histVisit.id]);
+                                                return (
+                                                    <div
+                                                        key={histVisit.id}
+                                                        className="p-3 rounded-lg border border-slate-200 bg-slate-50/60 flex flex-col gap-2"
+                                                    >
+                                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                                            <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-slate-800">
+                                                                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                                                    Visita: {dateStr}
+                                                                </span>
+                                                                {histParsed.metadata?.report_number && (
+                                                                    <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded">
+                                                                        Laudo Nº {histParsed.metadata.report_number}
+                                                                    </span>
+                                                                )}
+                                                                {histParsed.metadata?.sampling_point && (
+                                                                    <span className="text-slate-600">
+                                                                        • Ponto: {histParsed.metadata.sampling_point}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                {histVisit.lab_report_url && (
+                                                                    <a href={histVisit.lab_report_url} target="_blank" rel="noopener noreferrer">
+                                                                        <Button type="button" variant="outline" size="sm" className="h-7 px-2.5 text-xs text-blue-600 border-blue-200">
+                                                                            <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                                                                            Abrir PDF
+                                                                        </Button>
+                                                                    </a>
+                                                                )}
+                                                                {!isFieldDisabled && (histParsed.comments || histParsed.aiDraft) && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900"
+                                                                        title="Copiar texto para o rascunho atual"
+                                                                        onClick={() => {
+                                                                            const textToCopy = histParsed.comments || histParsed.aiDraft;
+                                                                            setAiDraft(prev => prev ? `${prev}\n\n[Ref. ${dateStr}]: ${textToCopy}` : textToCopy);
+                                                                        }}
+                                                                    >
+                                                                        <Copy className="w-3.5 h-3.5 mr-1" />
+                                                                        Usar Ref.
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div
+                                                            onClick={() => setExpandedHistoryIds(prev => ({ ...prev, [histVisit.id]: !prev[histVisit.id] }))}
+                                                            className="cursor-pointer group"
+                                                        >
+                                                            <p className={`text-xs text-slate-600 whitespace-pre-line ${isItemExpanded ? '' : 'line-clamp-2'}`}>
+                                                                {summaryText}
+                                                            </p>
+                                                            {summaryText.length > 140 && (
+                                                                <span className="text-[11px] font-medium text-blue-600 group-hover:underline inline-block mt-0.5">
+                                                                    {isItemExpanded ? 'Recolher parecer ▲' : 'Ler parecer completo ▼'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {(filteredList.length > visibleHistoryCount || (historicalLabVisits.length >= historyFetchLimit && (historyTotalCount || 0) > historyFetchLimit)) && (
+                                        <div className="pt-1 flex justify-center">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-xs h-8 text-blue-700 border-blue-200 hover:bg-blue-50"
+                                                onClick={() => {
+                                                    const nextVisible = visibleHistoryCount + 5;
+                                                    setVisibleHistoryCount(nextVisible);
+                                                    if (nextVisible > historicalLabVisits.length && (historyTotalCount || 0) > historyFetchLimit) {
+                                                        setHistoryFetchLimit(prev => prev + 30);
+                                                    }
+                                                }}
+                                            >
+                                                Ver mais laudos (+5) — Exibindo {visibleList.length} de {normalizedSearch ? filteredList.length : (historyTotalCount || filteredList.length)}
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                        {false && (
+                            <div className="hidden">
                                 {historicalLabVisits.map(histVisit => {
                                     const histParsed = parseLabReportData(histVisit);
                                     const summaryText = histParsed.comments || histParsed.aiDraft || 'Laudo anexado sem comentários adicionais.';
