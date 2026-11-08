@@ -28,7 +28,7 @@ import SignaturePad from "./SignaturePad";
 import { ClientContact } from "@/api/entities";
 import { getWeatherReportLabel, formatGpsForReport, isWeatherComplete } from "@/lib/fieldMetadataUtils";
 import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML, renderEmailTemplate, resolveEmailBodyTemplate } from "@/lib/emailTemplates";
-import { REPORT_TYPE_OPTIONS, getVisitReportType, buildVisitReportTypePayload } from "@/lib/reportTypeUtils";
+import { REPORT_TYPE_OPTIONS, getVisitReportType, buildVisitReportTypePayload, resolveReportSettingsByType, isUserAdminRole, getReportTypeFromUserRole } from "@/lib/reportTypeUtils";
 
 
 export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isAdmin }) {
@@ -152,6 +152,24 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
     const { user } = useAuth();
     const userHasCrq = Boolean(user?.crq);
     const needsTechnicalResponsible = !userHasCrq;
+    const canSelectReportType = Boolean(isAdmin || isUserAdminRole(user));
+
+    // Auto-bind report type based on profile when user is not Admin (Técnico -> technical, Laboratório -> laboratory)
+    useEffect(() => {
+        if (readOnly || !user || canSelectReportType) return;
+        const forcedType = getReportTypeFromUserRole(user);
+        const currentStoredType = getVisitReportType(visit);
+        if (forcedType && currentStoredType !== forcedType) {
+            const { extendedPayload, safeFallbackPayload } = buildVisitReportTypePayload(visit, forcedType);
+            Visit.update(visit.id, extendedPayload)
+                .catch(() => Visit.update(visit.id, safeFallbackPayload))
+                .then(() => {
+                    queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
+                    queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] });
+                })
+                .catch(() => {});
+        }
+    }, [user, canSelectReportType, readOnly, visit?.id]);
 
     // Check for signature on mount
     useEffect(() => {
@@ -600,12 +618,13 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
         setUploadStatus('Carregando dados e configurações...');
 
         try {
-            // 1. Fetch Report Settings Global
-            const { data: reportSettings } = await supabase
+            // 1. Fetch Report Settings resolved by Report Type & User Profile
+            const { data: allReportSettings } = await supabase
                 .from('report_settings')
                 .select('*')
-                .limit(1)
-                .single();
+                .order('created_at', { ascending: true });
+            const effectiveReportType = getVisitReportType(visit, user, reportData?.technicianUser);
+            const reportSettings = resolveReportSettingsByType(allReportSettings, effectiveReportType) || allReportSettings?.[0];
 
             // Define safeDate for use in Report Number and Email Templates
             let safeDate = new Date();
@@ -1076,44 +1095,46 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 )
             }
 
-            {/* Tipo de Relatório / Seletor de Capa (Técnico vs Analítico) */}
-            <Card className="border-blue-200 bg-blue-50/20">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-blue-600" />
-                        Tipo de Relatório e Capa
-                    </CardTitle>
-                    <CardDescription>
-                        Selecione o modelo de capa e cabeçalho para esta visita (Relatório de Serviço Técnico em Campo ou Relatório de Serviço Analítico).
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Select
-                        value={getVisitReportType(visit)}
-                        onValueChange={async (val) => {
-                            const { extendedPayload, safeFallbackPayload } = buildVisitReportTypePayload(visit, val);
-                            try {
-                                await Visit.update(visit.id, extendedPayload);
-                            } catch {
-                                await Visit.update(visit.id, safeFallbackPayload);
-                            }
-                            queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
-                            queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] });
-                            if (onUpdateVisit) onUpdateVisit({ ...visit, ...safeFallbackPayload, report_type: val });
-                        }}
-                        disabled={readOnly}
-                    >
-                        <SelectTrigger className="w-full md:w-[440px] bg-white">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {REPORT_TYPE_OPTIONS.map(opt => (
-                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </CardContent>
-            </Card>
+            {/* Tipo de Relatório / Seletor de Capa (Técnico vs Analítico — Visível apenas para Administradores) */}
+            {canSelectReportType && (
+                <Card className="border-blue-200 bg-blue-50/20">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-blue-600" />
+                            Tipo de Relatório e Capa
+                        </CardTitle>
+                        <CardDescription>
+                            Selecione o modelo de capa e cabeçalho para esta visita (Relatório de Serviço Técnico em Campo ou Relatório de Serviço Analítico).
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Select
+                            value={getVisitReportType(visit, user, reportData?.technicianUser)}
+                            onValueChange={async (val) => {
+                                const { extendedPayload, safeFallbackPayload } = buildVisitReportTypePayload(visit, val);
+                                try {
+                                    await Visit.update(visit.id, extendedPayload);
+                                } catch {
+                                    await Visit.update(visit.id, safeFallbackPayload);
+                                }
+                                queryClient.invalidateQueries({ queryKey: ['visit', visit.id] });
+                                queryClient.invalidateQueries({ queryKey: ['fullReport', visit.id] });
+                                if (onUpdateVisit) onUpdateVisit({ ...visit, ...safeFallbackPayload, report_type: val });
+                            }}
+                            disabled={readOnly}
+                        >
+                            <SelectTrigger className="w-full md:w-[440px] bg-white">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {REPORT_TYPE_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* 0. Horários */}
             <Card>

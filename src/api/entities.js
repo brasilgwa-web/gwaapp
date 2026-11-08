@@ -206,7 +206,7 @@ export const User = {
         // For assigning technicians, we might need a list of users.
         // We can create a secure function or use profiles table.
         // Falling back to profiles.
-        const { data, error } = await supabase.from('profiles').select('*').eq('is_deleted', false).eq('status', 'active');
+        const { data, error } = await supabase.from('profiles').select('*, role_data:roles(id, name)').eq('is_deleted', false).eq('status', 'active');
         if (error) return [];
         return data || [];
     }

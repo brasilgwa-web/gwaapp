@@ -181,12 +181,18 @@ export function useReportData(id) {
             }).filter(loc => loc.equipments.length > 0);
 
             // Fetch Report Settings (logo, sequential number)
-            // Fetch Report Settings (logo, cover, sequential number) based on visit report type
-            const { data: allReportSettings } = await supabase
-                .from('report_settings')
-                .select('*')
-                .order('created_at', { ascending: true });
-            const reportSettings = resolveReportSettingsByType(allReportSettings, getVisitReportType(visit));
+            // Fetch Report Settings (logo, cover, sequential number) based on visit report type and user profile
+            const [{ data: allReportSettings }, { data: sessionData }] = await Promise.all([
+                supabase.from('report_settings').select('*').order('created_at', { ascending: true }),
+                supabase.auth.getSession()
+            ]);
+            const currentLoggedUser = sessionData?.session?.user?.id
+                ? allUsers.find(u => u.id === sessionData.session.user.id)
+                : null;
+            const reportSettings = resolveReportSettingsByType(
+                allReportSettings,
+                getVisitReportType(visit, currentLoggedUser, technicianUser)
+            );
             const _legacyReportSettings = await supabase
                 .from('report_settings')
                 .select('*')

@@ -20,6 +20,34 @@ export const REPORT_TYPE_OPTIONS = [
 ];
 
 /**
+ * Identifica se o usuário possui perfil de Administrador ('admin', 'administrador').
+ */
+export function isUserAdminRole(user) {
+    if (!user) return false;
+    const roleStr = `${user.role_data?.name || ''} ${user.role?.name || ''} ${typeof user.role === 'string' ? user.role : ''}`.toLowerCase();
+    return /admin/i.test(roleStr);
+}
+
+/**
+ * Determina o tipo de relatório obrigatório vinculado ao perfil do usuário:
+ * - Perfil Laboratório ('laboratorio', 'laboratório', 'analitico', 'analítico') -> 'laboratory'
+ * - Perfil Técnico ('tecnico', 'técnico', 'user') -> 'technical'
+ * - Perfil Administrador -> null (administrador pode escolher livremente)
+ */
+export function getReportTypeFromUserRole(user) {
+    if (!user) return null;
+    if (isUserAdminRole(user)) return null;
+    const roleStr = `${user.role_data?.name || ''} ${user.role?.name || ''} ${typeof user.role === 'string' ? user.role : ''}`.toLowerCase();
+    if (/lab|anal[ií]t/i.test(roleStr)) {
+        return 'laboratory';
+    }
+    if (/t[eé]c|campo|user/i.test(roleStr)) {
+        return 'technical';
+    }
+    return null;
+}
+
+/**
  * Resolve o registro correto de `report_settings` para o tipo solicitado ('technical' ou 'laboratory'),
  * preservando a numeração sequencial global (`current_report_number`) para nunca regredir a numeração.
  */
@@ -85,18 +113,36 @@ export function resolveReportSettingsByType(allSettings, requestedType = 'techni
 }
 
 /**
- * Obtém o tipo de relatório selecionado para uma visita ('technical' | 'laboratory'),
- * lendo tanto da coluna nativa `visit.report_type` quanto do metadado Dual-Layer em `lab_report_comments`.
+ * Obtém o tipo de relatório para uma visita ('technical' | 'laboratory'):
+ * 1. Se `currentUser` for informado e NÃO for administrador:
+ *    - Perfil Laboratório -> 'laboratory'
+ *    - Perfil Técnico -> 'technical'
+ * 2. Caso contrário (ex.: Administrador ou visualização do relatório), lê o tipo salvo na visita
+ *    (coluna nativa `visit.report_type` ou metadado Dual-Layer em `lab_report_comments`).
+ * 3. Se a visita não tiver tipo salvo explícito, verifica o perfil do responsável pela visita (`technicianUser`).
+ * 4. Padrão: 'technical'.
  */
-export function getVisitReportType(visit) {
-    if (!visit) return 'technical';
-    if (visit.report_type === 'laboratory' || visit.report_type === 'technical') {
-        return visit.report_type;
+export function getVisitReportType(visit, currentUser = null, technicianUser = null) {
+    const forcedByCurrentUser = getReportTypeFromUserRole(currentUser);
+    if (forcedByCurrentUser) {
+        return forcedByCurrentUser;
     }
-    const parsedLab = parseLabReportData(visit);
-    if (parsedLab.metadata?.report_type === 'laboratory' || parsedLab.metadata?.report_type === 'technical') {
-        return parsedLab.metadata.report_type;
+
+    if (visit) {
+        if (visit.report_type === 'laboratory' || visit.report_type === 'technical') {
+            return visit.report_type;
+        }
+        const parsedLab = parseLabReportData(visit);
+        if (parsedLab.metadata?.report_type === 'laboratory' || parsedLab.metadata?.report_type === 'technical') {
+            return parsedLab.metadata.report_type;
+        }
     }
+
+    const fromTechnician = getReportTypeFromUserRole(technicianUser);
+    if (fromTechnician) {
+        return fromTechnician;
+    }
+
     return 'technical';
 }
 
@@ -129,4 +175,3 @@ export function buildVisitReportTypePayload(visit, newReportType) {
         }
     };
 }
-

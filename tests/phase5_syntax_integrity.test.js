@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import esbuild from 'esbuild';
-import { resolveReportSettingsByType, getVisitReportType, buildVisitReportTypePayload } from '../src/lib/reportTypeUtils.js';
+import { resolveReportSettingsByType, getVisitReportType, buildVisitReportTypePayload, isUserAdminRole, getReportTypeFromUserRole } from '../src/lib/reportTypeUtils.js';
 
 const PROJECT_ROOT = process.cwd();
 
@@ -92,4 +92,21 @@ test('Fase 5.3 - Seletor de Capas / Tipo de Relatório (Serviço Técnico vs Ser
     const { safeFallbackPayload } = buildVisitReportTypePayload(visitInitial, 'laboratory');
     const visitAfterSave = { ...visitInitial, ...safeFallbackPayload };
     assert.equal(getVisitReportType(visitAfterSave), 'laboratory');
+
+    // Regras de Perfil: Admin vs Técnico vs Laboratório
+    assert.equal(isUserAdminRole({ role: 'admin' }), true);
+    assert.equal(isUserAdminRole({ role_data: { name: 'Administrador' } }), true);
+    assert.equal(isUserAdminRole({ role: 'tecnico' }), false);
+    assert.equal(isUserAdminRole({ role: 'Laboratorio' }), false);
+
+    assert.equal(getReportTypeFromUserRole({ role: 'tecnico' }), 'technical');
+    assert.equal(getReportTypeFromUserRole({ role_data: { name: 'Laboratório' } }), 'laboratory');
+    assert.equal(getReportTypeFromUserRole({ role: 'admin' }), null);
+
+    // Perfil Laboratório sempre gera relatório analítico ('laboratory')
+    assert.equal(getVisitReportType(visitInitial, { role: 'Laboratorio' }), 'laboratory');
+    // Perfil Técnico sempre gera relatório técnico ('technical')
+    assert.equal(getVisitReportType(visitAfterSave, { role: 'tecnico' }), 'technical');
+    // Perfil Admin respeita a escolha salva na visita
+    assert.equal(getVisitReportType(visitAfterSave, { role: 'admin' }), 'laboratory');
 });
