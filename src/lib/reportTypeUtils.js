@@ -53,6 +53,28 @@ export function resolveReportSettingsByType(allSettings, requestedType = 'techni
 
     if (!matched) {
         matched = allSettings[0];
+        if (normalizedType === 'laboratory') {
+            const defaultLabCoverUrl = (typeof window !== 'undefined' && window.location?.origin)
+                ? `${window.location.origin}/capa-ensaio-analitico.jpg`
+                : '/capa-ensaio-analitico.jpg';
+            return {
+                ...matched,
+                report_title: 'Relatório de Ensaio Analítico',
+                cover_image_url: defaultLabCoverUrl,
+                current_report_number: maxCurrentNumber,
+                highest_emitted_number: maxHighestEmitted
+            };
+        }
+    } else if (normalizedType === 'laboratory' && !matched.cover_image_url) {
+        const defaultLabCoverUrl = (typeof window !== 'undefined' && window.location?.origin)
+            ? `${window.location.origin}/capa-ensaio-analitico.jpg`
+            : '/capa-ensaio-analitico.jpg';
+        return {
+            ...matched,
+            cover_image_url: defaultLabCoverUrl,
+            current_report_number: maxCurrentNumber,
+            highest_emitted_number: maxHighestEmitted
+        };
     }
 
     return {
@@ -107,3 +129,4 @@ export function buildVisitReportTypePayload(visit, newReportType) {
         }
     };
 }
+
