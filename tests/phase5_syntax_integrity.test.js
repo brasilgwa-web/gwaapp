@@ -51,6 +51,7 @@ test('Fase 5.2 - Integridade das integrações nos componentes React (Zero Regre
     const labTabContent = fs.readFileSync(path.join(PROJECT_ROOT, 'src/components/visit/LabReportTab.jsx'), 'utf-8');
     assert.match(labTabContent, /Laudo do Laboratório/, 'LabReportTab deve manter tela original de Laudo do Laboratório');
     assert.match(labTabContent, /Comentários Complementares/, 'LabReportTab deve manter Comentários Complementares');
+    assert.match(labTabContent, /Histórico de Laudos do Cliente/, 'LabReportTab deve manter o Histórico de Laudos do Cliente e busca');
 
     const geminiContent = fs.readFileSync(path.join(PROJECT_ROOT, 'src/lib/gemini.js'), 'utf-8');
     assert.match(geminiContent, /export async function generateTechnicalAnalysis/, 'generateTechnicalAnalysis original deve permanecer intacta');
