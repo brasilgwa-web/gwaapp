@@ -3,7 +3,7 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { getWeatherReportLabel, formatGpsForReport, hasSampleMetadata } from '@/lib/fieldMetadataUtils';
+import { getWeatherReportLabel, formatGpsForReport, hasSampleMetadata, isEquipmentCollected } from '@/lib/fieldMetadataUtils';
 import { parseLabReportData } from '@/lib/labReportMetadataUtils';
 
 // Register Font
@@ -541,8 +541,17 @@ const renderCommentsHtml = (html) => {
 
 const ReportPdf = ({ data, settings }) => {
     const { visit, client, fullReportStructure, photos, primaryLocation, technicianUser, clientContact } = data;
-    // Fallback for reportNumber
-    const reportNumber = data.reportNumber || visit.report_number || 'PENDENTE';
+
+    // Parse visit date always in GMT-3 (Brazil), regardless of user device timezone
+    const visitDate = visit.visit_date
+        ? new Date(`${visit.visit_date.split('T')[0]}T12:00:00-03:00`)
+        : new Date();
+
+    // Fallback for reportNumber (aligned with ReportTemplate so it never prints 'PENDENTE')
+    const rawReportNum = data.reportNumber || visit.report_number;
+    const reportNumber = (rawReportNum && rawReportNum !== 'PENDENTE')
+        ? rawReportNum
+        : `${format(visitDate, 'yyMM')}-${String(settings?.current_report_number || data?.reportSettings?.current_report_number || 1).padStart(6, '0')}`;
 
 
     // Resolve Technician Info
@@ -556,11 +565,6 @@ const ReportPdf = ({ data, settings }) => {
     const coverContent = settings?.cover_content;
     const coverBgColor = settings?.cover_background_color || '#1e40af';
     const includeCover = settings?.cover_enabled !== false && !!(coverImageUrl || coverContent);
-
-    // Parse visit date always in GMT-3 (Brazil), regardless of user device timezone
-    const visitDate = visit.visit_date
-        ? new Date(`${visit.visit_date.split('T')[0]}T12:00:00-03:00`)
-        : new Date();
 
     const renderHeader = () => (
         <View style={styles.header} fixed>
@@ -709,11 +713,8 @@ const ReportPdf = ({ data, settings }) => {
                     ) : (
                         fullReportStructure.map((loc, idx) => {
                             // Filter equipments that have at least one valid test result
-                            // OR have sample metadata (collection_time, weather, gps or complementary_info) filled
-                            const activeEquipments = loc.equipments.filter(eq =>
-                                eq.tests?.some(t => t.result?.measured_value !== null && t.result?.measured_value !== undefined && t.result?.measured_value !== '') ||
-                                hasSampleMetadata(eq.sample)
-                            );
+                            // OR have explicit collection metadata (collection_time or complementary_info) filled
+                            const activeEquipments = loc.equipments.filter(eq => isEquipmentCollected(eq));
 
                             if (activeEquipments.length === 0) return null;
 

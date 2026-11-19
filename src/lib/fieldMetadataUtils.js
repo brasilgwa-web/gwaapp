@@ -219,17 +219,29 @@ export function formatGpsForReport(sample) {
 }
 
 /**
- * Verifica se um equipamento na estrutura de relatório possui qualquer metadado de coleta preenchido
+ * Verifica se um equipamento na estrutura de relatório possui metadado explícito de coleta
+ * (horário de coleta ou informação de análise complementar).
+ * Importante: O fator climático (`weather_condition`) aplicado em lote NÃO deve ativar
+ * equipamentos que não foram coletados na visita.
  */
 export function hasSampleMetadata(sample) {
     if (!sample) return false;
     const parsed = parseSampleRecord(sample);
     return Boolean(
         parsed?.collection_time ||
-        parsed?.complementary_info ||
-        parsed?.weather_condition ||
-        parsed?.gps_status ||
-        (parsed?.gps_latitude !== null && parsed?.gps_longitude !== null)
+        parsed?.complementary_info
     );
+}
+
+/**
+ * Verifica se um equipamento foi efetivamente coletado/medido na visita:
+ * possui ao menos 1 teste com resultado medido OU possui horário de coleta / análise complementar.
+ */
+export function isEquipmentCollected(eq) {
+    if (!eq) return false;
+    const hasMeasuredTest = Boolean(
+        eq.tests?.some(t => t.result?.measured_value !== null && t.result?.measured_value !== undefined && t.result?.measured_value !== '')
+    );
+    return hasMeasuredTest || hasSampleMetadata(eq.sample);
 }
 

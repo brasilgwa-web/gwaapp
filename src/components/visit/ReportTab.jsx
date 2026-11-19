@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 
 import SignaturePad from "./SignaturePad";
 import { ClientContact } from "@/api/entities";
-import { getWeatherReportLabel, formatGpsForReport, isWeatherComplete } from "@/lib/fieldMetadataUtils";
+import { getWeatherReportLabel, formatGpsForReport, isWeatherComplete, isEquipmentCollected } from "@/lib/fieldMetadataUtils";
 import { WGA_INTEGRA_360_EMAIL_SUBJECT, WGA_INTEGRA_360_EMAIL_HTML, renderEmailTemplate, resolveEmailBodyTemplate } from "@/lib/emailTemplates";
 import { REPORT_TYPE_OPTIONS, getVisitReportType, buildVisitReportTypePayload, resolveReportSettingsByType, isUserAdminRole, getReportTypeFromUserRole } from "@/lib/reportTypeUtils";
 
@@ -258,12 +258,14 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
             // Refetch report data para ter estrutura completa
             const { data: freshReportData } = await refetchReport();
 
-            // Estruturar dados por equipamento (usando fullReportStructure)
+            // Estruturar dados por equipamento (apenas equipamentos coletados)
             let equipmentDataText = '';
             if (freshReportData?.fullReportStructure?.length > 0) {
                 freshReportData.fullReportStructure.forEach(location => {
+                    const collectedEquipments = (location.equipments || []).filter(eq => isEquipmentCollected(eq));
+                    if (collectedEquipments.length === 0) return;
                     equipmentDataText += `\n\n📍  LOCAL: ${location.location?.name || location.name}\n`;
-                    location.equipments?.forEach(eq => {
+                    collectedEquipments.forEach(eq => {
                         equipmentDataText += `\n  🔧 EQUIPAMENTO: ${eq.equipment.name}\n`;
                         if (eq.sample?.collection_time) {
                             equipmentDataText += `     Coleta: ${eq.sample.collection_time}\n`;
@@ -383,8 +385,58 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
 
     const hasMissingWeather = () => {
         const allEquipments = reportData?.fullReportStructure?.flatMap(loc => loc.equipments || []) || [];
-        if (allEquipments.length === 0) return false;
-        return allEquipments.some(eq => !isWeatherComplete(eq.sample?.weather_condition));
+        const collectedEquipments = allEquipments.filter(eq => isEquipmentCollected(eq));
+        const targetEquipments = collectedEquipments.length > 0 ? collectedEquipments : allEquipments;
+        if (targetEquipments.length === 0) return false;
+        return targetEquipments.some(eq => !isWeatherComplete(eq.sample?.weather_condition));
+    };
+
+    const ensureVisitReportNumber = async (settingsOverride = null) => {
+        let reportNumber = visit.report_number;
+        if (reportNumber && reportNumber !== 'PENDENTE') {
+            return reportNumber;
+        }
+
+        let safeDate = new Date();
+        if (visit.visit_date) {
+            const dateStr = visit.visit_date.includes('T') ? visit.visit_date.split('T')[0] : visit.visit_date;
+            const [y, m, d] = dateStr.split('-').map(Number);
+            safeDate = new Date(y, m - 1, d, 12, 0, 0);
+        }
+
+        let targetSettings = settingsOverride;
+        if (!targetSettings) {
+            const { data: allReportSettings } = await supabase
+                .from('report_settings')
+                .select('*')
+                .order('created_at', { ascending: true });
+            const effectiveReportType = getVisitReportType(visit, user, reportData?.technicianUser);
+            targetSettings = resolveReportSettingsByType(allReportSettings, effectiveReportType) || allReportSettings?.[0];
+        }
+
+        const currentNum = targetSettings?.current_report_number || reportData?.reportSettings?.current_report_number || 1;
+        reportNumber = `${format(safeDate, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
+
+        // Update visit with report number immediately
+        await supabase
+            .from('visits')
+            .update({ report_number: reportNumber })
+            .eq('id', visit.id);
+
+        // Increment counter in report_settings
+        if (targetSettings?.id) {
+            await supabase
+                .from('report_settings')
+                .update({
+                    current_report_number: currentNum + 1,
+                    highest_emitted_number: currentNum,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', targetSettings.id);
+        }
+
+        visit.report_number = reportNumber;
+        return reportNumber;
     };
 
     const handleFinalize = async () => {
@@ -409,8 +461,12 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 await handleSyncStock('deduct');
             }
 
+            // Ensure official sequential report_number is generated even when finalizing locally
+            const generatedReportNumber = await ensureVisitReportNumber();
+
             updateMutation.mutate({
                 status: 'completed',
+                report_number: generatedReportNumber,
                 stock_deducted_at: new Date().toISOString()
             });
 
@@ -634,43 +690,15 @@ export default function ReportTab({ visit, results, onUpdateVisit, readOnly, isA
                 safeDate = new Date(y, m - 1, d, 12, 0, 0);
             }
 
-            // --- FIX: Generate Number BEFORE PDF ---
-            let reportNumber = visit.report_number;
-            if (!reportNumber && !readOnly) {
-                // Using previously fetched reportSettings
-                if (reportSettings) {
-                    const currentNum = reportSettings.current_report_number || 1;
-
-                    // Uses safeDate defined above
-                    reportNumber = `${format(safeDate, 'yyMM')}-${String(currentNum).padStart(6, '0')}`;
-
-                    // Update visit with report number immediately
-                    await supabase
-                        .from('visits')
-                        .update({ report_number: reportNumber })
-                        .eq('id', visit.id);
-
-                    // Increment counter
-                    await supabase
-                        .from('report_settings')
-                        .update({
-                            current_report_number: currentNum + 1,
-                            highest_emitted_number: currentNum,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', reportSettings.id);
-
-                    // Update local visit object (crucial for PDF generation)
-                    visit.report_number = reportNumber;
-                }
-            }
+            // --- FIX: Generate Number BEFORE PDF (even if visit was already marked completed/readOnly locally) ---
+            const reportNumber = await ensureVisitReportNumber(reportSettings);
 
             // Refetch to ensure we have everything fresh OR just patch the data object
             const { data } = await refetchReport();
             if (!data) throw new Error('Falha ao carregar dados do relatório.');
 
-            // Ensure data has the report number if refetch was too fast or race condition
-            if (reportNumber && !data.visit.report_number) {
+            // Always ensure data has the official report number for ReportPdf
+            if (reportNumber) {
                 data.visit.report_number = reportNumber;
                 data.reportNumber = reportNumber;
             }

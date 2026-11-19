@@ -12,7 +12,8 @@ import {
     serializeSampleWithMeta,
     getWeatherReportLabel,
     formatGpsForReport,
-    hasSampleMetadata
+    hasSampleMetadata,
+    isEquipmentCollected
 } from '../src/lib/fieldMetadataUtils.js';
 
 test('Fase 1: Script SQL de migração existe e é 100% aditivo (IF NOT EXISTS)', () => {
@@ -112,5 +113,44 @@ test('Fase 2.1: Segmented Controls (Clima Atual + Histórico de Chuvas) — codi
     assert.equal(isWeatherComplete(combined), true);
     assert.equal(isWeatherComplete(buildWeatherConditionValue('sunny', null)), false);
     assert.equal(isWeatherComplete(null), false);
+});
+
+test('Fase 2.2: Equipamentos sem coleta que apenas receberam Clima em lote NÃO devem aparecer no relatório', () => {
+    // Equipamento sem nenhum teste medido, sem horário de coleta e sem análise complementar, mas com clima aplicado em lote
+    const uncollectedSample = parseSampleRecord({
+        id: 'sample-uncollected',
+        weather_condition: 'sunny|no_rain',
+        complementary_info: serializeSampleWithMeta('', { weather_condition: 'sunny|no_rain' })
+    });
+    assert.equal(hasSampleMetadata(uncollectedSample), false, 'Apenas weather_condition não deve ativar hasSampleMetadata');
+
+    const uncollectedEq = {
+        equipment: { name: 'Chiller Trane' },
+        sample: uncollectedSample,
+        tests: [
+            { name: 'pH', result: { measured_value: null } },
+            { name: 'Condutividade', result: undefined }
+        ]
+    };
+    assert.equal(isEquipmentCollected(uncollectedEq), false, 'Equipamento não coletado não deve aparecer no relatório');
+
+    // Equipamento com 1 resultado medido deve aparecer normalmente com seu clima
+    const collectedEq = {
+        equipment: { name: 'Abrandador' },
+        sample: uncollectedSample,
+        tests: [
+            { name: 'pH', result: { measured_value: 7.5 } },
+            { name: 'Condutividade', result: { measured_value: null } }
+        ]
+    };
+    assert.equal(isEquipmentCollected(collectedEq), true, 'Equipamento com teste medido deve aparecer no relatório');
+
+    // Equipamento sem teste em campo, mas com horário de coleta ou análise complementar para laboratório deve aparecer
+    const labOnlyEq = {
+        equipment: { name: 'Poço Artesiano' },
+        sample: parseSampleRecord({ collection_time: '14:10', weather_condition: 'sunny|no_rain' }),
+        tests: []
+    };
+    assert.equal(isEquipmentCollected(labOnlyEq), true, 'Equipamento com horário de coleta deve aparecer no relatório');
 });
 

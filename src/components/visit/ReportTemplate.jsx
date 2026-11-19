@@ -4,7 +4,7 @@ import { formatDateAsLocal } from '@/lib/utils';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import EquipmentTrendChart from './EquipmentTrendChart';
-import { getWeatherReportLabel, formatGpsForReport, hasSampleMetadata } from '@/lib/fieldMetadataUtils';
+import { getWeatherReportLabel, formatGpsForReport, hasSampleMetadata, isEquipmentCollected } from '@/lib/fieldMetadataUtils';
 import { parseLabReportData } from '@/lib/labReportMetadataUtils';
 
 // Helper para converter markdown básico em HTML
@@ -332,11 +332,8 @@ export function ReportTemplate({ data }) {
                         <div className="space-y-6">
                             {fullReportStructure.map((loc, idx) => {
                                 // Filter equipments that have at least one valid test result
-                                // OR have sample metadata (collection_time, weather, gps or complementary_info) filled
-                                const activeEquipments = loc.equipments.filter(eq =>
-                                    eq.tests?.some(t => t.result?.measured_value !== null && t.result?.measured_value !== undefined && t.result?.measured_value !== '') ||
-                                    hasSampleMetadata(eq.sample)
-                                );
+                                // OR have explicit collection metadata (collection_time or complementary_info) filled
+                                const activeEquipments = loc.equipments.filter(eq => isEquipmentCollected(eq));
 
                                 if (activeEquipments.length === 0) return null;
 

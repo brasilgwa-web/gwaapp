@@ -67,6 +67,11 @@ test('Fase 5.2 - Integridade das integrações nos componentes React (Zero Regre
     assert.match(reportPdfContent, /formatGpsForReport/, 'ReportPdf deve exibir geolocalização GPS no PDF');
     assert.match(reportPdfContent, /getWeatherReportLabel/, 'ReportPdf deve exibir fator climático no PDF');
     assert.match(reportPdfContent, /Análise de Laudos Laboratoriais/, 'ReportPdf deve conter seção opcional de Laudos no PDF');
+    assert.match(reportPdfContent, /isEquipmentCollected/, 'ReportPdf deve filtrar apenas equipamentos coletados');
+    assert.match(reportPdfContent, /rawReportNum !== 'PENDENTE'/, 'ReportPdf nunca deve exibir PENDENTE como número final');
+
+    const reportTabContent = fs.readFileSync(path.join(PROJECT_ROOT, 'src/components/visit/ReportTab.jsx'), 'utf-8');
+    assert.match(reportTabContent, /ensureVisitReportNumber/, 'ReportTab deve garantir geração do número de relatório ao finalizar e ao enviar');
 });
 
 test('Fase 5.3 - Seletor de Capas / Tipo de Relatório (Serviço Técnico vs Serviço Analítico)', () => {
